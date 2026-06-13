@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { SFSLogo } from '@/components/SFSLogo';
 import { createClient } from '@/utils/supabase/client';
 
 export default function LoginPage() {
@@ -39,7 +38,6 @@ export default function LoginPage() {
 
       <div className="bg-white rounded-[20px] py-[36px] px-[30px] w-full max-w-[400px] shadow-[0_24px_64px_rgba(0,0,0,0.25)]">
         <div className="flex flex-col items-center gap-3 mb-[28px]">
-          <SFSLogo size={64} />
           <div className="text-center">
             <div className="font-serif text-[18px] font-bold text-[var(--color-teal)]">Sales From Scratch</div>
             <div className="text-[11px] text-[var(--color-muted)] mt-[2px]">Sign in to your account</div>

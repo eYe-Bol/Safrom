@@ -1,7 +1,9 @@
-import Link from 'next/link'
-import { SFSBadge } from '@/components/SFSBadge'
+'use client';
+import Link from 'next/link';
+import { useState } from 'react';
 
 export default function LandingPage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const FEATURES = [
     {icon:"☁️",title:"Real-Time Cloud Sync",   desc:"Every sale and stock update syncs instantly. Check your numbers from home while your cashier runs the till."},
     {icon:"⚡",title:"The Situation Room",      desc:"Auto-generated supplier orders for anything running low. Review, adjust, and send in one tap."},
@@ -25,7 +27,6 @@ export default function LandingPage() {
       <nav className="bg-[var(--color-cream)] border-b border-[var(--color-cream-dk)] sticky top-0 z-[100]">
         <div className="max-w-[1080px] mx-auto px-4 h-[60px] flex items-center gap-3">
           <div className="flex items-center gap-2.5 mr-auto shrink-0">
-            <SFSBadge size={38}/>
             <span className="font-serif text-[17px] font-bold text-[var(--color-teal)] whitespace-nowrap">
               Sales From Scratch
             </span>
@@ -47,7 +48,27 @@ export default function LandingPage() {
               Get started
             </Link>
           </div>
+          
+          {/* Mobile menu toggle */}
+          <button className="md:hidden flex flex-col gap-[5px] p-2 ml-auto" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+            {[0,1,2].map(i => <span key={i} className="block w-6 h-0.5 bg-[var(--color-teal)] rounded" />)}
+          </button>
         </div>
+
+        {/* Mobile dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden absolute top-[60px] left-0 right-0 bg-white border-b border-[var(--color-line-lt)] shadow-lg p-4 flex flex-col gap-4 z-50">
+            {["Features","Pricing","FAQ"].map(l => (
+              <a key={l} href={`#${l.toLowerCase()}`} onClick={() => setMobileMenuOpen(false)} className="text-[15px] font-semibold text-[var(--color-ink)] block border-b border-[var(--color-line-lt)] pb-2">
+                {l}
+              </a>
+            ))}
+            <div className="flex flex-col gap-3 mt-2">
+              <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="text-center text-[14px] font-bold text-[var(--color-teal)] border-[1.5px] border-[var(--color-teal)] py-2.5 rounded-lg">Sign In</Link>
+              <Link href="/register" onClick={() => setMobileMenuOpen(false)} className="text-center text-[14px] font-bold text-white bg-[var(--color-gold)] py-2.5 rounded-lg">Get started</Link>
+            </div>
+          </div>
+        )}
       </nav>
 
       <section className="bg-[var(--color-teal)] px-5 pt-16 pb-15 relative overflow-hidden">
@@ -113,7 +134,8 @@ export default function LandingPage() {
                 {p.hi && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[var(--color-ink)] text-white text-[10px] font-extrabold px-[14px] py-[3px] rounded-full tracking-[0.08em] whitespace-nowrap">MOST POPULAR</div>}
                 <div className={`text-[11px] font-bold uppercase tracking-[0.1em] mb-2 ${p.hi ? 'text-white/70' : 'text-white/45'}`}>{p.name}</div>
                 <div className="mb-2">
-                  <span className={`text-[32px] font-bold ${p.hi ? 'text-white' : 'text-white'}`}>KES {p.price}</span>
+                  {p.price !== 'Contact' && <span className={`text-[32px] font-bold ${p.hi ? 'text-white' : 'text-white'}`}>KES </span>}
+                  <span className={`text-[32px] font-bold ${p.hi ? 'text-white' : 'text-white'}`}>{p.price}</span>
                   {p.price !== 'Contact' && <span className={`text-[13px] ${p.hi ? 'text-white/70' : 'text-white/45'}`}> /mo</span>}
                 </div>
                 <div className={`text-[13px] mb-6 ${p.hi ? 'text-white/90' : 'text-white/60'}`}>{p.desc}</div>

@@ -19,13 +19,6 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const router = useRouter();
 
-  const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push('/');
-    router.refresh();
-  };
-
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-[var(--color-line-lt)] flex items-center justify-center">
@@ -68,12 +61,6 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           <span className="text-[14px]">💳</span>
           Subscription
         </Link>
-        <button
-          onClick={handleSignOut}
-          className="w-full flex items-center justify-center gap-2 py-2 rounded-[10px] bg-[var(--color-red)] text-white font-bold text-[13px] hover:opacity-90 transition-opacity"
-        >
-          <span>🚪</span> Sign Out
-        </button>
       </div>
     </div>
   );
