@@ -110,12 +110,14 @@ export default function ExpensesPage() {
 
         <div className="bg-white rounded-[16px] border border-[var(--color-line-lt)] shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[500px]">
+            <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[var(--color-canvas)] border-b border-[var(--color-line-lt)]">
-                  {['Date', 'Category', 'Description', 'Amount', ''].map(h => (
-                    <th key={h} className="p-3 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">{h}</th>
-                  ))}
+                  <th className="hidden sm:table-cell p-3 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">Date</th>
+                  <th className="hidden sm:table-cell p-3 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">Category</th>
+                  <th className="p-3 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">Description</th>
+                  <th className="p-3 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">Amount</th>
+                  <th className="p-3"></th>
                 </tr>
               </thead>
               <tbody>
@@ -125,13 +127,19 @@ export default function ExpensesPage() {
                   <tr><td colSpan={5} className="p-4 text-center text-[13px] text-[var(--color-muted)]">No expenses logged yet.</td></tr>
                 ) : expenses.map(exp => (
                   <tr key={exp.id} className="border-b border-[var(--color-line-lt)] hover:bg-[var(--color-canvas)] transition-colors">
-                    <td className="p-3 text-[12px] text-[var(--color-slate)]">{exp.date}</td>
-                    <td className="p-3">
+                    <td className="hidden sm:table-cell p-3 text-[12px] text-[var(--color-slate)]">{exp.date}</td>
+                    <td className="hidden sm:table-cell p-3">
                       <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${catColor[exp.category] || catColor['Other']}`}>{exp.category}</span>
                     </td>
-                    <td className="p-3 text-[13px] text-[var(--color-ink)]">{exp.description}</td>
+                    <td className="p-3 text-[13px] text-[var(--color-ink)]">
+                      <div className="font-medium">{exp.description}</div>
+                      <div className="sm:hidden mt-1 flex items-center gap-2">
+                        <span className="text-[10px] text-[var(--color-slate)]">{exp.date}</span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${catColor[exp.category] || catColor['Other']}`}>{exp.category}</span>
+                      </div>
+                    </td>
                     <td className="p-3 text-[13px] font-bold text-[var(--color-red)]">KES {Number(exp.amount).toLocaleString()}</td>
-                    <td className="p-3">
+                    <td className="p-3 text-right">
                       <button onClick={() => handleDelete(exp.id)} className="text-[11px] font-bold text-[var(--color-red)] bg-[var(--color-red-bg)] px-2 py-1 rounded hover:opacity-80">Remove</button>
                     </td>
                   </tr>

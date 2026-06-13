@@ -115,14 +115,17 @@ export default function InventoryPage() {
           </div>
           
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse min-w-[800px] text-left">
+            <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="bg-[var(--color-canvas)] border-b border-[var(--color-line-lt)]">
-                  {["Product", "Category", "Supplier", "Sell Price", "Cost Price", "Reorder", "Stock", ""].map(h => (
-                    <th key={h} className="p-3 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">
-                      {h}
-                    </th>
-                  ))}
+                  <th className="p-3 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">Product</th>
+                  <th className="hidden md:table-cell p-3 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">Category</th>
+                  <th className="hidden md:table-cell p-3 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">Supplier</th>
+                  <th className="p-3 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">Sell Price</th>
+                  <th className="hidden md:table-cell p-3 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">Cost Price</th>
+                  <th className="hidden md:table-cell p-3 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">Reorder</th>
+                  <th className="p-3 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">Stock</th>
+                  <th className="p-3"></th>
                 </tr>
               </thead>
               <tbody>
@@ -135,13 +138,13 @@ export default function InventoryPage() {
                   return (
                     <tr key={p.id} className="border-b border-[var(--color-line-lt)] hover:bg-[var(--color-teal-bg)] transition-colors">
                       <td className="p-3 text-[13px] font-semibold text-[var(--color-ink)]">{p.name}</td>
-                      <td className="p-3"><Chip label={p.category} color="var(--color-slate)" bg="var(--color-canvas)"/></td>
-                      <td className="p-3 text-[12px] text-[var(--color-muted)]">{p.supplier}</td>
+                      <td className="hidden md:table-cell p-3"><Chip label={p.category} color="var(--color-slate)" bg="var(--color-canvas)"/></td>
+                      <td className="hidden md:table-cell p-3 text-[12px] text-[var(--color-muted)]">{p.supplier}</td>
                       <td className="p-3 text-[13px] font-bold text-[var(--color-ink)]">KES {p.sell_price}</td>
-                      <td className="p-3 text-[12px] text-[var(--color-slate)]">KES {p.cost_price}</td>
-                      <td className="p-3 text-[12px] text-[var(--color-slate)]">{p.reorder_level}</td>
+                      <td className="hidden md:table-cell p-3 text-[12px] text-[var(--color-slate)]">KES {p.cost_price}</td>
+                      <td className="hidden md:table-cell p-3 text-[12px] text-[var(--color-slate)]">{p.reorder_level}</td>
                       <td className={`p-3 text-[12px] ${isLowStock ? 'font-bold text-[var(--color-red)]' : 'text-[var(--color-slate)]'}`}>
-                        {p.stock} {p.unit} {isLowStock && '⚠'}
+                        {p.stock} <span className="hidden sm:inline">{p.unit}</span> {isLowStock && '⚠'}
                       </td>
                       <td className="p-3 flex gap-2 justify-end">
                         <button onClick={() => openEdit(p)} className="text-[11px] font-bold text-[var(--color-teal)] bg-[var(--color-teal-bg)] px-2 py-1 rounded-[6px] hover:opacity-80">Edit</button>

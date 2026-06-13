@@ -109,7 +109,7 @@ export default function LandingPage() {
           </div>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(255px,1fr))] gap-[18px] items-start">
             {PRICING.map(p=>(
-              <div key={p.name} className={`rounded-[18px] p-[26px_22px] relative ${p.hi ? 'bg-[var(--color-gold)] border-none shadow-[0_12px_40px_rgba(201,151,58,0.38)] scale-105' : 'bg-white/10 border border-white/15'}`}>
+              <div key={p.name} className={`rounded-[18px] p-[26px_22px] relative ${p.hi ? 'bg-[var(--color-gold)] border-none shadow-[0_12px_40px_rgba(201,151,58,0.38)] scale-105 z-10' : 'bg-white/10 border border-white/15'}`}>
                 {p.hi && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[var(--color-ink)] text-white text-[10px] font-extrabold px-[14px] py-[3px] rounded-full tracking-[0.08em] whitespace-nowrap">MOST POPULAR</div>}
                 <div className={`text-[11px] font-bold uppercase tracking-[0.1em] mb-2 ${p.hi ? 'text-white/70' : 'text-white/45'}`}>{p.name}</div>
                 <div className="mb-2">
@@ -133,6 +133,52 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Footer / Contact Section */}
+      <footer className="bg-[var(--color-ink)] pt-16 pb-8 px-5 border-t border-white/10">
+        <div className="max-w-[1040px] mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
+            <div>
+              <h3 className="font-serif text-[24px] font-bold text-white mb-4">Ready to take control?</h3>
+              <p className="text-[14px] text-white/60 leading-[1.7] max-w-[360px] mb-6">
+                Sales From Scratch is built for Kenyan businesses that want to grow without the headache of manual stock taking and lost sales.
+              </p>
+              <Link href="/register" className="inline-block bg-[var(--color-teal)] text-white font-bold py-[12px] px-[24px] rounded-[10px] text-[14px] hover:opacity-90 transition-opacity">
+                Start Your 7-Day Free Trial
+              </Link>
+            </div>
+            <div className="flex flex-col gap-5 md:pl-10">
+              <h4 className="text-[12px] font-bold text-[var(--color-gold)] uppercase tracking-[0.1em]">Contact Us</h4>
+              
+              <a href="https://wa.me/254716630073" target="_blank" rel="noreferrer" className="flex items-center gap-3 group">
+                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-[18px] group-hover:bg-[#25D366] transition-colors">📱</div>
+                <div>
+                  <div className="text-[11px] text-white/50 uppercase tracking-widest mb-0.5">WhatsApp Support</div>
+                  <div className="text-[14px] font-bold text-white group-hover:text-[#25D366] transition-colors">+254 716 630 073</div>
+                </div>
+              </a>
+
+              <a href="mailto:Salesfromscratch26@gmail.com" className="flex items-center gap-3 group">
+                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-[18px] group-hover:bg-[var(--color-teal)] transition-colors">✉️</div>
+                <div>
+                  <div className="text-[11px] text-white/50 uppercase tracking-widest mb-0.5">Email Support</div>
+                  <div className="text-[14px] font-bold text-white group-hover:text-[var(--color-teal)] transition-colors">Salesfromscratch26@gmail.com</div>
+                </div>
+              </a>
+            </div>
+          </div>
+          
+          <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="text-[12px] text-white/40">
+              &copy; {new Date().getFullYear()} Sales From Scratch. All rights reserved.
+            </div>
+            <div className="flex gap-6">
+              <a href="#" className="text-[12px] text-white/40 hover:text-white transition-colors">Terms of Service</a>
+              <a href="#" className="text-[12px] text-white/40 hover:text-white transition-colors">Privacy Policy</a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

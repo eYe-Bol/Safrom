@@ -45,14 +45,21 @@ export function Topbar({ title, sub, storeName }: { title: string; sub?: string;
 
   return (
     <div className="pt-[14px] px-[16px] pb-[10px] flex justify-between items-center flex-wrap gap-2 border-b border-[var(--color-line-lt)] bg-white">
-      <div>
-        <h1 className="font-serif text-[20px] font-bold text-[var(--color-ink)] tracking-[-0.02em]">{title}</h1>
-        {(storeName || sub) && (
-          <p className="text-[12px] text-[var(--color-muted)] mt-[2px]">
-            {storeName && <strong className="text-[var(--color-teal)] mr-[5px]">{storeName}</strong>}
-            {sub}
-          </p>
+      <div className="flex items-center gap-3">
+        {user && (
+          <div className="w-10 h-10 rounded-full bg-[var(--color-teal)] text-white flex items-center justify-center font-bold text-[14px] shrink-0 shadow-sm">
+            {user.initials}
+          </div>
         )}
+        <div className="flex flex-col min-w-0">
+          <h1 className="font-serif text-[20px] font-bold text-[var(--color-ink)] tracking-[-0.02em] flex items-center gap-2">
+            {storeName ? storeName : title}
+            {user && storeName && <span className="text-[10px] font-sans font-bold bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-0.5 rounded-full uppercase tracking-wider">{user.role}</span>}
+          </h1>
+          <p className="text-[12px] text-[var(--color-muted)] mt-[1px]">
+            {storeName ? title : sub} {storeName && sub ? `· ${sub}` : ''}
+          </p>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -66,14 +73,6 @@ export function Topbar({ title, sub, storeName }: { title: string; sub?: string;
           <div className="w-2 h-2 rounded-full bg-[var(--color-emerald)] shadow-[0_0_0_3px_var(--color-emerald-bg)]" />
           <span className="text-[10px] text-[var(--color-muted)] font-bold tracking-[0.06em]">LIVE</span>
         </div>
-        {user && (
-          <div className="flex items-center gap-1.5">
-            <div className="w-8 h-8 rounded-full bg-[var(--color-teal)] text-white flex items-center justify-center font-bold text-[12px] shrink-0">
-              {user.initials}
-            </div>
-            <span className="hidden md:block text-[11px] font-semibold text-[var(--color-slate)] capitalize">{user.role}</span>
-          </div>
-        )}
         <button
           onClick={handleLogout}
           className="text-[12px] font-bold text-[var(--color-red)] bg-[var(--color-red-bg)] px-3 py-1.5 rounded-lg hover:opacity-80 transition-opacity"
