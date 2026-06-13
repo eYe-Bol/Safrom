@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme {
+  --color-teal: #0A5C6B;
+  --color-teal-dk: #074452;
+  --color-teal-bg: #EBF5F7;
+  --color-cream: #F5EFE0;
+  --color-cream-dk: #EDE4CC;
+  --color-white: #FFFFFF;
+  --color-gold: #C9973A;
+  --color-gold-lt: #A87830;
+  --color-gold-pale: #FBF5E8;
+  --color-canvas: #FAF8F4;
+  --color-ink: #1A2B2E;
+  --color-slate: #4A6670;
+  --color-muted: #8AA5AD;
+  --color-line: #DDE8EA;
+  --color-line-lt: #EEF4F5;
+  --color-red: #C0392B;
+  --color-red-bg: #FDF0EE;
+  --color-amber: #D97706;
+  --color-amber-bg: #FFFBEB;
+  --color-emerald: #1A7A4A;
+  --color-emerald-bg: #E8F5EE;
+  --color-purple: #7C3AED;
+  --color-purple-bg: #F5F3FF;
+
+  --font-serif: Georgia, "Times New Roman", serif;
+  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  a {
+    text-decoration: none;
+    color: inherit;
+  }
+  button, input, select, textarea {
+    font-family: var(--font-sans);
+  }
+}
+
+@layer utilities {
+  .row-hover:hover {
+    background: #f0f7f8 !important;
+  }
+  input[type=number]::-webkit-inner-spin-button {
+    opacity: 1;
+  }
+}
