@@ -123,7 +123,7 @@ export default function LandingPage() {
             </a>
           </div>
           <div className="mt-7 flex gap-4 justify-center flex-wrap">
-            {["🛡 Secure cloud backup","📱 Works on any phone","7 days free — no card"].map(t => (
+            {["🛡 Secure cloud backup","📱 Works on all devices","7 days free — no card"].map(t => (
               <span key={t} className="text-[12px] text-white/50 font-medium">{t}</span>
             ))}
           </div>
