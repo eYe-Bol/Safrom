@@ -109,14 +109,14 @@ export default function ReportsPage() {
         {/* Filters Bar */}
         <div className="bg-white rounded-xl p-3 border border-[var(--color-line-lt)] flex gap-2.5 flex-wrap items-center">
           <select value={catF} onChange={e => setCatF(e.target.value)}
-            className="w-[150px] px-3 py-2 border-[1.5px] border-[var(--color-line)] rounded-lg text-[13px] outline-none bg-white focus:border-[var(--color-teal)]">
+            className="flex-1 min-w-[120px] px-3 py-2 border-[1.5px] border-[var(--color-line)] rounded-lg text-[13px] outline-none bg-white focus:border-[var(--color-teal)]">
             {cats.map(c => <option key={c}>{c}</option>)}
           </select>
           <input type="date" defaultValue={new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-            className="px-3 py-2 border-[1.5px] border-[var(--color-line)] rounded-lg text-[13px] outline-none text-[var(--color-slate)]" />
-          <span className="text-[var(--color-muted)]">→</span>
+            className="flex-1 min-w-[120px] px-3 py-2 border-[1.5px] border-[var(--color-line)] rounded-lg text-[13px] outline-none text-[var(--color-slate)]" />
+          <span className="text-[var(--color-muted)] hidden sm:inline">→</span>
           <input type="date" defaultValue={new Date().toISOString().split('T')[0]}
-            className="px-3 py-2 border-[1.5px] border-[var(--color-line)] rounded-lg text-[13px] outline-none text-[var(--color-slate)]" />
+            className="flex-1 min-w-[120px] px-3 py-2 border-[1.5px] border-[var(--color-line)] rounded-lg text-[13px] outline-none text-[var(--color-slate)]" />
           <button className="px-4 py-2 bg-[var(--color-teal)] text-white border-none rounded-lg font-bold text-[13px] cursor-pointer hover:opacity-90">
             Apply
           </button>

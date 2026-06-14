@@ -15,7 +15,6 @@ const NAV_ITEMS = [
   { href: '/portal/expenses',    label: 'Expenses',           icon: '💸' },
   { href: '/portal/reports',     label: 'Reports',            icon: '📊' },
   { href: '/portal/sales',       label: 'Sales Log',          icon: '🧮' },
-  { href: '/portal/team',        label: 'Team & Access',      icon: '👥' },
   { href: '/portal/settings',    label: 'Settings',           icon: '⚙️' },
 ];
 
@@ -52,8 +51,6 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         const { data } = await supabase.from('users').select('store_name, role').eq('id', user.id).single();
         if (data?.store_name) {
           setStoreName(data.store_name);
-        } else if (user.email) {
-          setStoreName(user.email.split('@')[0]);
         }
         const name = user.user_metadata?.full_name || user.email || 'User';
         setUserName(name);
@@ -116,17 +113,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             <span className="text-[14px]">💳</span>
             Subscription
           </Link>
-          {/* User card */}
-          {userName && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-[10px] bg-[var(--color-canvas)]">
-              <div className="w-8 h-8 rounded-full bg-[var(--color-teal)] text-white flex items-center justify-center font-bold text-[13px] shrink-0">
-                {userName[0]?.toUpperCase()}
-              </div>
-              <div className="min-w-0">
-                <div className="text-[12px] font-bold text-[var(--color-ink)] truncate">{userName}</div>
-              </div>
-            </div>
-          )}
+
           <button
             onClick={handleSignOut}
             className="w-full flex items-center justify-center gap-2 py-2 rounded-[10px] bg-[var(--color-red)] text-white font-bold text-[13px] hover:opacity-90 transition-opacity"

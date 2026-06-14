@@ -60,7 +60,7 @@ export function Topbar({ title, sub, storeName }: { title: string; sub?: string;
         </div>
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap justify-end">
+      <div className="hidden md:flex items-center gap-2 flex-wrap justify-end">
         <div className="flex text-[11px] text-[var(--color-slate)] bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg px-[10px] py-[4px] font-medium">
           {dateStr}
         </div>

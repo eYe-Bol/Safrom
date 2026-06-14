@@ -4,103 +4,56 @@ import { Topbar } from '@/components/Topbar';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 
-type InventoryItem = {
+type Product = {
   id: string;
   name: string;
   category: string;
-  sell_price: number;
-  cost_price: number;
-  stock: number;
   unit: string;
+  stock: number;
+  reorder_level: number;
 };
 
-const fmt = (n: number) => `KES ${Number(n).toLocaleString()}`;
-
 export default function InventoryPage() {
-  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [catF, setCatF] = useState("All");
-  
-  const [sel, setSel] = useState<InventoryItem | null>(null);
-  const [form, setForm] = useState({ opening: "", added: "", closing: "", wastage: "" });
-  const [saved, setSaved] = useState<Record<string, {units: number, rev: number}>>({});
-  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
+  const [catFilter, setCatFilter] = useState('All');
   const [toast, setToast] = useState('');
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
-  const fetchInventory = async () => {
+  const loadData = async () => {
     setLoading(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    
     const { data } = await supabase.from('inventory').select('*').eq('user_id', user.id).order('name');
-    if (data) setItems(data as InventoryItem[]);
+    if (data) setProducts(data);
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchInventory();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
-  const cats = ["All", ...Array.from(new Set(items.map(p => p.category || 'General')))];
-  const filtered = items.filter(p => 
-    (catF === "All" || (p.category || 'General') === catF) &&
-    (p.name.toLowerCase().includes(search.toLowerCase()) || (p.category || '').toLowerCase().includes(search.toLowerCase()))
-  );
-
-  const opening = parseInt(form.opening) || 0;
-  const added   = parseInt(form.added)   || 0;
-  const closing = parseInt(form.closing);
-  const wastage = parseInt(form.wastage) || 0;
-  const closingErr = !isNaN(closing) && closing > (opening + added);
-  const canSave = sel && form.closing !== "" && !closingErr && !isNaN(closing);
-  
-  const units = (opening + added) - closing - wastage;
-  const rev = sel ? units * sel.sell_price : 0;
-
-  const handleSave = async () => {
-    if (!canSave || !sel) return;
-    setSaving(true);
+  const updateStock = async (id: string, currentStock: number, change: number) => {
+    const newStock = Math.max(0, currentStock + change);
+    if (newStock === currentStock) return;
+    
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, stock: newStock } : p));
+    
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    // 1. Update inventory stock to the new closing amount
-    const newStock = closing;
-    const { error: invErr } = await supabase.from('inventory').update({ stock: newStock }).eq('id', sel.id);
-
-    // 2. Log sale if units > 0
-    if (!invErr && units > 0) {
-      await supabase.from('sales').insert({
-        user_id: user.id,
-        inventory_id: sel.id,
-        units_sold: units,
-        revenue: rev
-      });
-    }
-
-    if (!invErr) {
-      setSaved(p => ({ ...p, [sel.id]: { units, rev } }));
-      
-      // Update local state so we don't need to refetch everything immediately
-      setItems(items.map(i => i.id === sel.id ? { ...i, stock: newStock } : i));
-      
-      fire(`✓ ${sel.name} — ${units} units sold · ${fmt(rev)}`);
-      setForm({ opening: "", added: "", closing: "", wastage: "" });
-      setSel(null);
-      setSearch("");
-    } else {
-      fire('⚠ Error saving stock. Please try again.');
-    }
-    setSaving(false);
+    await supabase.from('inventory').update({ stock: newStock }).eq('id', id);
+    fire('✓ Stock updated');
   };
+
+  const categories = ['All', ...Array.from(new Set(products.map(p => p.category)))];
+  const filtered = products.filter(p =>
+    (catFilter === 'All' || p.category === catFilter) &&
+    p.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="flex flex-col min-h-screen pb-10">
-      <Topbar title="Inventory" sub="Log end-of-shift stock to auto-calculate daily sales" />
+      <Topbar title="Inventory" sub="Real-time stock levels and fast restocking" />
       
       {toast && (
         <div className="fixed top-4 right-4 z-[9999] bg-[var(--color-ink)] text-white px-4 py-3 rounded-xl text-[13px] font-semibold shadow-[0_8px_28px_rgba(0,0,0,0.22)] border-l-4 border-[var(--color-teal)]">
@@ -108,134 +61,94 @@ export default function InventoryPage() {
         </div>
       )}
 
-      <div className="p-5 max-w-[1200px] mx-auto w-full grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
+      <div className="p-5 max-w-[1000px] mx-auto w-full flex flex-col gap-4">
         
-        {/* Left Col: Products Table */}
+        {/* KPI Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-white rounded-xl p-4 border border-[var(--color-line-lt)] shadow-sm">
+            <div className="text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-widest mb-1">Total Products</div>
+            <div className="font-serif text-[20px] font-bold text-[var(--color-ink)]">{products.length}</div>
+          </div>
+          <div className="bg-white rounded-xl p-4 border border-[var(--color-line-lt)] shadow-sm">
+            <div className="text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-widest mb-1">Total Items in Stock</div>
+            <div className="font-serif text-[20px] font-bold text-[var(--color-teal)]">
+              {products.reduce((acc, p) => acc + p.stock, 0).toLocaleString()}
+            </div>
+          </div>
+          <div className="bg-white rounded-xl p-4 border border-[var(--color-line-lt)] shadow-sm">
+            <div className="text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-widest mb-1">Low Stock Alerts</div>
+            <div className="font-serif text-[20px] font-bold text-[var(--color-amber)]">
+              {products.filter(p => p.stock > 0 && p.stock <= p.reorder_level).length}
+            </div>
+          </div>
+          <div className="bg-white rounded-xl p-4 border border-[var(--color-line-lt)] shadow-sm">
+            <div className="text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-widest mb-1">Out of Stock</div>
+            <div className="font-serif text-[20px] font-bold text-[var(--color-red)]">
+              {products.filter(p => p.stock === 0).length}
+            </div>
+          </div>
+        </div>
+
+        {/* List */}
         <div className="bg-white rounded-xl border border-[var(--color-line-lt)] overflow-hidden shadow-sm">
-          <div className="p-3 border-b border-[var(--color-line-lt)] flex gap-2.5 flex-wrap items-center">
+          <div className="p-3 border-b border-[var(--color-line-lt)] flex gap-2 flex-wrap items-center">
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products…"
-              className="flex-1 min-w-[140px] px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" />
-            <select value={catF} onChange={e => setCatF(e.target.value)}
-              className="w-[140px] px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none bg-white">
-              {cats.map(c => <option key={c}>{c}</option>)}
+              className="flex-1 min-w-[130px] px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none" />
+            <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
+              className="px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none bg-white">
+              {categories.map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
-          
+
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse" style={{ minWidth: 400 }}>
+            <table className="w-full border-collapse" style={{ minWidth: 600 }}>
               <thead>
                 <tr className="border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)]">
-                  {['Product','Cat','Sell Price','Stock',''].map(h => (
-                    <th key={h} className="px-3 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">{h}</th>
-                  ))}
+                  <th className="px-3 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">Product</th>
+                  <th className="px-3 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">Status</th>
+                  <th className="px-3 py-2.5 text-center text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">Stock Level</th>
+                  <th className="px-3 py-2.5 text-center text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">Quick Adjust</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={5} className="p-4 text-center text-[13px] text-[var(--color-muted)]">Loading products…</td></tr>
+                  <tr><td colSpan={4} className="text-center py-8 text-[13px] text-[var(--color-muted)]">Loading stock...</td></tr>
                 ) : filtered.length === 0 ? (
-                  <tr><td colSpan={5} className="p-4 text-center text-[13px] text-[var(--color-muted)]">No products found. Add them in the Catalogue.</td></tr>
+                  <tr><td colSpan={4} className="text-center py-8 text-[13px] text-[var(--color-muted)]">No products found. Add products in the Catalogue.</td></tr>
                 ) : filtered.map(p => {
-                  const isLogged = !!saved[p.id];
-                  const isSel = sel?.id === p.id;
+                  const isOut = p.stock === 0;
+                  const isLow = !isOut && p.stock <= p.reorder_level;
                   
                   return (
-                    <tr key={p.id} className={`border-b border-[var(--color-line-lt)] last:border-0 transition-colors ${isSel ? 'bg-[#f0f7f8]' : isLogged ? 'bg-[#FAFFF8]' : 'hover:bg-[#fafafa]'}`}>
-                      <td className="px-3 py-2.5 text-[13px] font-semibold text-[var(--color-ink)]">{p.name}</td>
-                      <td className="px-3 py-2.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-1 rounded-full">{p.category || 'General'}</span>
+                    <tr key={p.id} className="hover:bg-[#fafafa] border-b border-[var(--color-line-lt)] last:border-0">
+                      <td className="px-3 py-3">
+                        <div className="font-semibold text-[13px] text-[var(--color-ink)]">{p.name}</div>
+                        <div className="text-[11px] text-[var(--color-muted)] uppercase tracking-wider">{p.category}</div>
                       </td>
-                      <td className="px-3 py-2.5 text-[12px] text-[var(--color-slate)]">{fmt(p.sell_price)}</td>
-                      <td className={`px-3 py-2.5 text-[12px] ${p.stock < 10 ? 'font-bold text-[var(--color-red)]' : 'text-[var(--color-slate)]'}`}>
-                        {p.stock} <span className="hidden sm:inline">{p.unit}</span>
-                      </td>
-                      <td className="px-3 py-2.5 text-right">
-                        {isLogged ? (
-                          <span className="text-[12px] font-bold text-[var(--color-emerald)]">✓ Logged</span>
+                      <td className="px-3 py-3">
+                        {isOut ? (
+                          <span className="bg-[var(--color-red-bg)] text-[var(--color-red)] text-[10px] font-bold px-2 py-1 rounded-full">OUT OF STOCK</span>
+                        ) : isLow ? (
+                          <span className="bg-[var(--color-amber-bg)] text-[var(--color-amber)] text-[10px] font-bold px-2 py-1 rounded-full">LOW STOCK</span>
                         ) : (
-                          <button 
-                            onClick={() => {
-                              setSel(p);
-                              setForm({ opening: String(p.stock), added: "", closing: "", wastage: "" });
-                            }}
-                            className={`text-[12px] font-bold px-3 py-1.5 rounded-lg border transition-all ${isSel ? 'bg-[var(--color-teal)] text-white border-[var(--color-teal)]' : 'bg-[var(--color-teal-bg)] text-[var(--color-teal)] border-[var(--color-teal)]/20 hover:bg-[var(--color-teal)] hover:text-white'}`}>
-                            {isSel ? "Selected ✓" : "Log Stock"}
-                          </button>
+                          <span className="bg-[var(--color-emerald-bg)] text-[var(--color-emerald)] text-[10px] font-bold px-2 py-1 rounded-full">IN STOCK</span>
                         )}
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <div className="font-serif text-[18px] font-bold text-[var(--color-ink)]">{p.stock} <span className="font-sans text-[11px] text-[var(--color-muted)] font-normal">{p.unit}</span></div>
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => updateStock(p.id, p.stock, -1)} className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[14px] font-bold hover:bg-[var(--color-red-bg)] hover:text-[var(--color-red)] hover:border-[var(--color-red-bg)] flex items-center justify-center transition-colors">-1</button>
+                          <button onClick={() => updateStock(p.id, p.stock, 1)} className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[14px] font-bold hover:bg-[var(--color-teal-bg)] hover:text-[var(--color-teal)] hover:border-[var(--color-teal-bg)] flex items-center justify-center transition-colors">+1</button>
+                          <button onClick={() => updateStock(p.id, p.stock, 10)} className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[12px] font-bold hover:bg-[var(--color-teal-bg)] hover:text-[var(--color-teal)] hover:border-[var(--color-teal-bg)] flex items-center justify-center transition-colors">+10</button>
+                        </div>
                       </td>
                     </tr>
                   )
                 })}
               </tbody>
             </table>
-          </div>
-        </div>
-
-        {/* Right Col: Logging Form */}
-        <div className="bg-white rounded-xl border border-[var(--color-line-lt)] overflow-hidden shadow-sm sticky top-[80px]">
-          <div className={`p-4 border-b border-[var(--color-line-lt)] transition-colors ${sel ? 'bg-[#f0f7f8]' : 'bg-[var(--color-canvas)]'}`}>
-            <div className={`font-serif text-[15px] font-bold ${sel ? 'text-[var(--color-teal)]' : 'text-[var(--color-muted)]'}`}>
-              {sel ? `📦 ${sel.name}` : "Select a product to log"}
-            </div>
-            {sel && (
-              <div className="text-[12px] text-[var(--color-teal)] mt-1 font-medium">
-                Sell: {fmt(sel.sell_price)} · Cost: {fmt(sel.cost_price)}
-              </div>
-            )}
-          </div>
-          
-          <div className="p-4 flex flex-col gap-3">
-            {[
-              { key: "opening", label: "Opening Stock", hint: "Auto-filled", locked: true },
-              { key: "added", label: "Stock Added", hint: "Restocked this shift" },
-              { key: "closing", label: "Closing Stock", hint: "Count at end of shift", err: closingErr },
-              { key: "wastage", label: "Wastage / Spillage", hint: "Damaged or wasted" },
-            ].map(f => (
-              <div key={f.key}>
-                <label className={`block text-[12px] font-bold mb-1 ${f.err ? 'text-[var(--color-red)]' : 'text-[var(--color-slate)]'}`}>
-                  {f.label} {f.locked && <span className="font-normal text-[var(--color-muted)]">(auto-filled)</span>}
-                </label>
-                <input 
-                  type="number" min="0" placeholder="0"
-                  value={(form as any)[f.key]} 
-                  onChange={e => setForm({ ...form, [f.key]: e.target.value })}
-                  disabled={!sel || f.locked}
-                  className={`w-full px-3 py-2 border-[1.5px] rounded-lg text-[15px] outline-none transition-all ${f.err ? 'border-[var(--color-red)] text-[var(--color-red)]' : 'border-[var(--color-line)] text-[var(--color-ink)] focus:border-[var(--color-teal)]'} ${f.locked ? 'bg-[var(--color-canvas)]' : 'bg-white'} ${!sel ? 'opacity-50' : ''}`}
-                />
-                {f.err ? (
-                  <div className="text-[11px] text-[var(--color-red)] mt-1 font-medium">⚠ Cannot exceed opening + added</div>
-                ) : (
-                  <div className="text-[11px] text-[var(--color-muted)] mt-1">{f.hint}</div>
-                )}
-              </div>
-            ))}
-
-            {sel && form.closing !== "" && !closingErr && !isNaN(closing) && (
-              <div className="mt-2 bg-[#f0f7f8] rounded-xl p-3.5 border-[1.5px] border-[var(--color-teal)]/20">
-                <div className="text-[10px] font-bold text-[var(--color-teal)] uppercase tracking-[0.08em] mb-1.5">Auto-Calculation</div>
-                <div className="text-[11px] text-[var(--color-slate)] font-mono mb-1">
-                  ({form.opening || 0} + {form.added || 0}) − {form.closing} − {form.wastage || 0}
-                </div>
-                <div className="font-serif text-[24px] font-bold text-[var(--color-ink)]">
-                  {units} <span className="text-[13px] font-normal text-[var(--color-slate)] font-sans">units sold</span>
-                </div>
-                <div className="text-[15px] font-bold text-[var(--color-teal)] mt-1">
-                  {fmt(rev)} <span className="text-[11px] text-[var(--color-teal)]/70 font-normal">revenue</span>
-                </div>
-                {sel.cost_price > 0 && (
-                  <div className="text-[12px] font-semibold text-[var(--color-emerald)] mt-1.5">
-                    Margin: {fmt(units * (sel.sell_price - sel.cost_price))} profit
-                  </div>
-                )}
-              </div>
-            )}
-
-            <button 
-              onClick={handleSave} 
-              disabled={!canSave || saving}
-              className={`mt-2 py-3 rounded-xl border-none font-bold text-[14px] transition-all ${canSave && !saving ? 'bg-[var(--color-teal)] text-white cursor-pointer shadow-[0_4px_14px_rgba(10,92,107,0.25)] hover:opacity-90' : 'bg-[var(--color-line-lt)] text-[var(--color-muted)] cursor-not-allowed'}`}>
-              {saving ? 'Saving...' : 'Save & Log Sales'}
-            </button>
           </div>
         </div>
 
