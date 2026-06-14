@@ -7,33 +7,56 @@ import { createClient } from '@/utils/supabase/client';
 import { SFSLogo } from '@/components/SFSLogo';
 
 const NAV_ITEMS = [
-  { href: '/portal/dashboard',  label: 'Dashboard',   icon: '▦' },
-  { href: '/portal/inventory',  label: 'Inventory',   icon: '📦' },
-  { href: '/portal/sales',      label: 'Sales Log',   icon: '🧮' },
-  { href: '/portal/suppliers',  label: 'Suppliers',   icon: '🚚' },
-  { href: '/portal/reports',    label: 'Reports',     icon: '📊' },
-  { href: '/portal/expenses',   label: 'Expenses',    icon: '💸' },
-  { href: '/portal/situation',  label: 'Situation Room', icon: '⚡' },
-  { href: '/portal/team',       label: 'Team & Access', icon: '👥' },
+  { href: '/portal/dashboard',   label: 'Dashboard',          icon: '▦' },
+  { href: '/portal/inventory',   label: 'Inventory',          icon: '📦' },
+  { href: '/portal/catalogue',   label: 'Product Catalogue',  icon: '🗂' },
+  { href: '/portal/suppliers',   label: 'Suppliers',          icon: '🤝' },
+  { href: '/portal/situation',   label: 'Situation Room',     icon: '⚡' },
+  { href: '/portal/expenses',    label: 'Expenses',           icon: '💸' },
+  { href: '/portal/reports',     label: 'Reports',            icon: '📊' },
+  { href: '/portal/sales',       label: 'Sales Log',          icon: '🧮' },
+  { href: '/portal/team',        label: 'Team & Access',      icon: '👥' },
+  { href: '/portal/settings',    label: 'Settings',           icon: '⚙️' },
 ];
+
+function LiveClock() {
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => {
+    setNow(new Date());
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  if (!now) return null;
+  const timeStr = now.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const dateStr = now.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' });
+  return (
+    <div className="flex flex-col items-end">
+      <span className="text-[13px] text-[var(--color-teal)] font-bold font-mono tracking-[0.04em] leading-none">{timeStr}</span>
+      <span className="text-[10px] text-[var(--color-muted)] font-medium leading-tight">{dateStr}</span>
+    </div>
+  );
+}
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [storeName, setStoreName] = useState<string>('');
+  const [userName, setUserName] = useState<string>('');
 
   useEffect(() => {
     const fetchUser = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data } = await supabase.from('users').select('store_name').eq('id', user.id).single();
+        const { data } = await supabase.from('users').select('store_name, role').eq('id', user.id).single();
         if (data?.store_name) {
           setStoreName(data.store_name);
         } else if (user.email) {
           setStoreName(user.email.split('@')[0]);
         }
+        const name = user.user_metadata?.full_name || user.email || 'User';
+        setUserName(name);
       }
     };
     fetchUser();
@@ -79,27 +102,38 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         })}
       </nav>
 
-      {/* Bottom: Billing */}
-      <div className="p-3 border-t border-[var(--color-line-lt)] flex flex-col gap-2">
-        <Link
-          href="/portal/billing"
-          onClick={() => setMobileOpen(false)}
-          className={`flex items-center gap-2.5 px-3 py-2 rounded-[10px] text-[13px] font-bold transition-all ${
-            pathname === '/portal/billing'
-              ? 'bg-[var(--color-gold)] text-white'
-              : 'text-[var(--color-gold)] bg-[var(--color-gold-pale)] hover:bg-[var(--color-gold)] hover:text-white'
-          }`}
-        >
-          <span className="text-[14px]">💳</span>
-          Subscription
-        </Link>
-        <button
-          onClick={handleSignOut}
-          className="w-full flex items-center justify-center gap-2 py-2 rounded-[10px] bg-[var(--color-red)] text-white font-bold text-[13px] hover:opacity-90 transition-opacity mt-1"
-        >
-          <span>🚪</span> Sign Out
-        </button>
-      </div>
+        {/* Bottom: Billing + User Card + Sign Out */}
+        <div className="p-3 border-t border-[var(--color-line-lt)] flex flex-col gap-2">
+          <Link
+            href="/portal/billing"
+            onClick={() => setMobileOpen(false)}
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-[10px] text-[13px] font-bold transition-all ${
+              pathname === '/portal/billing'
+                ? 'bg-[var(--color-gold)] text-white'
+                : 'text-[var(--color-gold)] bg-[var(--color-gold-pale)] hover:bg-[var(--color-gold)] hover:text-white'
+            }`}
+          >
+            <span className="text-[14px]">💳</span>
+            Subscription
+          </Link>
+          {/* User card */}
+          {userName && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-[10px] bg-[var(--color-canvas)]">
+              <div className="w-8 h-8 rounded-full bg-[var(--color-teal)] text-white flex items-center justify-center font-bold text-[13px] shrink-0">
+                {userName[0]?.toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <div className="text-[12px] font-bold text-[var(--color-ink)] truncate">{userName}</div>
+              </div>
+            </div>
+          )}
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-[10px] bg-[var(--color-red)] text-white font-bold text-[13px] hover:opacity-90 transition-opacity"
+          >
+            <span>🚪</span> Sign Out
+          </button>
+        </div>
     </div>
   );
 
@@ -121,10 +155,10 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       )}
 
       {/* Mobile Top Bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 bg-white border-b border-[var(--color-line)] flex items-center px-4 h-14 z-30 gap-3">
+      <div className="md:hidden fixed top-0 left-0 right-0 bg-[var(--color-cream)] border-b border-[var(--color-cream-dk)] flex items-center px-3 h-14 z-30 gap-2">
         <button
           onClick={() => setMobileOpen(true)}
-          className="flex flex-col gap-[5px] p-1"
+          className="flex flex-col gap-[5px] p-1 shrink-0"
           aria-label="Open menu"
         >
           {[0,1,2].map(i => (
@@ -132,9 +166,23 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           ))}
         </button>
         <SFSLogo size={28} href="/portal/dashboard" />
-        <span className="font-serif text-[15px] font-bold text-[var(--color-ink)] truncate flex-1">
+        <span className="font-serif text-[14px] font-bold text-[var(--color-ink)] truncate flex-1">
           {storeName || 'Sales From Scratch'}
         </span>
+        {/* Live clock on right */}
+        <div className="flex flex-col items-end shrink-0">
+          <LiveClock />
+        </div>
+        {/* Red sign-out avatar */}
+        {userName && (
+          <button
+            onClick={handleSignOut}
+            title="Sign Out"
+            className="w-9 h-9 rounded-full bg-[var(--color-red)] text-white font-bold text-[13px] flex items-center justify-center shrink-0 shadow-[0_2px_8px_rgba(192,57,43,0.4)] hover:opacity-90 transition-opacity"
+          >
+            {userName[0]?.toUpperCase()}
+          </button>
+        )}
       </div>
 
       {/* Main Content */}
