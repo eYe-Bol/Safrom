@@ -31,11 +31,20 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         const { data } = await supabase.from('users').select('store_name').eq('id', user.id).single();
         if (data?.store_name) {
           setStoreName(data.store_name);
+        } else if (user.email) {
+          setStoreName(user.email.split('@')[0]);
         }
       }
     };
     fetchUser();
   }, []);
+
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/');
+    router.refresh();
+  };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -84,6 +93,12 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           <span className="text-[14px]">💳</span>
           Subscription
         </Link>
+        <button
+          onClick={handleSignOut}
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-[10px] bg-[var(--color-red)] text-white font-bold text-[13px] hover:opacity-90 transition-opacity mt-1"
+        >
+          <span>🚪</span> Sign Out
+        </button>
       </div>
     </div>
   );

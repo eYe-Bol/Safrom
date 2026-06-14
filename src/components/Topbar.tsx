@@ -46,11 +46,7 @@ export function Topbar({ title, sub, storeName }: { title: string; sub?: string;
   return (
     <div className="pt-[14px] px-[16px] pb-[10px] flex justify-between items-center flex-wrap gap-2 border-b border-[var(--color-line-lt)] bg-white">
       <div className="flex items-center gap-3">
-        {user && (
-          <div className="w-10 h-10 rounded-full bg-[var(--color-teal)] text-white flex items-center justify-center font-bold text-[14px] shrink-0 shadow-sm">
-            {user.initials}
-          </div>
-        )}
+
         <div className="flex flex-col min-w-0">
           <h1 className="font-serif text-[20px] font-bold text-[var(--color-ink)] tracking-[-0.02em] flex items-center gap-2">
             {storeName ? storeName : title}
@@ -65,25 +61,16 @@ export function Topbar({ title, sub, storeName }: { title: string; sub?: string;
       </div>
 
       <div className="flex items-center gap-2 flex-wrap justify-end">
-        <div className="hidden sm:flex text-[11px] text-[var(--color-slate)] bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg px-[10px] py-[4px] font-medium">
+        <div className="flex text-[11px] text-[var(--color-slate)] bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg px-[10px] py-[4px] font-medium">
           {dateStr}
         </div>
-        <div className="hidden sm:flex text-[12px] text-white bg-[var(--color-teal)] rounded-lg px-[11px] py-[5px] font-bold tracking-[0.04em] font-mono min-w-[90px] text-center">
+        <div className="flex text-[12px] text-white bg-[var(--color-teal)] rounded-lg px-[11px] py-[5px] font-bold tracking-[0.04em] font-mono min-w-[90px] text-center">
           {timeStr}
         </div>
-        <div className="hidden sm:flex items-center gap-[5px] mr-2">
+        <div className="flex items-center gap-[5px]">
           <div className="w-2 h-2 rounded-full bg-[var(--color-emerald)] shadow-[0_0_0_3px_var(--color-emerald-bg)]" />
           <span className="text-[10px] text-[var(--color-muted)] font-bold tracking-[0.06em]">LIVE</span>
         </div>
-        {title === 'Dashboard' && (
-          <button
-            onClick={handleLogout}
-            title="Sign Out"
-            className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--color-red-bg)] text-[var(--color-red)] hover:bg-[var(--color-red)] hover:text-white transition-colors"
-          >
-            <span className="text-[16px] leading-none mb-0.5">🚪</span>
-          </button>
-        )}
       </div>
     </div>
   );
