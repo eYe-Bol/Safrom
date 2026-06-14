@@ -60,14 +60,6 @@ export function Topbar({ title, sub, storeName }: { title: string; sub?: string;
             <p className="text-[12px] text-[var(--color-muted)]">
               {storeName ? title : sub} {storeName && sub ? `· ${sub}` : ''}
             </p>
-            {title === 'Dashboard' && (
-              <button
-                onClick={handleLogout}
-                className="text-[10px] font-bold text-[var(--color-red)] bg-[var(--color-red-bg)] px-2 py-0.5 rounded hover:opacity-80 transition-opacity"
-              >
-                Sign Out
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -79,10 +71,19 @@ export function Topbar({ title, sub, storeName }: { title: string; sub?: string;
         <div className="hidden sm:flex text-[12px] text-white bg-[var(--color-teal)] rounded-lg px-[11px] py-[5px] font-bold tracking-[0.04em] font-mono min-w-[90px] text-center">
           {timeStr}
         </div>
-        <div className="hidden sm:flex items-center gap-[5px]">
+        <div className="hidden sm:flex items-center gap-[5px] mr-2">
           <div className="w-2 h-2 rounded-full bg-[var(--color-emerald)] shadow-[0_0_0_3px_var(--color-emerald-bg)]" />
           <span className="text-[10px] text-[var(--color-muted)] font-bold tracking-[0.06em]">LIVE</span>
         </div>
+        {title === 'Dashboard' && (
+          <button
+            onClick={handleLogout}
+            title="Sign Out"
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--color-red-bg)] text-[var(--color-red)] hover:bg-[var(--color-red)] hover:text-white transition-colors"
+          >
+            <span className="text-[16px] leading-none mb-0.5">🚪</span>
+          </button>
+        )}
       </div>
     </div>
   );

@@ -4,16 +4,17 @@ import Link from 'next/link';
 interface SFSLogoProps {
   size?: number;
   href?: string;
+  className?: string;
 }
 
-export function SFSLogo({ size = 40, href }: SFSLogoProps) {
+export function SFSLogo({ size = 40, href, className = '' }: SFSLogoProps) {
   const img = (
     <Image
       src="/logo.png"
       alt="Sales From Scratch Logo"
       width={size}
       height={size}
-      className="rounded-[22%] object-cover"
+      className={`object-contain ${className}`}
       priority
     />
   );

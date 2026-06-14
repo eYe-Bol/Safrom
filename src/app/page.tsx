@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useState } from 'react';
+import { SFSLogo } from '@/components/SFSLogo';
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -27,6 +28,7 @@ export default function LandingPage() {
       <nav className="bg-[var(--color-cream)] border-b border-[var(--color-cream-dk)] sticky top-0 z-[100]">
         <div className="max-w-[1080px] mx-auto px-4 h-[60px] flex items-center gap-3">
           <div className="flex items-center gap-2.5 mr-auto shrink-0">
+            <SFSLogo size={32} />
             <span className="font-serif text-[17px] font-bold text-[var(--color-teal)] whitespace-nowrap">
               Sales From Scratch
             </span>
@@ -150,6 +152,29 @@ export default function LandingPage() {
                 <Link href="/register" className={`block text-center w-full py-[11px] rounded-[10px] font-bold text-[14px] cursor-pointer transition-opacity hover:opacity-90 ${p.hi ? 'bg-[var(--color-ink)] text-white' : 'bg-white/15 text-white'}`}>
                   Get Started
                 </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" className="py-17 px-5">
+        <div className="max-w-[800px] mx-auto">
+          <div className="text-center mb-11">
+            <h2 className="font-serif text-[clamp(24px,4vw,36px)] font-bold text-[var(--color-ink)]">
+              Frequently Asked Questions
+            </h2>
+          </div>
+          <div className="flex flex-col gap-4">
+            {[
+              { q: "Is it easy to set up?", a: "Yes! You can add your inventory and start recording sales in under 5 minutes. No technical skills required." },
+              { q: "Does it work without internet?", a: "Sales From Scratch is cloud-based to ensure real-time syncing across branches, so it requires an internet connection. However, it is highly optimized for low-bandwidth mobile data." },
+              { q: "Can my cashiers see my profits?", a: "No. Role-based access ensures that your staff can only see what they need to do their jobs (like recording sales), while your cost prices and profit margins remain private to you." },
+              { q: "What happens after the free trial?", a: "You can choose the plan that best fits your business to continue using the platform. We don't charge you automatically." }
+            ].map((faq, i) => (
+              <div key={i} className="bg-white rounded-[12px] p-5 border border-[var(--color-line-lt)] shadow-[0_1px_4px_rgba(10,92,107,0.03)]">
+                <h3 className="font-bold text-[15px] text-[var(--color-ink)] mb-2">{faq.q}</h3>
+                <p className="text-[14px] text-[var(--color-slate)] leading-[1.6]">{faq.a}</p>
               </div>
             ))}
           </div>
