@@ -16,6 +16,8 @@ const DEMO_TREND = [
   { day: "Sun", revenue: 27900, expenses: 11300 },
 ].map(d => ({ ...d, profit: d.revenue - d.expenses }));
 
+const fmt = (n: number) => `KES ${Number(n).toLocaleString()}`;
+
 export default function DashboardPage() {
   const [storeName, setStoreName] = useState('');
   const [todayRevenue, setTodayRevenue] = useState(0);
@@ -86,7 +88,8 @@ export default function DashboardPage() {
                   <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--color-muted)' }} axisLine={false} tickLine={false} dy={10} />
                   <YAxis tick={{ fontSize: 10, fill: 'var(--color-muted)' }} axisLine={false} tickLine={false} tickFormatter={v => `${v/1000}k`} />
                   <Tooltip 
-                    formatter={(val: number, name: string) => [`KES ${val.toLocaleString()}`, name.charAt(0).toUpperCase() + name.slice(1)]}
+                    formatter={(val: any, name: any) => [fmt(Number(val)), name.charAt(0).toUpperCase() + name.slice(1)]}
+                    labelFormatter={label => new Date(label as string).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
                     contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid var(--color-line)' }}
                     itemStyle={{ fontWeight: 600 }}
                   />

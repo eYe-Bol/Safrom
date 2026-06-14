@@ -151,7 +151,7 @@ export default function ReportsPage() {
                     tickFormatter={v => new Date(v).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}/>
                   <YAxis tick={{ fontSize: 10, fill: 'var(--color-muted)' }} axisLine={false} tickLine={false} tickFormatter={v => `${v/1000}k`} />
                   <Tooltip 
-                    formatter={(val: number, name: string) => [fmt(val), name.charAt(0).toUpperCase() + name.slice(1)]}
+                    formatter={(val: any, name: any) => [fmt(Number(val)), name.charAt(0).toUpperCase() + name.slice(1)]}
                     labelFormatter={label => new Date(label as string).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
                     contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid var(--color-line)' }}
                     itemStyle={{ fontWeight: 600 }}
