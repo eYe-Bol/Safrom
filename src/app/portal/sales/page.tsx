@@ -121,53 +121,63 @@ export default function InventoryPage() {
             </select>
           </div>
           
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse" style={{ minWidth: 400 }}>
-              <thead>
-                <tr className="border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)]">
-                  {['Product','Cat','Sell Price','Stock',''].map(h => (
-                    <th key={h} className="px-3 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={5} className="p-4 text-center text-[13px] text-[var(--color-muted)]">Loading products…</td></tr>
-                ) : filtered.length === 0 ? (
-                  <tr><td colSpan={5} className="p-4 text-center text-[13px] text-[var(--color-muted)]">No products found. Add them in the Catalogue.</td></tr>
-                ) : filtered.map(p => {
-                  const isLogged = !!saved[p.id];
-                  const isSel = sel?.id === p.id;
+          <div className="flex flex-col w-full">
+            <div className="hidden xl:grid grid-cols-5 gap-2 border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)] px-4 py-2.5 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">
+              <div>Product</div>
+              <div>Cat</div>
+              <div>Sell Price</div>
+              <div>Stock</div>
+              <div className="text-right">Action</div>
+            </div>
+            
+            {loading ? (
+              <div className="p-4 text-center text-[13px] text-[var(--color-muted)]">Loading products…</div>
+            ) : filtered.length === 0 ? (
+              <div className="p-4 text-center text-[13px] text-[var(--color-muted)]">No products found. Add them in the Catalogue.</div>
+            ) : filtered.map(p => {
+              const isLogged = !!saved[p.id];
+              const isSel = sel?.id === p.id;
+              
+              return (
+                <div key={p.id} className={`flex flex-col xl:grid xl:grid-cols-5 gap-2 items-start xl:items-center px-4 py-4 xl:py-2.5 border-b border-[var(--color-line-lt)] last:border-0 transition-colors ${isSel ? 'bg-[#f0f7f8]' : isLogged ? 'bg-[#FAFFF8]' : 'hover:bg-[#fafafa]'}`}>
+                  <div className="w-full flex justify-between items-center xl:block">
+                    <div className="text-[14px] xl:text-[13px] font-semibold text-[var(--color-ink)]">{p.name}</div>
+                    <div className="xl:hidden"><span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-1 rounded-full">{p.category || 'General'}</span></div>
+                  </div>
                   
-                  return (
-                    <tr key={p.id} className={`border-b border-[var(--color-line-lt)] last:border-0 transition-colors ${isSel ? 'bg-[#f0f7f8]' : isLogged ? 'bg-[#FAFFF8]' : 'hover:bg-[#fafafa]'}`}>
-                      <td className="px-3 py-2.5 text-[13px] font-semibold text-[var(--color-ink)]">{p.name}</td>
-                      <td className="px-3 py-2.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-1 rounded-full">{p.category || 'General'}</span>
-                      </td>
-                      <td className="px-3 py-2.5 text-[12px] text-[var(--color-slate)]">{fmt(p.sell_price)}</td>
-                      <td className={`px-3 py-2.5 text-[12px] ${p.stock < 10 ? 'font-bold text-[var(--color-red)]' : 'text-[var(--color-slate)]'}`}>
-                        {p.stock} <span className="hidden sm:inline">{p.unit}</span>
-                      </td>
-                      <td className="px-3 py-2.5 text-right">
-                        {isLogged ? (
-                          <span className="text-[12px] font-bold text-[var(--color-emerald)]">✓ Logged</span>
-                        ) : (
-                          <button 
-                            onClick={() => {
-                              setSel(p);
-                              setForm({ opening: String(p.stock), added: "", closing: "", wastage: "" });
-                            }}
-                            className={`text-[12px] font-bold px-3 py-1.5 rounded-lg border transition-all ${isSel ? 'bg-[var(--color-teal)] text-white border-[var(--color-teal)]' : 'bg-[var(--color-teal-bg)] text-[var(--color-teal)] border-[var(--color-teal)]/20 hover:bg-[var(--color-teal)] hover:text-white'}`}>
-                            {isSel ? "Selected ✓" : "Log Stock"}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                  <div className="hidden xl:block">
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-1 rounded-full">{p.category || 'General'}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center w-full xl:w-auto xl:block text-[13px] font-bold xl:font-normal xl:text-[12px] text-[var(--color-ink)] xl:text-[var(--color-slate)]">
+                    <span className="xl:hidden text-[10px] font-bold text-[var(--color-muted)] uppercase">Sell Price</span>
+                    {fmt(p.sell_price)}
+                  </div>
+
+                  <div className="flex justify-between items-center w-full xl:w-auto xl:block">
+                    <span className="xl:hidden text-[10px] font-bold text-[var(--color-muted)] uppercase">Stock</span>
+                    <span className={`text-[13px] xl:text-[12px] ${p.stock < 10 ? 'font-bold text-[var(--color-red)]' : 'text-[var(--color-slate)]'}`}>
+                      {p.stock} <span className="text-[11px] xl:text-[12px]">{p.unit}</span>
+                    </span>
+                  </div>
+
+                  <div className="flex justify-end w-full xl:w-auto xl:block xl:text-right mt-2 xl:mt-0 pt-2 xl:pt-0 border-t border-[var(--color-line-lt)] xl:border-0">
+                    {isLogged ? (
+                      <span className="text-[12px] font-bold text-[var(--color-emerald)] py-1.5">✓ Logged</span>
+                    ) : (
+                      <button 
+                        onClick={() => {
+                          setSel(p);
+                          setForm({ opening: String(p.stock), added: "", closing: "", wastage: "" });
+                        }}
+                        className={`text-[12px] font-bold px-4 py-2 xl:px-3 xl:py-1.5 rounded-lg border transition-all ${isSel ? 'bg-[var(--color-teal)] text-white border-[var(--color-teal)]' : 'bg-[var(--color-teal-bg)] text-[var(--color-teal)] border-[var(--color-teal)]/20 hover:bg-[var(--color-teal)] hover:text-white'}`}>
+                        {isSel ? "Selected ✓" : "Log Stock"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 

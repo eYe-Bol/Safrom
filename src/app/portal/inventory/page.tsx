@@ -100,32 +100,33 @@ export default function InventoryPage() {
             </select>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse" style={{ minWidth: 600 }}>
-              <thead>
-                <tr className="border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)]">
-                  <th className="px-3 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">Product</th>
-                  <th className="px-3 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">Status</th>
-                  <th className="px-3 py-2.5 text-center text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">Stock Level</th>
-                  <th className="px-3 py-2.5 text-center text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">Quick Adjust</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={4} className="text-center py-8 text-[13px] text-[var(--color-muted)]">Loading stock...</td></tr>
-                ) : filtered.length === 0 ? (
-                  <tr><td colSpan={4} className="text-center py-8 text-[13px] text-[var(--color-muted)]">No products found. Add products in the Catalogue.</td></tr>
-                ) : filtered.map(p => {
-                  const isOut = p.stock === 0;
-                  const isLow = !isOut && p.stock <= p.reorder_level;
+          <div className="flex flex-col">
+            <div className="hidden md:grid grid-cols-4 gap-2 border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)] px-4 py-2.5 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">
+              <div>Product</div>
+              <div>Status</div>
+              <div className="text-center">Stock Level</div>
+              <div className="text-center">Quick Adjust</div>
+            </div>
+            
+            {loading ? (
+              <div className="text-center py-8 text-[13px] text-[var(--color-muted)]">Loading stock...</div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-8 text-[13px] text-[var(--color-muted)]">No products found. Add products in the Catalogue.</div>
+            ) : filtered.map(p => {
+              const isOut = p.stock === 0;
+              const isLow = !isOut && p.stock <= p.reorder_level;
+              
+              return (
+                <div key={p.id} className="flex flex-col md:grid md:grid-cols-4 gap-3 md:gap-2 items-start md:items-center px-4 py-4 md:py-3 border-b border-[var(--color-line-lt)] hover:bg-[#fafafa] last:border-0">
                   
-                  return (
-                    <tr key={p.id} className="hover:bg-[#fafafa] border-b border-[var(--color-line-lt)] last:border-0">
-                      <td className="px-3 py-3">
-                        <div className="font-semibold text-[13px] text-[var(--color-ink)]">{p.name}</div>
+                  <div className="flex flex-col w-full md:w-auto">
+                    <div className="flex justify-between md:block items-center w-full">
+                      <div>
+                        <div className="font-semibold text-[14px] md:text-[13px] text-[var(--color-ink)]">{p.name}</div>
                         <div className="text-[11px] text-[var(--color-muted)] uppercase tracking-wider">{p.category}</div>
-                      </td>
-                      <td className="px-3 py-3">
+                      </div>
+                      
+                      <div className="md:hidden">
                         {isOut ? (
                           <span className="bg-[var(--color-red-bg)] text-[var(--color-red)] text-[10px] font-bold px-2 py-1 rounded-full">OUT OF STOCK</span>
                         ) : isLow ? (
@@ -133,22 +134,37 @@ export default function InventoryPage() {
                         ) : (
                           <span className="bg-[var(--color-emerald-bg)] text-[var(--color-emerald)] text-[10px] font-bold px-2 py-1 rounded-full">IN STOCK</span>
                         )}
-                      </td>
-                      <td className="px-3 py-3 text-center">
-                        <div className="font-serif text-[18px] font-bold text-[var(--color-ink)]">{p.stock} <span className="font-sans text-[11px] text-[var(--color-muted)] font-normal">{p.unit}</span></div>
-                      </td>
-                      <td className="px-3 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => updateStock(p.id, p.stock, -1)} className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[14px] font-bold hover:bg-[var(--color-red-bg)] hover:text-[var(--color-red)] hover:border-[var(--color-red-bg)] flex items-center justify-center transition-colors">-1</button>
-                          <button onClick={() => updateStock(p.id, p.stock, 1)} className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[14px] font-bold hover:bg-[var(--color-teal-bg)] hover:text-[var(--color-teal)] hover:border-[var(--color-teal-bg)] flex items-center justify-center transition-colors">+1</button>
-                          <button onClick={() => updateStock(p.id, p.stock, 10)} className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[12px] font-bold hover:bg-[var(--color-teal-bg)] hover:text-[var(--color-teal)] hover:border-[var(--color-teal-bg)] flex items-center justify-center transition-colors">+10</button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="hidden md:block">
+                    {isOut ? (
+                      <span className="bg-[var(--color-red-bg)] text-[var(--color-red)] text-[10px] font-bold px-2 py-1 rounded-full">OUT OF STOCK</span>
+                    ) : isLow ? (
+                      <span className="bg-[var(--color-amber-bg)] text-[var(--color-amber)] text-[10px] font-bold px-2 py-1 rounded-full">LOW STOCK</span>
+                    ) : (
+                      <span className="bg-[var(--color-emerald-bg)] text-[var(--color-emerald)] text-[10px] font-bold px-2 py-1 rounded-full">IN STOCK</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between md:justify-center w-full md:w-auto mt-2 md:mt-0">
+                    <span className="md:hidden text-[12px] font-bold text-[var(--color-slate)] uppercase">Stock</span>
+                    <div className="font-serif text-[18px] font-bold text-[var(--color-ink)]">{p.stock} <span className="font-sans text-[11px] text-[var(--color-muted)] font-normal">{p.unit}</span></div>
+                  </div>
+
+                  <div className="flex items-center justify-between md:justify-center w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t border-[var(--color-line-lt)] md:border-0">
+                    <span className="md:hidden text-[12px] font-bold text-[var(--color-slate)] uppercase">Adjust</span>
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => updateStock(p.id, p.stock, -1)} className="w-9 h-9 md:w-8 md:h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[15px] md:text-[14px] font-bold hover:bg-[var(--color-red-bg)] hover:text-[var(--color-red)] hover:border-[var(--color-red-bg)] flex items-center justify-center transition-colors">-1</button>
+                      <button onClick={() => updateStock(p.id, p.stock, 1)} className="w-9 h-9 md:w-8 md:h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[15px] md:text-[14px] font-bold hover:bg-[var(--color-teal-bg)] hover:text-[var(--color-teal)] hover:border-[var(--color-teal-bg)] flex items-center justify-center transition-colors">+1</button>
+                      <button onClick={() => updateStock(p.id, p.stock, 10)} className="w-9 h-9 md:w-8 md:h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[12px] font-bold hover:bg-[var(--color-teal-bg)] hover:text-[var(--color-teal)] hover:border-[var(--color-teal-bg)] flex items-center justify-center transition-colors">+10</button>
+                    </div>
+                  </div>
+
+                </div>
+              )
+            })}
           </div>
         </div>
 

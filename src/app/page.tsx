@@ -112,7 +112,7 @@ export default function LandingPage() {
           </h1>
           <p className="text-[clamp(15px,2.5vw,17px)] text-white/70 leading-[1.75] max-w-[490px] mx-auto mb-9">
             Sales From Scratch gives you a real-time view of what's selling, what's running low,
-            and what you're actually making — all from your phone.
+            and what you're actually making — all from your phone, tablet, or desktop.
           </p>
           <div className="flex flex-col gap-3 items-stretch max-w-[320px] mx-auto">
             <Link href="/register" className="flex items-center justify-center gap-2.5 bg-[var(--color-gold)] text-white border-none py-[15px] px-[28px] rounded-full font-bold text-[16px] cursor-pointer shadow-[0_4px_20px_rgba(201,151,58,0.45)] hover:opacity-90 transition-opacity">
@@ -252,7 +252,9 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-7 mb-7">
             <div>
               <div className="flex items-center gap-2.5 mb-2.5">
-                <SFSLogo size={28} />
+                <div className="bg-white p-1.5 rounded-lg flex items-center justify-center">
+                  <SFSLogo size={32} />
+                </div>
                 <span className="font-serif text-[15px] font-bold text-white">Sales From Scratch</span>
               </div>
               <p className="text-[13px] text-[var(--color-muted)] leading-[1.7] max-w-[200px]">

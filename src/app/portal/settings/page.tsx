@@ -34,11 +34,16 @@ export default function SettingsPage() {
   const saveProfile = async () => {
     setSaving(true);
     const supabase = createClient();
-    await supabase.from('users').update({ store_name: storeName }).eq('id', user.id);
-    setUserData((p: any) => ({...p, store_name: storeName}));
+    const { error } = await supabase.from('users').update({ store_name: storeName }).eq('id', user.id);
+    if (error) {
+      fire(`Error: ${error.message}`);
+    } else {
+      setUserData((p: any) => ({...p, store_name: storeName}));
+      fire('✓ Business name updated!');
+      window.location.reload(); // Force reload to update layout
+    }
     setSaving(false);
     setEditMode(false);
-    fire('✓ Business name updated — refresh portal to see it!');
   };
 
   const trialDaysLeft = userData?.trial_end

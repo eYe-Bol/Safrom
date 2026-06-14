@@ -172,52 +172,76 @@ export default function ReportsPage() {
               Sales by Product
             </span>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left" style={{ minWidth: 600 }}>
-              <thead>
-                <tr className="border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)]">
-                  {["Product","Cat","Units","Sell","Cost","Revenue","Margin","Share"].map(h => (
-                    <th key={h} className="px-3 py-2.5 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={8} className="p-4 text-center text-[13px] text-[var(--color-muted)]">Loading products...</td></tr>
-                ) : topProducts.length === 0 ? (
-                  <tr><td colSpan={8} className="p-4 text-center text-[13px] text-[var(--color-muted)]">No sales recorded for this period.</td></tr>
-                ) : topProducts.map(([name, r], i) => {
-                  const margin = r.sell > 0 ? Math.round(((r.sell - r.cost) / r.sell) * 100) : 0;
-                  const share = totalRevenue > 0 ? (r.revenue / totalRevenue) * 100 : 0;
+          <div className="flex flex-col w-full">
+            <div className="hidden xl:grid grid-cols-8 gap-2 border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)] px-4 py-2.5 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">
+              <div>Product</div>
+              <div>Cat</div>
+              <div>Units</div>
+              <div>Sell</div>
+              <div>Cost</div>
+              <div>Revenue</div>
+              <div>Margin</div>
+              <div>Share</div>
+            </div>
+            
+            {loading ? (
+              <div className="p-4 text-center text-[13px] text-[var(--color-muted)]">Loading products...</div>
+            ) : topProducts.length === 0 ? (
+              <div className="p-4 text-center text-[13px] text-[var(--color-muted)]">No sales recorded for this period.</div>
+            ) : topProducts.map(([name, r], i) => {
+              const margin = r.sell > 0 ? Math.round(((r.sell - r.cost) / r.sell) * 100) : 0;
+              const share = totalRevenue > 0 ? (r.revenue / totalRevenue) * 100 : 0;
+              
+              return (
+                <div key={name} className="flex flex-col xl:grid xl:grid-cols-8 gap-2 items-start xl:items-center px-4 py-4 xl:py-2.5 border-b border-[var(--color-line-lt)] hover:bg-[#fafafa] last:border-0 transition-colors">
+                  <div className="w-full flex justify-between items-center xl:block">
+                    <div className="text-[14px] xl:text-[13px] font-semibold text-[var(--color-ink)]">{name}</div>
+                    <div className="xl:hidden"><span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-1 rounded-full">{r.cat}</span></div>
+                  </div>
                   
-                  return (
-                    <tr key={name} className="border-b border-[var(--color-line-lt)] last:border-0 hover:bg-[#fafafa] transition-colors">
-                      <td className="px-3 py-2.5 text-[13px] font-semibold text-[var(--color-ink)]">{name}</td>
-                      <td className="px-3 py-2.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-1 rounded-full">{r.cat}</span>
-                      </td>
-                      <td className="px-3 py-2.5 text-[12px] text-[var(--color-slate)]">{r.units}</td>
-                      <td className="px-3 py-2.5 text-[12px] text-[var(--color-slate)]">{fmt(r.sell)}</td>
-                      <td className="px-3 py-2.5 text-[12px] text-[var(--color-muted)]">{fmt(r.cost)}</td>
-                      <td className="px-3 py-2.5 font-serif text-[13px] font-bold text-[var(--color-ink)]">{fmt(r.revenue)}</td>
-                      <td className="px-3 py-2.5">
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${margin >= 30 ? 'bg-[var(--color-emerald-bg)] text-[var(--color-emerald)]' : margin >= 15 ? 'bg-[var(--color-amber-bg)] text-[var(--color-amber)]' : 'bg-[var(--color-red-bg)] text-[var(--color-red)]'}`}>
-                          {margin}%
-                        </span>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-[60px] h-1.5 bg-[var(--color-line-lt)] rounded-full overflow-hidden">
-                            <div className="h-full bg-[var(--color-teal)] rounded-full" style={{ width: `${share}%` }} />
-                          </div>
-                          <span className="text-[11px] font-semibold text-[var(--color-slate)] w-8">{share.toFixed(1)}%</span>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                  <div className="hidden xl:block">
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-1 rounded-full">{r.cat}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center w-full xl:w-auto xl:block text-[12px] text-[var(--color-slate)]">
+                    <span className="xl:hidden text-[10px] font-bold text-[var(--color-muted)] uppercase">Units</span>
+                    {r.units}
+                  </div>
+
+                  <div className="flex justify-between items-center w-full xl:w-auto xl:block text-[12px] text-[var(--color-slate)]">
+                    <span className="xl:hidden text-[10px] font-bold text-[var(--color-muted)] uppercase">Sell</span>
+                    {fmt(r.sell)}
+                  </div>
+
+                  <div className="flex justify-between items-center w-full xl:w-auto xl:block text-[12px] text-[var(--color-muted)]">
+                    <span className="xl:hidden text-[10px] font-bold text-[var(--color-muted)] uppercase">Cost</span>
+                    {fmt(r.cost)}
+                  </div>
+
+                  <div className="flex justify-between items-center w-full xl:w-auto xl:block font-serif text-[15px] xl:text-[13px] font-bold text-[var(--color-ink)]">
+                    <span className="xl:hidden font-sans text-[10px] font-bold text-[var(--color-muted)] uppercase">Revenue</span>
+                    {fmt(r.revenue)}
+                  </div>
+
+                  <div className="flex justify-between items-center w-full xl:w-auto xl:block">
+                    <span className="xl:hidden text-[10px] font-bold text-[var(--color-muted)] uppercase">Margin</span>
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${margin >= 30 ? 'bg-[var(--color-emerald-bg)] text-[var(--color-emerald)]' : margin >= 15 ? 'bg-[var(--color-amber-bg)] text-[var(--color-amber)]' : 'bg-[var(--color-red-bg)] text-[var(--color-red)]'}`}>
+                      {margin}%
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center w-full xl:w-auto xl:block">
+                    <span className="xl:hidden text-[10px] font-bold text-[var(--color-muted)] uppercase">Share</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-[80px] xl:w-[60px] h-1.5 bg-[var(--color-line-lt)] rounded-full overflow-hidden">
+                        <div className="h-full bg-[var(--color-teal)] rounded-full" style={{ width: `${share}%` }} />
+                      </div>
+                      <span className="text-[11px] font-semibold text-[var(--color-slate)] w-8">{share.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 

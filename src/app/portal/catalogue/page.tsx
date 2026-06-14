@@ -140,45 +140,68 @@ export default function CataloguePage() {
           </div>
 
           {/* table */}
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse" style={{ minWidth: 640 }}>
-              <thead>
-                <tr className="border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)]">
-                  {['Product','Category','Supplier','Sell Price','Cost Price','Margin','Reorder','Stock',''].map(h => (
-                    <th key={h} className="px-3 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={9} className="text-center py-8 text-[13px] text-[var(--color-muted)]">Loading…</td></tr>
-                ) : filtered.length === 0 ? (
-                  <tr><td colSpan={9} className="text-center py-8 text-[13px] text-[var(--color-muted)]">No products found. Click "+ Add Product" to start.</td></tr>
-                ) : filtered.map((p, i) => {
-                  const m = margin(p);
-                  return (
-                    <tr key={p.id} className="hover:bg-[#f0f7f8] border-b border-[var(--color-line-lt)] last:border-0">
-                      <td className="px-3 py-2.5 text-[13px] font-semibold text-[var(--color-ink)]">{p.name}</td>
-                      <td className="px-3 py-2.5"><Chip label={p.category} color="#4A6670" bg="#FAF8F4" /></td>
-                      <td className="px-3 py-2.5 text-[12px] text-[var(--color-muted)]">{p.supplier}</td>
-                      <td className="px-3 py-2.5 text-[13px] font-bold text-[var(--color-ink)]">{fmt(p.sell_price)}</td>
-                      <td className="px-3 py-2.5 text-[12px] text-[var(--color-slate)]">{fmt(p.cost_price)}</td>
-                      <td className="px-3 py-2.5"><Chip label={`${m}%`} color={marginColor(m)} bg={marginBg(m)} /></td>
-                      <td className="px-3 py-2.5 text-[12px] text-[var(--color-slate)]">{p.reorder_level}</td>
-                      <td className="px-3 py-2.5 text-[12px]" style={{ fontWeight: p.stock < p.reorder_level ? 700 : 400, color: p.stock < p.reorder_level ? '#C0392B' : '#4A6670' }}>
-                        {p.stock} {p.stock < p.reorder_level && '⚠'}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <div className="flex gap-1.5">
-                          <button onClick={() => openEdit(p)} className="text-[11px] font-bold text-[var(--color-teal)] bg-[var(--color-teal-bg)] border-none rounded px-2 py-1 cursor-pointer">Edit</button>
-                          <button onClick={() => del(p)} className="text-[11px] font-bold text-[var(--color-red)] bg-[var(--color-red-bg)] border-none rounded px-2 py-1 cursor-pointer">Remove</button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="flex flex-col w-full">
+            <div className="hidden xl:grid grid-cols-9 gap-2 border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)] px-4 py-2.5 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">
+              <div className="col-span-2">Product</div>
+              <div>Category</div>
+              <div>Supplier</div>
+              <div>Sell Price</div>
+              <div>Cost Price</div>
+              <div>Margin</div>
+              <div>Stock (Reorder)</div>
+              <div>Actions</div>
+            </div>
+            
+            {loading ? (
+              <div className="text-center py-8 text-[13px] text-[var(--color-muted)]">Loading…</div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-8 text-[13px] text-[var(--color-muted)]">No products found. Click "+ Add Product" to start.</div>
+            ) : filtered.map(p => {
+              const m = margin(p);
+              return (
+                <div key={p.id} className="flex flex-col xl:grid xl:grid-cols-9 gap-3 xl:gap-2 items-start xl:items-center px-4 py-4 xl:py-3 border-b border-[var(--color-line-lt)] hover:bg-[#fafafa] last:border-0">
+                  
+                  <div className="col-span-2 flex flex-col w-full">
+                    <div className="flex justify-between xl:block items-center w-full">
+                      <div className="font-semibold text-[14px] xl:text-[13px] text-[var(--color-ink)]">{p.name}</div>
+                      <div className="xl:hidden"><Chip label={p.category} color="#4A6670" bg="#FAF8F4" /></div>
+                    </div>
+                  </div>
+
+                  <div className="hidden xl:block"><Chip label={p.category} color="#4A6670" bg="#FAF8F4" /></div>
+                  
+                  <div className="flex items-center justify-between w-full xl:w-auto xl:block text-[12px] text-[var(--color-muted)]">
+                    <span className="xl:hidden font-bold uppercase tracking-wider text-[10px]">Supplier</span>
+                    {p.supplier}
+                  </div>
+
+                  <div className="flex items-center justify-between w-full xl:w-auto xl:block text-[13px] font-bold text-[var(--color-ink)]">
+                    <span className="xl:hidden font-bold text-[var(--color-muted)] uppercase tracking-wider text-[10px]">Sell Price</span>
+                    {fmt(p.sell_price)}
+                  </div>
+
+                  <div className="flex items-center justify-between w-full xl:w-auto xl:block text-[12px] text-[var(--color-slate)]">
+                    <span className="xl:hidden font-bold text-[var(--color-muted)] uppercase tracking-wider text-[10px]">Cost Price</span>
+                    {fmt(p.cost_price)}
+                  </div>
+
+                  <div className="flex items-center justify-between w-full xl:w-auto xl:block">
+                    <span className="xl:hidden font-bold text-[var(--color-muted)] uppercase tracking-wider text-[10px]">Margin</span>
+                    <Chip label={`${m}%`} color={marginColor(m)} bg={marginBg(m)} />
+                  </div>
+
+                  <div className="flex items-center justify-between w-full xl:w-auto xl:block text-[12px]" style={{ fontWeight: p.stock < p.reorder_level ? 700 : 400, color: p.stock < p.reorder_level ? '#C0392B' : '#4A6670' }}>
+                    <span className="xl:hidden font-bold text-[var(--color-muted)] uppercase tracking-wider text-[10px]">Stock (Reorder)</span>
+                    {p.stock} <span className="text-[11px] text-[var(--color-muted)] opacity-70 ml-1">({p.reorder_level})</span> {p.stock < p.reorder_level && '⚠'}
+                  </div>
+
+                  <div className="flex justify-end xl:justify-start gap-1.5 w-full xl:w-auto mt-2 xl:mt-0 pt-3 xl:pt-0 border-t border-[var(--color-line-lt)] xl:border-0">
+                    <button onClick={() => openEdit(p)} className="text-[11px] font-bold text-[var(--color-teal)] bg-[var(--color-teal-bg)] border-none rounded px-3 py-1.5 xl:px-2 xl:py-1 cursor-pointer">Edit</button>
+                    <button onClick={() => del(p)} className="text-[11px] font-bold text-[var(--color-red)] bg-[var(--color-red-bg)] border-none rounded px-3 py-1.5 xl:px-2 xl:py-1 cursor-pointer">Remove</button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
           <div className="px-3 py-2 border-t border-[var(--color-line-lt)] text-[11px] text-[var(--color-muted)]">
             {filtered.length} of {products.length} products
