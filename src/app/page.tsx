@@ -39,7 +39,7 @@ export default function LandingPage() {
       <nav className="bg-[var(--color-cream)] border-b border-[var(--color-cream-dk)] sticky top-0 z-[100]">
         <div className="max-w-[1080px] mx-auto px-4 h-[60px] flex items-center gap-3">
           <div className="flex items-center gap-2.5 mr-auto shrink-0">
-            <SFSLogo size={32} />
+            <SFSLogo size={44} />
             <span className="font-serif text-[17px] font-bold text-[var(--color-teal)] whitespace-nowrap">
               Sales From Scratch
             </span>
