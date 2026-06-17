@@ -117,8 +117,58 @@ export default function SuppliersPage() {
             </div>
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto">
+          {/* Mobile Card View */}
+          <div className="md:hidden flex flex-col divide-y divide-[var(--color-line-lt)]">
+            {loading ? (
+              <div className="p-4 text-center text-[13px] text-[var(--color-muted)]">Loading suppliers...</div>
+            ) : filtered.length === 0 ? (
+              <div className="p-8 text-center">
+                <div className="text-[40px] mb-2">🚚</div>
+                <div className="text-[14px] font-semibold text-[var(--color-ink)] mb-1">No suppliers found</div>
+                <div className="text-[12px] text-[var(--color-muted)]">Click "+ Add Supplier" to register your first vendor.</div>
+              </div>
+            ) : filtered.map(s => (
+              <div key={s.id} className="p-4 flex flex-col gap-3 hover:bg-[#fafafa] transition-colors">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="font-semibold text-[14px] text-[var(--color-ink)]">{s.name}</div>
+                    {s.products && <div className="text-[12px] text-[var(--color-muted)] mt-0.5">{s.products}</div>}
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-teal-bg)] text-[var(--color-teal)] px-2 py-1 rounded-full">{s.category || 'General'}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[12px]">
+                  <div>
+                    <span className="text-[var(--color-muted)] block text-[10px] uppercase font-bold mb-0.5">Contact</span>
+                    <span className="text-[var(--color-slate)]">{s.contact_person || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-[var(--color-muted)] block text-[10px] uppercase font-bold mb-0.5">WhatsApp</span>
+                    {s.phone ? (
+                      <a href={`https://wa.me/${s.phone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="font-semibold text-[#25D366]">+{s.phone.replace(/\D/g, '')}</a>
+                    ) : <span className="text-[var(--color-muted)]">—</span>}
+                  </div>
+                  <div>
+                    <span className="text-[var(--color-muted)] block text-[10px] uppercase font-bold mb-0.5">Email</span>
+                    {s.email ? <a href={`mailto:${s.email}`} className="text-[var(--color-teal)]">{s.email}</a> : <span className="text-[var(--color-muted)]">—</span>}
+                  </div>
+                  <div>
+                    <span className="text-[var(--color-muted)] block text-[10px] uppercase font-bold mb-0.5">Terms</span>
+                    <span className="text-[var(--color-slate)]">{s.terms || '—'}</span>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center mt-1 pt-3 border-t border-[var(--color-line-lt)]">
+                  <span className="text-[var(--color-gold)] text-[12px]">{stars(s.rating || 5)}</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => openEdit(s)} className="text-[11px] font-bold text-[var(--color-teal)] bg-[var(--color-teal-bg)] rounded px-3 py-1.5">Edit</button>
+                    <button onClick={() => del(s)} className="text-[11px] font-bold text-[var(--color-red)] bg-[var(--color-red-bg)] rounded px-3 py-1.5">Del</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full border-collapse" style={{ minWidth: 700 }}>
               <thead>
                 <tr className="border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)]">

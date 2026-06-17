@@ -231,7 +231,48 @@ export default function SituationRoomPage() {
                   className="flex-1 min-w-[130px] px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" />
               </div>
 
-              <div className="overflow-x-auto">
+              {/* Mobile Card View */}
+              <div className="md:hidden flex flex-col divide-y divide-[var(--color-line-lt)]">
+                {loading ? (
+                  <div className="p-4 text-center text-[13px] text-[var(--color-muted)]">Loading stock...</div>
+                ) : filteredStock.length === 0 ? (
+                  <div className="p-4 text-center text-[13px] text-[var(--color-muted)]">No products found. Add products in the Catalogue.</div>
+                ) : filteredStock.map(p => {
+                  const isOut = p.stock === 0;
+                  const isLow = !isOut && p.stock <= p.reorder_level;
+                  return (
+                    <div key={p.id} className="p-4 flex flex-col gap-3 hover:bg-[#fafafa] transition-colors">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-semibold text-[14px] text-[var(--color-ink)]">{p.name}</div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-1 rounded-full mt-1 inline-block">{p.category || 'General'}</span>
+                        </div>
+                        {isOut ? (
+                          <span className="bg-[var(--color-red-bg)] text-[var(--color-red)] text-[10px] font-bold px-2 py-1 rounded-full">OUT</span>
+                        ) : isLow ? (
+                          <span className="bg-[var(--color-amber-bg)] text-[var(--color-amber)] text-[10px] font-bold px-2 py-1 rounded-full">LOW</span>
+                        ) : (
+                          <span className="bg-[var(--color-emerald-bg)] text-[var(--color-emerald)] text-[10px] font-bold px-2 py-1 rounded-full">OK</span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--color-line-lt)]">
+                        <div>
+                          <span className="text-[var(--color-muted)] block text-[10px] uppercase font-bold mb-0.5">Stock Level</span>
+                          <span className="font-serif text-[18px] font-bold text-[var(--color-ink)]">{p.stock} <span className="font-sans text-[11px] text-[var(--color-muted)] font-normal">{p.unit}</span></span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => updateStock(p.id, p.stock, -1)} className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[13px] font-bold hover:bg-[var(--color-red-bg)] hover:text-[var(--color-red)] flex items-center justify-center">-1</button>
+                          <button onClick={() => updateStock(p.id, p.stock, 1)} className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[13px] font-bold hover:bg-[var(--color-teal-bg)] hover:text-[var(--color-teal)] flex items-center justify-center">+1</button>
+                          <button onClick={() => updateStock(p.id, p.stock, 10)} className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[11px] font-bold hover:bg-[var(--color-teal-bg)] hover:text-[var(--color-teal)] flex items-center justify-center">+10</button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop Table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full border-collapse" style={{ minWidth: 480 }}>
                   <thead>
                     <tr className="border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)]">
@@ -339,8 +380,47 @@ export default function SituationRoomPage() {
                     )}
                   </div>
 
-                  {/* Items table */}
-                  <div className="overflow-x-auto">
+                  {/* Mobile Card View */}
+                  <div className="md:hidden flex flex-col divide-y divide-[var(--color-line-lt)] border-t border-[var(--color-line-lt)]">
+                    {group.items.map(item => (
+                      <div key={item.name} className="p-4 flex flex-col gap-2">
+                        <div className="flex justify-between items-center">
+                          <div className="font-semibold text-[14px] text-[var(--color-ink)]">{item.name}</div>
+                          {item.stock === 0
+                            ? <span className="text-[10px] font-bold uppercase bg-[var(--color-red-bg)] text-[var(--color-red)] px-2 py-1 rounded-full">Out</span>
+                            : <span className="text-[10px] font-bold uppercase bg-[var(--color-amber-bg)] text-[var(--color-amber)] px-2 py-1 rounded-full">Low</span>
+                          }
+                        </div>
+                        <div className="flex justify-between items-center mt-2">
+                          <div className="flex gap-4">
+                            <div>
+                              <span className="text-[var(--color-muted)] block text-[10px] uppercase font-bold mb-0.5">Current Stock</span>
+                              <span className="text-[13px] font-bold text-[var(--color-ink)]">{item.stock}</span>
+                            </div>
+                            <div>
+                              <span className="text-[var(--color-muted)] block text-[10px] uppercase font-bold mb-0.5">Reorder Level</span>
+                              <span className="text-[13px] text-[var(--color-slate)]">{item.reorder_level}</span>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-[var(--color-muted)] block text-[10px] uppercase font-bold mb-0.5 text-right">Order Qty</span>
+                            <input
+                              type="number" min="1"
+                              value={qtys[items.find(i => i.name === item.name)?.id || ''] || item.reorder_level}
+                              onChange={e => {
+                                const inv = items.find(i => i.name === item.name);
+                                if (inv) setQtys(prev => ({ ...prev, [inv.id]: parseInt(e.target.value) || 0 }));
+                              }}
+                              className="w-[70px] px-2 py-1.5 border border-[var(--color-line)] rounded-lg text-[13px] outline-none text-center focus:border-[var(--color-teal)]"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Desktop Table */}
+                  <div className="hidden md:block overflow-x-auto">
                     <table className="w-full border-collapse" style={{ minWidth: 400 }}>
                       <thead>
                         <tr className="border-b border-[var(--color-line-lt)]">
