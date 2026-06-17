@@ -103,7 +103,7 @@ export default function ExpensesPage() {
         </div>
       )}
 
-      <div className="p-5 max-w-[1200px] mx-auto w-full grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
+      <div className="p-3 sm:p-5 max-w-[1200px] mx-auto w-full grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 sm:gap-6 items-start">
         
         {/* Left Column: Expenses Table */}
         <div className="bg-white rounded-xl border border-[var(--color-line-lt)] overflow-hidden shadow-sm">

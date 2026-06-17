@@ -125,7 +125,7 @@ export default function DashboardPage() {
     <div className="flex flex-col min-h-screen pb-10">
       <Topbar title="Dashboard" sub="Store Overview" />
 
-      <div className="p-5 max-w-[1200px] mx-auto w-full flex flex-col gap-5">
+      <div className="p-3 sm:p-5 max-w-[1200px] mx-auto w-full flex flex-col gap-4 sm:gap-5">
 
         {/* Mode banner when in Net Sales mode */}
         {!loading && profitMode === 'net_sales' && (
@@ -138,7 +138,7 @@ export default function DashboardPage() {
         )}
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard label="Today's Revenue" value={`KES ${todayRevenue.toLocaleString()}`} sub="Gross sales today" accent="var(--color-teal)" />
           <StatCard label="Transactions" value={todayTransactions.toString()} sub="Items logged today" accent="var(--color-slate)" />
           <StatCard label="Low Stock Items" value={lowStockCount.toString()} sub="Review Order Tracker" accent={lowStockCount > 0 ? "var(--color-red)" : "var(--color-amber)"} />
@@ -150,7 +150,7 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div className="grid md:grid-cols-[1fr_360px] gap-5 items-start">
+        <div className="grid lg:grid-cols-[1fr_360px] gap-4 sm:gap-5 items-start">
           {/* Chart */}
           <div className="bg-white rounded-xl p-5 border border-[var(--color-line-lt)] shadow-sm">
             <div className="flex items-center justify-between mb-4">

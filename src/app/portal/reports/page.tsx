@@ -126,7 +126,7 @@ export default function ReportsPage() {
     <div className="flex flex-col min-h-screen pb-10">
       <Topbar title="Reports" sub="Analyse performance across any period" />
 
-      <div className="p-5 max-w-[1200px] mx-auto w-full flex flex-col gap-5">
+      <div className="p-3 sm:p-5 max-w-[1200px] mx-auto w-full flex flex-col gap-4 sm:gap-5">
 
         {/* Filters Bar */}
         <div className="bg-white rounded-xl p-3 border border-[var(--color-line-lt)] flex gap-2.5 flex-wrap items-center">
@@ -166,7 +166,7 @@ export default function ReportsPage() {
         )}
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard label="Total Revenue" value={fmt(totalRevenue)} sub="Gross sales" accent="var(--color-teal)" />
           <StatCard label="Total Expenses" value={fmt(totalExpenses)} sub="All costs in period" accent="var(--color-amber)" />
           <StatCard label={modeLabel} value={fmt(netValue)} sub={`${totalRevenue > 0 ? Math.round((netValue / totalRevenue) * 100) : 0}% margin`} accent="var(--color-emerald)" />

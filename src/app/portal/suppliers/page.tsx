@@ -95,7 +95,7 @@ export default function SuppliersPage() {
         </div>
       )}
 
-      <div className="p-5 max-w-[1200px] mx-auto w-full flex flex-col gap-4">
+      <div className="p-3 sm:p-5 max-w-[1200px] mx-auto w-full flex flex-col gap-4">
         <div className="bg-white rounded-xl border border-[var(--color-line-lt)] overflow-hidden shadow-sm">
           {/* Toolbar */}
           <div className="p-3.5 border-b border-[var(--color-line-lt)] flex justify-between items-center flex-wrap gap-3">

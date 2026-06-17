@@ -134,10 +134,10 @@ export default function SalesTrackerPage() {
         </div>
       )}
 
-      <div className="p-5 max-w-[1200px] mx-auto w-full flex flex-col gap-5">
+      <div className="p-3 sm:p-5 max-w-[1200px] mx-auto w-full flex flex-col gap-4 sm:gap-5">
 
         {/* Today's summary bar */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { label: "Today's Revenue", val: fmt(todayRevenue), color: 'var(--color-teal)' },
             { label: "Units Sold Today", val: todayUnits.toString(), color: 'var(--color-ink)' },

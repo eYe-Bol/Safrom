@@ -148,7 +148,7 @@ export default function SituationRoomPage() {
         </div>
       )}
 
-      <div className="p-5 max-w-[1100px] mx-auto w-full flex flex-col gap-5">
+      <div className="p-3 sm:p-5 max-w-[1100px] mx-auto w-full flex flex-col gap-4 sm:gap-5">
 
         {/* Tab Bar */}
         <div className="flex gap-2 flex-wrap">
@@ -211,7 +211,7 @@ export default function SituationRoomPage() {
         {tab === 'stock' && (
           <div className="flex flex-col gap-4">
             {/* KPI Row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               {[
                 { label: 'Total Products', val: items.length, color: 'var(--color-ink)' },
                 { label: 'Total in Stock', val: items.reduce((a, p) => a + p.stock, 0).toLocaleString(), color: 'var(--color-teal)' },
