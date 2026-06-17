@@ -46,6 +46,45 @@ function buildLpoText(group: LpoGroup, profile: any) {
   return text;
 }
 
+const generatePDF = (group: LpoGroup, storeProfile: any) => {
+  import('jspdf').then(({ default: jsPDF }) => {
+    import('jspdf-autotable').then(({ default: autoTable }) => {
+      const doc = new jsPDF();
+      
+      doc.setFontSize(18);
+      doc.setTextColor(10, 92, 107);
+      doc.text('LOCAL PURCHASE ORDER', 14, 22);
+      
+      doc.setFontSize(11);
+      doc.setTextColor(30, 41, 59);
+      doc.text(`From: ${storeProfile?.store_name || 'My Store'}`, 14, 32);
+      if (storeProfile?.store_phone) doc.text(`Phone: ${storeProfile.store_phone}`, 14, 38);
+      if (storeProfile?.store_email) doc.text(`Email: ${storeProfile.store_email}`, 14, 44);
+      
+      doc.text(`To: ${group.supplier}`, 120, 32);
+      doc.text(`Date: ${new Date().toLocaleDateString('en-KE')}`, 120, 38);
+      
+      const tableData = group.items.map((item, i) => [
+        i + 1,
+        item.name,
+        item.stock,
+        item.qty
+      ]);
+      
+      autoTable(doc, {
+        startY: 55,
+        head: [['#', 'Item Description', 'Current Stock', 'Order Qty']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [10, 92, 107] },
+        styles: { fontSize: 10, cellPadding: 4 }
+      });
+      
+      doc.save(`LPO_${group.supplier.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+    });
+  });
+};
+
 export default function SituationRoomPage() {
   const [items, setItems] = useState<InvItem[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierRecord[]>([]);
@@ -483,13 +522,19 @@ export default function SituationRoomPage() {
                         <a
                           href={mailUrl}
                           onClick={() => { setSent(prev => ({ ...prev, [groupKey]: true })); fire(`✓ LPO Successfully Sent to ${group.supplier} via Email`); }}
-                          className="flex items-center gap-1.5 px-4 py-2 bg-[var(--color-teal)] text-white font-bold text-[13px] rounded-xl hover:opacity-90 transition-opacity"
+                          className="flex items-center gap-1.5 px-4 py-2 bg-[var(--color-teal)] text-white font-bold text-[13px] rounded-xl hover:opacity-90 transition-opacity whitespace-nowrap"
                         >
                           ✉️ Email
                         </a>
                       ) : (
-                        <span className="px-4 py-2 bg-[var(--color-canvas)] text-[var(--color-muted)] font-semibold text-[12px] rounded-xl border border-[var(--color-line)]">No email</span>
+                        <span className="px-4 py-2 bg-[var(--color-canvas)] text-[var(--color-muted)] font-semibold text-[12px] rounded-xl border border-[var(--color-line)] whitespace-nowrap">No email</span>
                       )}
+                      <button
+                        onClick={() => { generatePDF(group, storeProfile); setSent(prev => ({ ...prev, [groupKey]: true })); fire(`✓ LPO PDF Downloaded for ${group.supplier}`); }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-white border-2 border-[var(--color-teal)] text-[var(--color-teal)] font-bold text-[13px] rounded-xl hover:bg-[var(--color-teal-bg)] transition-colors whitespace-nowrap cursor-pointer"
+                      >
+                        📄 Download PDF
+                      </button>
                     </div>
                   </div>
                 </div>
