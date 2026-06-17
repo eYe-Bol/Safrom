@@ -93,6 +93,7 @@ export default function SituationRoomPage() {
   const [stockSearch, setStockSearch] = useState('');
   const [qtys, setQtys] = useState<Record<string, number>>({});
   const [sent, setSent] = useState<Record<string, boolean>>({});
+  const [manualOrders, setManualOrders] = useState<string[]>([]);
   const [toast, setToast] = useState('');
   const [storeProfile, setStoreProfile] = useState<any>(null);
 
@@ -133,13 +134,21 @@ export default function SituationRoomPage() {
     fire('✓ Stock updated');
   };
 
+  const addToOrder = (id: string) => {
+    if (!manualOrders.includes(id)) {
+      setManualOrders(prev => [...prev, id]);
+    }
+    setTab('alerts');
+    fire('✓ Item added to order');
+  };
+
   // Overview stats
   const totalProducts = items.length;
   const totalCategories = new Set(items.map(i => i.category || 'General')).size;
   const totalSuppliers = suppliers.length;
 
-  // Alerts
-  const alertItems = items.filter(i => i.stock < i.reorder_level || i.stock === 0);
+  // Alerts & Orders
+  const alertItems = items.filter(i => i.stock < i.reorder_level || i.stock === 0 || manualOrders.includes(i.id));
   const outCount = alertItems.filter(i => i.stock === 0).length;
   const lowCount = alertItems.filter(i => i.stock > 0 && i.stock < i.reorder_level).length;
 
@@ -301,10 +310,13 @@ export default function SituationRoomPage() {
                           <span className="text-[var(--color-muted)] block text-[10px] uppercase font-bold mb-0.5">Stock Level</span>
                           <span className="font-serif text-[18px] font-bold text-[var(--color-ink)]">{p.stock} <span className="font-sans text-[11px] text-[var(--color-muted)] font-normal">{p.unit}</span></span>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <button onClick={() => updateStock(p.id, p.stock, -1)} className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[13px] font-bold hover:bg-[var(--color-red-bg)] hover:text-[var(--color-red)] flex items-center justify-center">-1</button>
-                          <button onClick={() => updateStock(p.id, p.stock, 1)} className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[13px] font-bold hover:bg-[var(--color-teal-bg)] hover:text-[var(--color-teal)] flex items-center justify-center">+1</button>
-                          <button onClick={() => updateStock(p.id, p.stock, 10)} className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[11px] font-bold hover:bg-[var(--color-teal-bg)] hover:text-[var(--color-teal)] flex items-center justify-center">+10</button>
+                        <div className="flex flex-col gap-2 items-end">
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={() => updateStock(p.id, p.stock, -1)} className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[13px] font-bold hover:bg-[var(--color-red-bg)] hover:text-[var(--color-red)] flex items-center justify-center">-1</button>
+                            <button onClick={() => updateStock(p.id, p.stock, 1)} className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[13px] font-bold hover:bg-[var(--color-teal-bg)] hover:text-[var(--color-teal)] flex items-center justify-center">+1</button>
+                            <button onClick={() => updateStock(p.id, p.stock, 10)} className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[11px] font-bold hover:bg-[var(--color-teal-bg)] hover:text-[var(--color-teal)] flex items-center justify-center">+10</button>
+                          </div>
+                          <button onClick={() => addToOrder(p.id)} className="px-3 py-1.5 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[11px] font-bold text-[var(--color-ink)] hover:border-[var(--color-teal)] hover:text-[var(--color-teal)] transition-colors w-full">🛒 Order</button>
                         </div>
                       </div>
                     </div>
@@ -355,6 +367,7 @@ export default function SituationRoomPage() {
                               <button onClick={() => updateStock(p.id, p.stock, -1)} className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[13px] font-bold hover:bg-[var(--color-red-bg)] hover:text-[var(--color-red)] hover:border-[var(--color-red-bg)] flex items-center justify-center transition-colors">-1</button>
                               <button onClick={() => updateStock(p.id, p.stock, 1)} className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[13px] font-bold hover:bg-[var(--color-teal-bg)] hover:text-[var(--color-teal)] hover:border-[var(--color-teal-bg)] flex items-center justify-center transition-colors">+1</button>
                               <button onClick={() => updateStock(p.id, p.stock, 10)} className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[11px] font-bold hover:bg-[var(--color-teal-bg)] hover:text-[var(--color-teal)] hover:border-[var(--color-teal-bg)] flex items-center justify-center transition-colors">+10</button>
+                              <button onClick={() => addToOrder(p.id)} className="h-8 px-3 ml-2 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] text-[11px] font-bold text-[var(--color-ink)] hover:border-[var(--color-teal)] hover:text-[var(--color-teal)] flex items-center justify-center transition-colors whitespace-nowrap">🛒 Order</button>
                             </div>
                           </td>
                         </tr>
