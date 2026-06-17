@@ -7,15 +7,14 @@ import { createClient } from '@/utils/supabase/client';
 import { SFSLogo } from '@/components/SFSLogo';
 
 const NAV_ITEMS = [
-  { href: '/portal/dashboard',   label: 'Dashboard',          icon: '▦' },
-  { href: '/portal/inventory',   label: 'Inventory',          icon: '📦' },
-  { href: '/portal/catalogue',   label: 'Product Catalogue',  icon: '🗂' },
-  { href: '/portal/suppliers',   label: 'Suppliers',          icon: '🤝' },
-  { href: '/portal/situation',   label: 'Situation Room',     icon: '⚡' },
-  { href: '/portal/expenses',    label: 'Expenses',           icon: '💸' },
-  { href: '/portal/reports',     label: 'Reports',            icon: '📊' },
-  { href: '/portal/sales',       label: 'Sales Log',          icon: '🧮' },
-  { href: '/portal/settings',    label: 'Settings',           icon: '⚙️' },
+  { href: '/portal/dashboard',   label: 'Dashboard',                    icon: '▦' },
+  { href: '/portal/situation',   label: 'Inventory & Order Tracker',    icon: '📦' },
+  { href: '/portal/catalogue',   label: 'Product Catalogue',            icon: '🗂' },
+  { href: '/portal/suppliers',   label: 'Suppliers',                    icon: '🤝' },
+  { href: '/portal/expenses',    label: 'Expenses',                     icon: '💸' },
+  { href: '/portal/reports',     label: 'Reports',                      icon: '📊' },
+  { href: '/portal/sales',       label: 'Sales Tracker',                icon: '🧮' },
+  { href: '/portal/settings',    label: 'Settings',                     icon: '⚙️' },
 ];
 
 function LiveClock() {
@@ -69,9 +68,9 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-[var(--color-line-lt)] flex items-center justify-start gap-3">
-        <SFSLogo size={38} href="/portal/dashboard" />
+        <SFSLogo size={42} href="/portal/dashboard" />
         <div className="flex flex-col">
-          <span className="font-serif text-[15px] font-bold text-[var(--color-ink)] leading-tight">
+          <span className="font-serif text-[14px] font-bold text-[var(--color-ink)] leading-tight">
             {storeName || 'Sales From Scratch'}
           </span>
         </div>
@@ -86,20 +85,20 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
               key={item.href}
               href={item.href}
               onClick={() => setMobileOpen(false)}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-[10px] text-[13px] font-semibold transition-all ${
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-[10px] text-[12px] font-semibold transition-all ${
                 isActive
                   ? 'bg-[var(--color-teal)] text-white shadow-[0_4px_12px_rgba(10,92,107,0.25)]'
                   : 'text-[var(--color-slate)] hover:bg-[var(--color-teal-bg)] hover:text-[var(--color-teal)]'
               }`}
             >
-              <span className="text-[14px] w-5 text-center">{item.icon}</span>
-              {item.label}
+              <span className="text-[14px] w-5 text-center shrink-0">{item.icon}</span>
+              <span className="truncate">{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-        {/* Bottom: Billing + User Card + Sign Out */}
+        {/* Bottom: Billing + Sign Out */}
         <div className="p-3 border-t border-[var(--color-line-lt)] flex flex-col gap-2">
           <Link
             href="/portal/billing"
@@ -127,7 +126,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   return (
     <div className="flex min-h-screen bg-[var(--color-canvas)]">
       {/* Desktop Sidebar */}
-      <aside className="w-[220px] shrink-0 bg-white border-r border-[var(--color-line)] hidden md:block fixed top-0 left-0 h-full z-30">
+      <aside className="w-[230px] shrink-0 bg-white border-r border-[var(--color-line)] hidden md:block fixed top-0 left-0 h-full z-30">
         <SidebarContent />
       </aside>
 
@@ -135,7 +134,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute left-0 top-0 h-full w-[240px] bg-white shadow-2xl z-50">
+          <aside className="absolute left-0 top-0 h-full w-[250px] bg-white shadow-2xl z-50">
             <SidebarContent />
           </aside>
         </div>
@@ -152,12 +151,12 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             <span key={i} className="block w-5 h-0.5 bg-[var(--color-teal)] rounded" />
           ))}
         </button>
-        <SFSLogo size={28} href="/portal/dashboard" />
+        <SFSLogo size={32} href="/portal/dashboard" />
         <span className="font-serif text-[14px] font-bold text-[var(--color-ink)] truncate flex-1">
           {storeName || 'Sales From Scratch'}
         </span>
         {/* Live clock on right */}
-        <div className="flex flex-col items-end shrink-0">
+        <div className="hidden sm:flex flex-col items-end shrink-0">
           <LiveClock />
         </div>
         {/* Red sign-out avatar */}
@@ -173,7 +172,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 md:ml-[220px] flex flex-col min-h-screen pt-14 md:pt-0">
+      <main className="flex-1 md:ml-[230px] flex flex-col min-h-screen pt-14 md:pt-0">
         {children}
       </main>
     </div>

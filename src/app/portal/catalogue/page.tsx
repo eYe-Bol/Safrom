@@ -16,24 +16,17 @@ type Product = {
   stock: number;
 };
 
-const margin = (p: Product) =>
-  p.sell_price > 0 ? Math.round(((p.sell_price - p.cost_price) / p.sell_price) * 100) : 0;
-
 const fmt = (n: number) => `KES ${Number(n).toLocaleString()}`;
-
-function Chip({ label, color, bg }: { label: string; color: string; bg: string }) {
-  return (
-    <span style={{ fontSize: 10, fontWeight: 700, color, background: bg, padding: '2px 9px', borderRadius: 99, textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>
-      {label}
-    </span>
-  );
-}
+const margin = (p: Product) =>
+  p.sell_price > 0 && p.cost_price > 0
+    ? Math.round(((p.sell_price - p.cost_price) / p.sell_price) * 100)
+    : null;
 
 const BLANK = { name: '', category: '', supplier: '', unit: 'pcs', sell_price: '', cost_price: '', reorder_level: '' };
 
 export default function CataloguePage() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [suppliers, setSuppliers] = useState<string[]>([]);
+  const [supplierNames, setSupplierNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('All');
@@ -54,22 +47,22 @@ export default function CataloguePage() {
       supabase.from('suppliers').select('name').eq('user_id', user.id),
     ]);
     if (prods) setProducts(prods);
-    if (sups) setSuppliers(sups.map((s: any) => s.name));
+    if (sups) setSupplierNames(sups.map((s: any) => s.name));
     setLoading(false);
   };
 
   useEffect(() => { loadData(); }, []);
 
-  const categories = ['All', ...Array.from(new Set(products.map(p => p.category)))];
+  const categories = ['All', ...Array.from(new Set(products.map(p => p.category || 'General')))];
   const filtered = products.filter(p =>
-    (catFilter === 'All' || p.category === catFilter) &&
-    (p.name.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase()))
+    (catFilter === 'All' || (p.category || 'General') === catFilter) &&
+    (p.name.toLowerCase().includes(search.toLowerCase()) || (p.category || '').toLowerCase().includes(search.toLowerCase()))
   );
 
   const openAdd = () => { setForm(BLANK); setEditItem(null); setShowAdd(true); };
   const openEdit = (p: Product) => {
     setForm({ name: p.name, category: p.category, supplier: p.supplier, unit: p.unit,
-      sell_price: String(p.sell_price), cost_price: String(p.cost_price), reorder_level: String(p.reorder_level) });
+      sell_price: String(p.sell_price), cost_price: p.cost_price > 0 ? String(p.cost_price) : '', reorder_level: String(p.reorder_level) });
     setEditItem(p); setShowAdd(true);
   };
 
@@ -79,7 +72,6 @@ export default function CataloguePage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
     const entry = {
       user_id: user.id,
       name: form.name,
@@ -87,10 +79,9 @@ export default function CataloguePage() {
       supplier: form.supplier || 'N/A',
       unit: form.unit || 'pcs',
       sell_price: parseFloat(form.sell_price),
-      cost_price: parseFloat(form.cost_price) || 0,
+      cost_price: form.cost_price ? parseFloat(form.cost_price) : 0,
       reorder_level: parseInt(form.reorder_level) || 0,
     };
-
     if (editItem) {
       await supabase.from('inventory').update(entry).eq('id', editItem.id);
       fire(`✓ ${form.name} updated`);
@@ -116,7 +107,7 @@ export default function CataloguePage() {
   return (
     <div className="flex flex-col min-h-screen pb-10">
       <Topbar title="Product Catalogue" sub="Manage products, prices, and reorder levels" />
-      
+
       {toast && (
         <div className="fixed top-4 right-4 z-[9999] bg-[var(--color-ink)] text-white px-4 py-3 rounded-xl text-[13px] font-semibold shadow-[0_8px_28px_rgba(0,0,0,0.22)] border-l-4 border-[var(--color-gold)]">
           {toast}
@@ -124,87 +115,88 @@ export default function CataloguePage() {
       )}
 
       <div className="p-5 max-w-[1200px] mx-auto w-full flex flex-col gap-4">
-        <div className="bg-white rounded-xl border border-[var(--color-line-lt)] overflow-hidden">
-          {/* toolbar */}
-          <div className="p-3 border-b border-[var(--color-line-lt)] flex gap-2 flex-wrap items-center">
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products…"
-              className="flex-1 min-w-[130px] px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none" />
-            <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
-              className="px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none bg-white">
-              {categories.map(c => <option key={c}>{c}</option>)}
-            </select>
-            <button onClick={openAdd}
-              className="px-4 py-2 bg-[var(--color-teal)] text-white font-bold text-[13px] rounded-lg hover:opacity-90 whitespace-nowrap">
-              + Add Product
-            </button>
-          </div>
-
-          {/* table */}
-          <div className="flex flex-col w-full">
-            <div className="hidden xl:grid grid-cols-9 gap-2 border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)] px-4 py-2.5 text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">
-              <div className="col-span-2">Product</div>
-              <div>Category</div>
-              <div>Supplier</div>
-              <div>Sell Price</div>
-              <div>Cost Price</div>
-              <div>Margin</div>
-              <div>Stock (Reorder)</div>
-              <div>Actions</div>
+        <div className="bg-white rounded-xl border border-[var(--color-line-lt)] overflow-hidden shadow-sm">
+          {/* Toolbar */}
+          <div className="p-3.5 border-b border-[var(--color-line-lt)] flex justify-between items-center flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <span className="font-serif text-[15px] font-bold text-[var(--color-ink)]">All Products</span>
+              <span className="text-[13px] text-[var(--color-muted)]">{filtered.length} of {products.length}</span>
             </div>
-            
-            {loading ? (
-              <div className="text-center py-8 text-[13px] text-[var(--color-muted)]">Loading…</div>
-            ) : filtered.length === 0 ? (
-              <div className="text-center py-8 text-[13px] text-[var(--color-muted)]">No products found. Click "+ Add Product" to start.</div>
-            ) : filtered.map(p => {
-              const m = margin(p);
-              return (
-                <div key={p.id} className="flex flex-col xl:grid xl:grid-cols-9 gap-3 xl:gap-2 items-start xl:items-center px-4 py-4 xl:py-3 border-b border-[var(--color-line-lt)] hover:bg-[#fafafa] last:border-0">
-                  
-                  <div className="col-span-2 flex flex-col w-full">
-                    <div className="flex justify-between xl:block items-center w-full">
-                      <div className="font-semibold text-[14px] xl:text-[13px] text-[var(--color-ink)]">{p.name}</div>
-                      <div className="xl:hidden"><Chip label={p.category} color="#4A6670" bg="#FAF8F4" /></div>
-                    </div>
-                  </div>
-
-                  <div className="hidden xl:block"><Chip label={p.category} color="#4A6670" bg="#FAF8F4" /></div>
-                  
-                  <div className="flex items-center justify-between w-full xl:w-auto xl:block text-[12px] text-[var(--color-muted)]">
-                    <span className="xl:hidden font-bold uppercase tracking-wider text-[10px]">Supplier</span>
-                    {p.supplier}
-                  </div>
-
-                  <div className="flex items-center justify-between w-full xl:w-auto xl:block text-[13px] font-bold text-[var(--color-ink)]">
-                    <span className="xl:hidden font-bold text-[var(--color-muted)] uppercase tracking-wider text-[10px]">Sell Price</span>
-                    {fmt(p.sell_price)}
-                  </div>
-
-                  <div className="flex items-center justify-between w-full xl:w-auto xl:block text-[12px] text-[var(--color-slate)]">
-                    <span className="xl:hidden font-bold text-[var(--color-muted)] uppercase tracking-wider text-[10px]">Cost Price</span>
-                    {fmt(p.cost_price)}
-                  </div>
-
-                  <div className="flex items-center justify-between w-full xl:w-auto xl:block">
-                    <span className="xl:hidden font-bold text-[var(--color-muted)] uppercase tracking-wider text-[10px]">Margin</span>
-                    <Chip label={`${m}%`} color={marginColor(m)} bg={marginBg(m)} />
-                  </div>
-
-                  <div className="flex items-center justify-between w-full xl:w-auto xl:block text-[12px]" style={{ fontWeight: p.stock < p.reorder_level ? 700 : 400, color: p.stock < p.reorder_level ? '#C0392B' : '#4A6670' }}>
-                    <span className="xl:hidden font-bold text-[var(--color-muted)] uppercase tracking-wider text-[10px]">Stock (Reorder)</span>
-                    {p.stock} <span className="text-[11px] text-[var(--color-muted)] opacity-70 ml-1">({p.reorder_level})</span> {p.stock < p.reorder_level && '⚠'}
-                  </div>
-
-                  <div className="flex justify-end xl:justify-start gap-1.5 w-full xl:w-auto mt-2 xl:mt-0 pt-3 xl:pt-0 border-t border-[var(--color-line-lt)] xl:border-0">
-                    <button onClick={() => openEdit(p)} className="text-[11px] font-bold text-[var(--color-teal)] bg-[var(--color-teal-bg)] border-none rounded px-3 py-1.5 xl:px-2 xl:py-1 cursor-pointer">Edit</button>
-                    <button onClick={() => del(p)} className="text-[11px] font-bold text-[var(--color-red)] bg-[var(--color-red-bg)] border-none rounded px-3 py-1.5 xl:px-2 xl:py-1 cursor-pointer">Remove</button>
-                  </div>
-                </div>
-              );
-            })}
+            <div className="flex gap-2 items-center flex-wrap">
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products…"
+                className="px-3 py-1.5 border-[1.5px] border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)] min-w-[150px]" />
+              <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
+                className="px-3 py-1.5 border-[1.5px] border-[var(--color-line)] rounded-lg text-[13px] outline-none bg-white">
+                {categories.map(c => <option key={c}>{c}</option>)}
+              </select>
+              <button onClick={openAdd}
+                className="px-4 py-1.5 bg-[var(--color-teal)] text-white font-bold text-[13px] rounded-lg hover:opacity-90 whitespace-nowrap">
+                + Add Product
+              </button>
+            </div>
           </div>
-          <div className="px-3 py-2 border-t border-[var(--color-line-lt)] text-[11px] text-[var(--color-muted)]">
-            {filtered.length} of {products.length} products
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse" style={{ minWidth: 720 }}>
+              <thead>
+                <tr className="border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)]">
+                  {['Product', 'Category', 'Supplier', 'Sell Price', 'Cost Price', 'Margin', 'Stock', 'Actions'].map(h => (
+                    <th key={h} className="px-4 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em] whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={8} className="p-4 text-center text-[13px] text-[var(--color-muted)]">Loading…</td></tr>
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center">
+                      <div className="text-[14px] font-semibold text-[var(--color-ink)] mb-1">No products found</div>
+                      <div className="text-[12px] text-[var(--color-muted)]">Click "+ Add Product" to start building your catalogue.</div>
+                    </td>
+                  </tr>
+                ) : filtered.map(p => {
+                  const m = margin(p);
+                  const isLow = p.stock < p.reorder_level;
+                  return (
+                    <tr key={p.id} className="border-b border-[var(--color-line-lt)] last:border-0 hover:bg-[#fafafa] transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-[13px] text-[var(--color-ink)]">{p.name}</div>
+                        <div className="text-[11px] text-[var(--color-muted)]">{p.unit}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-1 rounded-full">{p.category || 'General'}</span>
+                      </td>
+                      <td className="px-4 py-3 text-[12px] text-[var(--color-muted)]">{p.supplier || '—'}</td>
+                      <td className="px-4 py-3 font-bold text-[13px] text-[var(--color-ink)]">{fmt(p.sell_price)}</td>
+                      <td className="px-4 py-3 text-[12px] text-[var(--color-slate)]">
+                        {p.cost_price > 0 ? fmt(p.cost_price) : <span className="text-[var(--color-muted)] italic text-[11px]">Not set</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {m !== null ? (
+                          <span className="text-[10px] font-bold px-2 py-1 rounded-full" style={{ color: marginColor(m), background: marginBg(m) }}>{m}%</span>
+                        ) : (
+                          <span className="text-[10px] text-[var(--color-muted)] italic">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`font-semibold text-[13px] ${isLow ? 'text-[var(--color-red)]' : 'text-[var(--color-ink)]'}`}>
+                          {p.stock} {isLow && '⚠'}
+                        </span>
+                        <div className="text-[10px] text-[var(--color-muted)]">min {p.reorder_level}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1.5">
+                          <button onClick={() => openEdit(p)} className="text-[11px] font-bold text-[var(--color-teal)] bg-[var(--color-teal-bg)] border-none rounded px-3 py-1.5 cursor-pointer hover:opacity-80">Edit</button>
+                          <button onClick={() => del(p)} className="text-[11px] font-bold text-[var(--color-red)] bg-[var(--color-red-bg)] border-none rounded px-3 py-1.5 cursor-pointer hover:opacity-80">Del</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -216,17 +208,17 @@ export default function CataloguePage() {
             <h2 className="font-serif text-[18px] font-bold text-[var(--color-ink)] mb-5">{editItem ? 'Edit Product' : 'Add New Product'}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="col-span-2">
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Product Name</label>
-                <input value={form.name} onChange={e => setForm((p: any) => ({...p, name: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none" />
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Product Name *</label>
+                <input value={form.name} onChange={e => setForm((p: any) => ({...p, name: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" />
               </div>
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Category</label>
-                <input value={form.category} onChange={e => setForm((p: any) => ({...p, category: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none" placeholder="e.g. Beer, Grocery…" />
+                <input value={form.category} onChange={e => setForm((p: any) => ({...p, category: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="e.g. Beer, Grocery…" />
               </div>
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Supplier</label>
-                <input value={form.supplier} list="sup-list" onChange={e => setForm((p: any) => ({...p, supplier: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none" placeholder="Select supplier" />
-                <datalist id="sup-list">{suppliers.map(s => <option key={s} value={s} />)}</datalist>
+                <input value={form.supplier} list="sup-list" onChange={e => setForm((p: any) => ({...p, supplier: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="Select supplier" />
+                <datalist id="sup-list">{supplierNames.map(s => <option key={s} value={s} />)}</datalist>
               </div>
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Unit</label>
@@ -236,15 +228,17 @@ export default function CataloguePage() {
               </div>
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Reorder Qty</label>
-                <input type="number" value={form.reorder_level} onChange={e => setForm((p: any) => ({...p, reorder_level: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none" />
+                <input type="number" value={form.reorder_level} onChange={e => setForm((p: any) => ({...p, reorder_level: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" />
               </div>
               <div>
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Selling Price (KES)</label>
-                <input type="number" value={form.sell_price} onChange={e => setForm((p: any) => ({...p, sell_price: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none" />
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Selling Price (KES) *</label>
+                <input type="number" value={form.sell_price} onChange={e => setForm((p: any) => ({...p, sell_price: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" />
               </div>
-              <div>
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Cost Price (KES)</label>
-                <input type="number" value={form.cost_price} onChange={e => setForm((p: any) => ({...p, cost_price: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none" />
+              <div className="col-span-2">
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">
+                  Cost Price (KES) <span className="text-[var(--color-muted)] font-normal">— optional, enables Net Profit tracking</span>
+                </label>
+                <input type="number" value={form.cost_price} onChange={e => setForm((p: any) => ({...p, cost_price: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="Leave blank if unknown" />
               </div>
               {form.sell_price && form.cost_price && (
                 <div className="col-span-2 bg-[var(--color-teal-bg)] rounded-xl px-3 py-2.5 text-[12px] text-[var(--color-teal)] font-semibold">
