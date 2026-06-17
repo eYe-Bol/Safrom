@@ -34,12 +34,16 @@ export default function SettingsPage() {
   const saveProfile = async () => {
     setSaving(true);
     const supabase = createClient();
-    const { error } = await supabase.from('users').update({ store_name: storeName }).eq('id', user.id);
+    const { error } = await supabase.from('users').update({ 
+      store_name: storeName,
+      store_phone: userData?.store_phone,
+      store_email: userData?.store_email
+    }).eq('id', user.id);
     if (error) {
       fire(`Error: ${error.message}`);
     } else {
-      setUserData((p: any) => ({...p, store_name: storeName}));
-      fire('✓ Business name updated!');
+      setUserData((p: any) => ({...p, store_name: storeName, store_phone: userData?.store_phone, store_email: userData?.store_email}));
+      fire('✓ Business profile updated!');
       window.location.reload(); // Force reload to update layout
     }
     setSaving(false);
@@ -70,6 +74,14 @@ export default function SettingsPage() {
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Business / Store Name</label>
                 <input value={storeName} onChange={e => setStoreName(e.target.value)} className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none" />
               </div>
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Store WhatsApp Number</label>
+                <input value={userData?.store_phone || ''} onChange={e => setUserData({...userData, store_phone: e.target.value})} placeholder="e.g. +254700000000" className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none" />
+              </div>
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Store Email</label>
+                <input value={userData?.store_email || ''} onChange={e => setUserData({...userData, store_email: e.target.value})} placeholder="store@example.com" className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none" />
+              </div>
               <div className="flex gap-2 mt-1">
                 <button onClick={() => setEditMode(false)} className="flex-1 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg font-semibold text-[13px] text-[var(--color-slate)]">Cancel</button>
                 <button onClick={saveProfile} disabled={saving} className="flex-1 py-2 bg-[var(--color-teal)] text-white rounded-lg font-bold text-[13px] disabled:opacity-50">{saving ? 'Saving…' : 'Save'}</button>
@@ -79,7 +91,9 @@ export default function SettingsPage() {
             <>
               {[
                 ['Business Name', userData?.store_name || 'Not set'],
-                ['Email', user?.email || '—'],
+                ['Store WhatsApp', userData?.store_phone || 'Not set'],
+                ['Store Email', userData?.store_email || 'Not set'],
+                ['Login Email', user?.email || '—'],
                 ['Role', userData?.role || '—'],
                 ['Status', userData?.subscription_status || 'trial'],
                 ...(trialDaysLeft !== null ? [['Trial Days Left', `${trialDaysLeft} days`]] : []),

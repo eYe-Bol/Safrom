@@ -30,10 +30,12 @@ type LpoGroup = {
 
 const fmt = (n: number) => n.toLocaleString();
 
-function buildLpoText(group: LpoGroup, storeName: string) {
+function buildLpoText(group: LpoGroup, profile: any) {
   const date = new Date().toLocaleDateString('en-KE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   let text = `📄 LOCAL PURCHASE ORDER (LPO)\n`;
-  text += `From: ${storeName}\n`;
+  text += `From: ${profile?.store_name || 'My Store'}\n`;
+  if (profile?.store_phone) text += `Store Phone: ${profile.store_phone}\n`;
+  if (profile?.store_email) text += `Store Email: ${profile.store_email}\n`;
   text += `To: ${group.supplier}\n`;
   text += `Date: ${date}\n\n`;
   text += `ITEMS REQUESTED:\n`;
@@ -53,7 +55,7 @@ export default function SituationRoomPage() {
   const [qtys, setQtys] = useState<Record<string, number>>({});
   const [sent, setSent] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState('');
-  const [storeName, setStoreName] = useState('');
+  const [storeProfile, setStoreProfile] = useState<any>(null);
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 4000); };
 
@@ -67,7 +69,7 @@ export default function SituationRoomPage() {
       const [{ data: inv }, { data: sups }, { data: profile }] = await Promise.all([
         supabase.from('inventory').select('*').eq('user_id', user.id).order('name'),
         supabase.from('suppliers').select('id, name, phone, email').eq('user_id', user.id),
-        supabase.from('users').select('store_name').eq('id', user.id).single(),
+        supabase.from('users').select('store_name, store_phone, store_email').eq('id', user.id).single(),
       ]);
 
       if (inv) {
@@ -77,7 +79,7 @@ export default function SituationRoomPage() {
         setQtys(initQtys);
       }
       if (sups) setSuppliers(sups as SupplierRecord[]);
-      if (profile?.store_name) setStoreName(profile.store_name);
+      if (profile) setStoreProfile(profile);
       setLoading(false);
     };
     fetchData();
@@ -355,7 +357,7 @@ export default function SituationRoomPage() {
             ) : lpoGroups.map(group => {
               const groupKey = group.supplier;
               const isSent = !!sent[groupKey];
-              const lpoText = buildLpoText(group, storeName || 'My Store');
+              const lpoText = buildLpoText(group, storeProfile);
               const waUrl = group.phone
                 ? `https://wa.me/${group.phone.replace(/\D/g, '')}?text=${encodeURIComponent(lpoText)}`
                 : '';
