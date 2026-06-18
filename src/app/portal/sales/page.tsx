@@ -3,6 +3,7 @@
 import { Topbar } from '@/components/Topbar';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { useStore } from '@/context/StoreContext';
 
 type InventoryItem = {
   id: string;
@@ -26,6 +27,7 @@ type SaleLog = {
 const fmt = (n: number) => `KES ${Number(n).toLocaleString()}`;
 
 export default function SalesTrackerPage() {
+  const { storeId } = useStore();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [saleLogs, setSaleLogs] = useState<SaleLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,16 +43,15 @@ export default function SalesTrackerPage() {
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
   const fetchAll = async () => {
+    if (!storeId) return;
     setLoading(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
 
     const [{ data: inv }, { data: logs }] = await Promise.all([
-      supabase.from('inventory').select('*').eq('user_id', user.id).order('name'),
+      supabase.from('inventory').select('*').eq('user_id', storeId).order('name'),
       supabase.from('sales')
         .select('id, inventory_id, units_sold, revenue, created_at, inventory(name)')
-        .eq('user_id', user.id)
+        .eq('user_id', storeId)
         .order('created_at', { ascending: false })
         .limit(100),
     ]);
@@ -69,7 +70,7 @@ export default function SalesTrackerPage() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { fetchAll(); }, [storeId]);
 
   const cats = ['All', ...Array.from(new Set(items.map(p => p.category || 'General')))];
   const filtered = items.filter(p =>
@@ -87,11 +88,9 @@ export default function SalesTrackerPage() {
   const rev = sel ? units * sel.sell_price : 0;
 
   const handleSave = async () => {
-    if (!canSave || !sel) return;
+    if (!canSave || !sel || !storeId) return;
     setSaving(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
 
     const newStock = closing;
     const { error: invErr } = await supabase.from('inventory').update({ stock: newStock }).eq('id', sel.id);
@@ -99,7 +98,7 @@ export default function SalesTrackerPage() {
     if (!invErr && units > 0) {
       // created_at is auto-set by Supabase
       await supabase.from('sales').insert({
-        user_id: user.id,
+        user_id: storeId,
         inventory_id: sel.id,
         units_sold: units,
         revenue: rev,

@@ -45,7 +45,7 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-[var(--color-teal)] flex items-center justify-center p-5">
       <div className="bg-white rounded-[20px] py-[36px] px-[30px] w-full max-w-[440px] shadow-[0_24px_64px_rgba(0,0,0,0.25)]">
         <div className="flex items-center gap-[14px] mb-[24px]">
-          <SFSBadge size={48}/>
+          <img src="/logo.png" alt="Sales From Scratch Logo" className="w-12 h-12 object-contain" />
           <div className="font-serif text-[18px] font-bold text-[var(--color-teal)]">
             Sales From Scratch
           </div>

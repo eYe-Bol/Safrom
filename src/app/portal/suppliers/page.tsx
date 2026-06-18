@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/Topbar';
 import { createClient } from '@/utils/supabase/client';
+import { useStore } from '@/context/StoreContext';
 
 type Supplier = {
   id: string;
@@ -19,6 +20,7 @@ type Supplier = {
 const CATS = ['General', 'Beverages', 'Produce', 'Meat', 'Dairy', 'Alcohol', 'Packaging'];
 
 export default function SuppliersPage() {
+  const { storeId } = useStore();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -33,15 +35,14 @@ export default function SuppliersPage() {
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
   const fetchSuppliers = async () => {
+    if (!storeId) return;
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data, error } = await supabase.from('suppliers').select('*').eq('user_id', user.id).order('name', { ascending: true });
+    const { data, error } = await supabase.from('suppliers').select('*').eq('user_id', storeId).order('name', { ascending: true });
     if (!error && data) setSuppliers(data as Supplier[]);
     setLoading(false);
   };
 
-  useEffect(() => { fetchSuppliers(); }, []);
+  useEffect(() => { fetchSuppliers(); }, [storeId]);
 
   const cats = ['All', ...Array.from(new Set(suppliers.map(s => s.category || 'General')))];
   const filtered = suppliers.filter(s =>
@@ -56,11 +57,9 @@ export default function SuppliersPage() {
   };
 
   const save = async () => {
-    if (!form.name) return;
+    if (!form.name || !storeId) return;
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const entry = { user_id: user.id, name: form.name, category: form.category, contact_person: form.contact_person, phone: form.phone, email: form.email, terms: form.terms, rating: parseInt(form.rating) || 5, products: form.products };
+    const entry = { user_id: storeId, name: form.name, category: form.category, contact_person: form.contact_person, phone: form.phone, email: form.email, terms: form.terms, rating: parseInt(form.rating) || 5, products: form.products };
     let error;
     if (editItem) {
       const res = await supabase.from('suppliers').update(entry).eq('id', editItem.id);

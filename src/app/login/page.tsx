@@ -38,6 +38,7 @@ export default function LoginPage() {
 
       <div className="bg-white rounded-[20px] py-[36px] px-[30px] w-full max-w-[400px] shadow-[0_24px_64px_rgba(0,0,0,0.25)]">
         <div className="flex flex-col items-center gap-3 mb-[28px]">
+          <img src="/logo.png" alt="Sales From Scratch Logo" className="w-16 h-16 object-contain" />
           <div className="text-center">
             <div className="font-serif text-[18px] font-bold text-[var(--color-teal)]">Sales From Scratch</div>
             <div className="text-[11px] text-[var(--color-muted)] mt-[2px]">Sign in to your account</div>

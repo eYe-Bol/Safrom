@@ -4,6 +4,7 @@ import { Topbar } from '@/components/Topbar';
 import { StatCard } from '@/components/StatCard';
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { useStore } from '@/context/StoreContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const fmt = (n: number) => `KES ${Number(n).toLocaleString()}`;
@@ -43,6 +44,7 @@ function groupByDay(sales: any[], expenses: any[], mode: 'net_sales' | 'net_prof
 }
 
 export default function DashboardPage() {
+  const { storeId } = useStore();
   const [storeName, setStoreName] = useState('');
   const [todayRevenue, setTodayRevenue] = useState(0);
   const [todayTransactions, setTodayTransactions] = useState(0);
@@ -58,9 +60,9 @@ export default function DashboardPage() {
       setLoading(true);
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || !storeId) return;
 
-      const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single();
+      const { data: profile } = await supabase.from('users').select('*').eq('id', storeId!).single();
       setStoreName(profile?.store_name || '');
 
       const startOfToday = new Date();
@@ -72,11 +74,11 @@ export default function DashboardPage() {
       fourteenDaysAgo.setHours(0, 0, 0, 0);
 
       const [{ data: allSales }, { data: allExpenses }, { data: inventory }] = await Promise.all([
-        supabase.from('sales').select('*, inventory(cost_price)').eq('user_id', user.id)
+        supabase.from('sales').select('*, inventory(cost_price)').eq('user_id', storeId!)
           .gte('created_at', fourteenDaysAgo.toISOString()).order('created_at', { ascending: false }),
-        supabase.from('expenses').select('amount, date').eq('user_id', user.id)
+        supabase.from('expenses').select('amount, date').eq('user_id', storeId!)
           .gte('date', fourteenDaysAgo.toISOString().split('T')[0]),
-        supabase.from('inventory').select('stock, reorder_level, cost_price').eq('user_id', user.id),
+        supabase.from('inventory').select('stock, reorder_level, cost_price').eq('user_id', storeId!),
       ]);
 
       // Determine mode: all products have cost_price?
@@ -114,7 +116,7 @@ export default function DashboardPage() {
       setLoading(false);
     };
     fetchDashboardData();
-  }, []);
+  }, [storeId]);
 
   const modeLabel = profitMode === 'net_profit' ? 'Net Profit' : 'Net Sales';
   const modeHint = profitMode === 'net_profit'

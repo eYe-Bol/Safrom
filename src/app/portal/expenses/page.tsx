@@ -3,6 +3,7 @@
 import { Topbar } from '@/components/Topbar';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { useStore } from '@/context/StoreContext';
 
 const CATEGORIES = ['Rent', 'Wages', 'Utilities', 'Transport', 'Supplies', 'Marketing', 'Other'];
 
@@ -18,6 +19,7 @@ type Expense = {
 const fmt = (n: number) => `KES ${Number(n).toLocaleString()}`;
 
 export default function ExpensesPage() {
+  const { storeId } = useStore();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -34,17 +36,16 @@ export default function ExpensesPage() {
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
   const fetchExpenses = async () => {
+    if (!storeId) return;
     setLoading(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
     
-    const { data } = await supabase.from('expenses').select('*').eq('user_id', user.id).order('date', { ascending: false });
+    const { data } = await supabase.from('expenses').select('*').eq('user_id', storeId).order('date', { ascending: false });
     if (data) setExpenses(data as Expense[]);
     setLoading(false);
   };
 
-  useEffect(() => { fetchExpenses(); }, []);
+  useEffect(() => { fetchExpenses(); }, [storeId]);
 
   const cats = ['All', ...CATEGORIES];
   const total = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
@@ -61,14 +62,12 @@ export default function ExpensesPage() {
   };
 
   const handleAdd = async () => {
-    if (!form.category || !form.amount) return;
+    if (!form.category || !form.amount || !storeId) return;
     setSaving(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
 
     const { error } = await supabase.from('expenses').insert({
-      user_id: user.id,
+      user_id: storeId,
       category: form.category,
       description: form.description,
       amount: parseFloat(form.amount),

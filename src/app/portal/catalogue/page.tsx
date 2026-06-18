@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/Topbar';
 import { createClient } from '@/utils/supabase/client';
+import { useStore } from '@/context/StoreContext';
 
 type Product = {
   id: string;
@@ -25,6 +26,7 @@ const margin = (p: Product) =>
 const BLANK = { name: '', category: '', supplier: '', unit: 'pcs', sell_price: '', cost_price: '', reorder_level: '' };
 
 export default function CataloguePage() {
+  const { storeId } = useStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [supplierNames, setSupplierNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,19 +41,18 @@ export default function CataloguePage() {
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
   const loadData = async () => {
+    if (!storeId) return;
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
     const [{ data: prods }, { data: sups }] = await Promise.all([
-      supabase.from('inventory').select('*').eq('user_id', user.id).order('name'),
-      supabase.from('suppliers').select('name').eq('user_id', user.id),
+      supabase.from('inventory').select('*').eq('user_id', storeId).order('name'),
+      supabase.from('suppliers').select('name').eq('user_id', storeId),
     ]);
     if (prods) setProducts(prods);
     if (sups) setSupplierNames(sups.map((s: any) => s.name));
     setLoading(false);
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [storeId]);
 
   const categories = ['All', ...Array.from(new Set(products.map(p => p.category || 'General')))];
   const filtered = products.filter(p =>
@@ -71,9 +72,9 @@ export default function CataloguePage() {
     setSaving(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user || !storeId) return;
     const entry = {
-      user_id: user.id,
+      user_id: storeId!,
       name: form.name,
       category: form.category || 'General',
       supplier: form.supplier || 'N/A',

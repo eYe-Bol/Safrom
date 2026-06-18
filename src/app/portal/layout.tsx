@@ -5,16 +5,18 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { SFSLogo } from '@/components/SFSLogo';
+import { StoreProvider, useStore } from '@/context/StoreContext';
 
 const NAV_ITEMS = [
-  { href: '/portal/dashboard',   label: 'Dashboard',                    icon: '▦' },
-  { href: '/portal/situation',   label: 'Inventory & Order Tracker',    icon: '📦' },
-  { href: '/portal/catalogue',   label: 'Product Catalogue',            icon: '🗂' },
-  { href: '/portal/suppliers',   label: 'Suppliers',                    icon: '🤝' },
-  { href: '/portal/expenses',    label: 'Expenses',                     icon: '💸' },
-  { href: '/portal/reports',     label: 'Reports',                      icon: '📊' },
-  { href: '/portal/sales',       label: 'Sales Tracker',                icon: '🧮' },
-  { href: '/portal/settings',    label: 'Settings',                     icon: '⚙️' },
+  { href: '/portal/dashboard',   label: 'Dashboard',                    icon: '▦',  ownerOnly: false },
+  { href: '/portal/situation',   label: 'Inventory & Order Tracker',    icon: '📦', ownerOnly: false },
+  { href: '/portal/catalogue',   label: 'Product Catalogue',            icon: '🗂', ownerOnly: false },
+  { href: '/portal/suppliers',   label: 'Suppliers',                    icon: '🤝', ownerOnly: false },
+  { href: '/portal/expenses',    label: 'Expenses',                     icon: '💸', ownerOnly: false },
+  { href: '/portal/reports',     label: 'Reports',                      icon: '📊', ownerOnly: false },
+  { href: '/portal/sales',       label: 'Sales Tracker',                icon: '🧮', ownerOnly: false },
+  { href: '/portal/staff',       label: 'Staff & Branches',             icon: '👥', ownerOnly: true  },
+  { href: '/portal/settings',    label: 'Settings',                     icon: '⚙️', ownerOnly: true  },
 ];
 
 function LiveClock() {
@@ -35,22 +37,19 @@ function LiveClock() {
   );
 }
 
-export default function PortalLayout({ children }: { children: React.ReactNode }) {
+function PortalLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [storeName, setStoreName] = useState<string>('');
   const [userName, setUserName] = useState<string>('');
+  
+  const { storeName, role } = useStore();
 
   useEffect(() => {
     const fetchUser = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data } = await supabase.from('users').select('store_name, role').eq('id', user.id).single();
-        if (data?.store_name) {
-          setStoreName(data.store_name);
-        }
         const name = user.user_metadata?.full_name || user.email || 'User';
         setUserName(name);
       }
@@ -73,12 +72,18 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           <span className="font-serif text-[14px] font-bold text-[var(--color-ink)] leading-tight">
             {storeName || 'Sales From Scratch'}
           </span>
+          {role === 'staff' && (
+            <span className="text-[10px] font-bold text-[var(--color-slate)] uppercase tracking-wider mt-0.5">Staff Account</span>
+          )}
         </div>
       </div>
 
       {/* Nav */}
       <nav className="flex-1 p-3 flex flex-col gap-1 overflow-y-auto">
         {NAV_ITEMS.map(item => {
+          // Hide ownerOnly routes from staff
+          if (role === 'staff' && item.ownerOnly) return null;
+
           const isActive = pathname === item.href;
           return (
             <Link
@@ -98,28 +103,15 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         })}
       </nav>
 
-        {/* Bottom: Billing + Sign Out */}
-        <div className="p-3 border-t border-[var(--color-line-lt)] flex flex-col gap-2">
-          <Link
-            href="/portal/billing"
-            onClick={() => setMobileOpen(false)}
-            className={`flex items-center gap-2.5 px-3 py-2 rounded-[10px] text-[13px] font-bold transition-all ${
-              pathname === '/portal/billing'
-                ? 'bg-[var(--color-gold)] text-white'
-                : 'text-[var(--color-gold)] bg-[var(--color-gold-pale)] hover:bg-[var(--color-gold)] hover:text-white'
-            }`}
-          >
-            <span className="text-[14px]">💳</span>
-            Subscription
-          </Link>
-
-          <button
-            onClick={handleSignOut}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-[10px] bg-[var(--color-red)] text-white font-bold text-[13px] hover:opacity-90 transition-opacity"
-          >
-            <span>🚪</span> Sign Out
-          </button>
-        </div>
+      {/* Bottom: Sign Out */}
+      <div className="p-3 border-t border-[var(--color-line-lt)]">
+        <button
+          onClick={handleSignOut}
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-[10px] bg-[var(--color-red)] text-white font-bold text-[13px] hover:opacity-90 transition-opacity"
+        >
+          <span>🚪</span> Sign Out
+        </button>
+      </div>
     </div>
   );
 
@@ -176,5 +168,13 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         {children}
       </main>
     </div>
+  );
+}
+
+export default function PortalLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <StoreProvider>
+      <PortalLayoutInner>{children}</PortalLayoutInner>
+    </StoreProvider>
   );
 }

@@ -3,6 +3,7 @@
 import { Topbar } from '@/components/Topbar';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { useStore } from '@/context/StoreContext';
 
 type InvItem = {
   id: string;
@@ -115,6 +116,7 @@ export default function SituationRoomPage() {
   const [manualOrders, setManualOrders] = useState<string[]>([]);
   const [toast, setToast] = useState('');
   const [storeProfile, setStoreProfile] = useState<any>(null);
+  const { storeId } = useStore();
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 4000); };
 
@@ -124,11 +126,12 @@ export default function SituationRoomPage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      if (!storeId) return;
 
       const [{ data: inv }, { data: sups }, { data: profile }] = await Promise.all([
-        supabase.from('inventory').select('*').eq('user_id', user.id).order('name'),
-        supabase.from('suppliers').select('id, name, phone, email').eq('user_id', user.id),
-        supabase.from('users').select('store_name, store_phone, store_email').eq('id', user.id).single(),
+        supabase.from('inventory').select('*').eq('user_id', storeId!).order('name'),
+        supabase.from('suppliers').select('id, name, phone, email').eq('user_id', storeId!),
+        supabase.from('users').select('store_name, store_phone, store_email').eq('id', storeId!).single(),
       ]);
 
       if (inv) {
@@ -142,7 +145,7 @@ export default function SituationRoomPage() {
       setLoading(false);
     };
     fetchData();
-  }, []);
+  }, [storeId]);
 
   const updateStock = async (id: string, currentStock: number, change: number) => {
     const newStock = Math.max(0, currentStock + change);
