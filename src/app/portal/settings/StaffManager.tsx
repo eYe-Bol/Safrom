@@ -9,31 +9,67 @@ type StaffMember = {
   full_name: string;
   email: string;
   branch_name: string;
+  staff_role: string;
   is_active: boolean;
 };
 
+type BranchProfile = {
+  branch_name: string;
+  branch_display_name: string;
+  branch_phone: string;
+  branch_email: string;
+  branch_address: string;
+};
+
 type BranchConfig = {
-  name: string;
+  key: string;
   icon: string;
   maxSlots: number;
   requiresPlan: '999' | '1499';
 };
 
-const BRANCHES: BranchConfig[] = [
-  { name: 'Main Branch', icon: '🏪', maxSlots: 2, requiresPlan: '999' },
-  { name: 'Branch 2',    icon: '🏬', maxSlots: 1, requiresPlan: '1499' },
-  { name: 'Branch 3',    icon: '🏢', maxSlots: 1, requiresPlan: '1499' },
+const BRANCH_CONFIGS: BranchConfig[] = [
+  { key: 'Main Branch', icon: '🏪', maxSlots: 2, requiresPlan: '999' },
+  { key: 'Branch 2',    icon: '🏬', maxSlots: 1, requiresPlan: '1499' },
+  { key: 'Branch 3',    icon: '🏢', maxSlots: 1, requiresPlan: '1499' },
 ];
 
+const STAFF_ROLES = [
+  'Sales Staff',
+  'Cashier',
+  'Store Manager',
+  'Inventory Clerk',
+  'Supervisor',
+  'Accountant',
+  'Delivery Staff',
+  'Security',
+  'Other',
+];
+
+const BLANK_PROFILE: BranchProfile = {
+  branch_name: '',
+  branch_display_name: '',
+  branch_phone: '',
+  branch_email: '',
+  branch_address: '',
+};
+
 export function StaffManager() {
-  const { storeId, isTrial, subscriptionPlan } = useStore();
+  const { storeId, isTrial, subscriptionPlan, storeName } = useStore();
   const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [branchProfiles, setBranchProfiles] = useState<Record<string, BranchProfile>>({});
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<{ open: boolean; branch: string }>({ open: false, branch: '' });
-  const [form, setForm] = useState({ full_name: '', email: '', password: '' });
+  const [branchModal, setBranchModal] = useState<{ open: boolean; branch: string }>({ open: false, branch: '' });
+  const [form, setForm] = useState({ full_name: '', email: '', password: '', staff_role: 'Sales Staff' });
+  const [branchForm, setBranchForm] = useState<BranchProfile>(BLANK_PROFILE);
   const [saving, setSaving] = useState(false);
+  const [savingBranch, setSavingBranch] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [toast, setToast] = useState('');
+
+  const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
   const canAccess999 = isTrial || subscriptionPlan === '999' || subscriptionPlan === '1499';
   const canAccess1499 = isTrial || subscriptionPlan === '1499';
@@ -43,22 +79,50 @@ export function StaffManager() {
     const supabase = createClient();
     const { data } = await supabase
       .from('users')
-      .select('id, full_name, email, branch_name, is_active')
+      .select('id, full_name, email, branch_name, staff_role, is_active')
       .eq('owner_id', storeId)
       .eq('role', 'staff');
     setStaff(data || []);
     setLoading(false);
   };
 
+  const fetchBranchProfiles = async () => {
+    if (!storeId) return;
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('branch_profiles')
+      .select('*')
+      .eq('owner_id', storeId);
+
+    const map: Record<string, BranchProfile> = {};
+    (data || []).forEach((bp: any) => {
+      map[bp.branch_name] = bp;
+    });
+    setBranchProfiles(map);
+  };
+
   useEffect(() => {
-    if (storeId) fetchStaff();
+    if (storeId) {
+      fetchStaff();
+      fetchBranchProfiles();
+    }
   }, [storeId]);
 
   const openModal = (branch: string) => {
-    setForm({ full_name: '', email: '', password: '' });
+    setForm({ full_name: '', email: '', password: '', staff_role: 'Sales Staff' });
     setError('');
     setSuccess('');
     setModal({ open: true, branch });
+  };
+
+  const openBranchModal = (branch: string) => {
+    const existing = branchProfiles[branch];
+    setBranchForm(existing || {
+      ...BLANK_PROFILE,
+      branch_name: branch,
+      branch_display_name: branch === 'Main Branch' ? (storeName || branch) : branch,
+    });
+    setBranchModal({ open: true, branch });
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -75,6 +139,7 @@ export function StaffManager() {
         password: form.password,
         full_name: form.full_name,
         branch_name: modal.branch,
+        staff_role: form.staff_role,
       }),
     });
 
@@ -93,11 +158,39 @@ export function StaffManager() {
     }
   };
 
+  const handleSaveBranchProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!storeId) return;
+    setSavingBranch(true);
+    const supabase = createClient();
+
+    const payload = {
+      owner_id: storeId,
+      branch_name: branchModal.branch,
+      branch_display_name: branchForm.branch_display_name || branchModal.branch,
+      branch_phone: branchForm.branch_phone,
+      branch_email: branchForm.branch_email,
+      branch_address: branchForm.branch_address,
+    };
+
+    const { error } = await supabase
+      .from('branch_profiles')
+      .upsert(payload, { onConflict: 'owner_id,branch_name' });
+
+    setSavingBranch(false);
+
+    if (error) {
+      fire(`Error: ${error.message}`);
+    } else {
+      setBranchProfiles(prev => ({ ...prev, [branchModal.branch]: { ...branchForm, branch_name: branchModal.branch } }));
+      fire(`✅ ${branchModal.branch} profile saved!`);
+      setBranchModal({ open: false, branch: '' });
+    }
+  };
+
   const handleRemove = async (staff_id: string, branch_name: string) => {
     if (!confirm(`Are you sure you want to permanently delete this staff member from ${branch_name}?`)) return;
-    const supabase = createClient();
-    
-    // Call our DELETE endpoint
+
     const res = await fetch('/api/staff', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
@@ -106,8 +199,9 @@ export function StaffManager() {
 
     if (res.ok) {
       setStaff(staff.filter(s => s.id !== staff_id));
+      fire('Staff member removed.');
     } else {
-      alert('Failed to remove staff member. Ensure you are the owner.');
+      fire('Failed to remove staff member.');
     }
   };
 
@@ -117,11 +211,12 @@ export function StaffManager() {
       .from('users')
       .update({ is_active: !current_active })
       .eq('id', staff_id);
-    
+
     if (!error) {
       setStaff(staff.map(s => s.id === staff_id ? { ...s, is_active: !current_active } : s));
+      fire(!current_active ? '✅ Staff member activated' : '⛔ Staff member deactivated');
     } else {
-      alert('Failed to update status');
+      fire('Failed to update status');
     }
   };
 
@@ -129,29 +224,60 @@ export function StaffManager() {
 
   return (
     <div className="space-y-4">
-      {/* Branches List */}
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-[9999] bg-[var(--color-ink)] text-white px-4 py-3 rounded-xl text-[13px] font-semibold shadow-[0_8px_28px_rgba(0,0,0,0.22)] border-l-4 border-[var(--color-teal)]">
+          {toast}
+        </div>
+      )}
+
+      {/* Branches Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {BRANCHES.map(branch => {
-          const branchStaff = staff.filter(s => s.branch_name === branch.name);
+        {BRANCH_CONFIGS.map(branch => {
+          const branchStaff = staff.filter(s => s.branch_name === branch.key);
           const hasAccess = branch.requiresPlan === '999' ? canAccess999 : canAccess1499;
+          const profile = branchProfiles[branch.key];
+          const displayName = profile?.branch_display_name || (branch.key === 'Main Branch' ? storeName : branch.key) || branch.key;
 
           return (
-            <div key={branch.name} className={`bg-white rounded-xl p-5 border ${hasAccess ? 'border-[var(--color-teal)]/30' : 'border-[var(--color-line-lt)] opacity-60'} flex flex-col relative`}>
+            <div key={branch.key} className={`bg-white rounded-xl p-5 border ${hasAccess ? 'border-[var(--color-teal)]/30' : 'border-[var(--color-line-lt)] opacity-60'} flex flex-col relative`}>
               {!hasAccess && (
                 <div className="absolute top-3 right-3 bg-[var(--color-canvas)] border border-[var(--color-line)] text-[10px] font-bold px-2 py-0.5 rounded-full text-[var(--color-muted)] uppercase tracking-wider">
                   Requires {branch.requiresPlan} Plan
                 </div>
               )}
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-[var(--color-canvas)] flex items-center justify-center text-[20px] shadow-inner">
-                  {branch.icon}
-                </div>
-                <div>
-                  <h2 className="font-serif text-[15px] font-bold text-[var(--color-ink)]">{branch.name}</h2>
-                  <div className="text-[12px] text-[var(--color-muted)] font-semibold mt-0.5">
-                    {branchStaff.length} / {branch.maxSlots} Slots Used
+
+              {/* Branch Header */}
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[var(--color-canvas)] flex items-center justify-center text-[20px] shadow-inner">
+                    {branch.icon}
+                  </div>
+                  <div>
+                    <h2 className="font-serif text-[15px] font-bold text-[var(--color-ink)]">{displayName}</h2>
+                    {displayName !== branch.key && (
+                      <div className="text-[10px] text-[var(--color-muted)] font-medium">{branch.key}</div>
+                    )}
                   </div>
                 </div>
+                {hasAccess && (
+                  <button
+                    onClick={() => openBranchModal(branch.key)}
+                    className="text-[11px] font-bold text-[var(--color-teal)] bg-[var(--color-teal-bg)] px-2 py-1 rounded-lg hover:opacity-80 transition-opacity"
+                    title="Edit branch profile"
+                  >
+                    ✏️ Profile
+                  </button>
+                )}
+              </div>
+
+              {/* Branch profile info preview */}
+              {profile?.branch_phone && (
+                <div className="text-[11px] text-[var(--color-muted)] mb-2 mt-0.5">📞 {profile.branch_phone}{profile.branch_address ? ` · 📍 ${profile.branch_address}` : ''}</div>
+              )}
+
+              <div className="text-[12px] text-[var(--color-muted)] font-semibold mb-3">
+                {branchStaff.length} / {branch.maxSlots} Slots Used
               </div>
 
               {/* Slot indicators */}
@@ -165,15 +291,21 @@ export function StaffManager() {
               <div className="flex-1 space-y-2 mb-4">
                 {branchStaff.map(member => (
                   <div key={member.id} className={`p-2.5 rounded-lg border ${member.is_active ? 'bg-[var(--color-canvas)] border-[var(--color-line-lt)]' : 'bg-red-50 border-red-100 opacity-70'} flex flex-col`}>
-                    <div className="flex justify-between items-start mb-1">
+                    <div className="flex justify-between items-start mb-0.5">
                       <div className="text-[13px] font-bold text-[var(--color-ink)] truncate">{member.full_name}</div>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1 shrink-0 ${member.is_active ? 'bg-[var(--color-emerald-bg)] text-[var(--color-emerald)]' : 'bg-red-100 text-red-500'}`}>
+                        {member.is_active ? 'Active' : 'Inactive'}
+                      </span>
                     </div>
-                    <div className="text-[11px] text-[var(--color-muted)] truncate mb-2">{member.email}</div>
-                    <div className="flex gap-2 mt-auto">
-                      <button onClick={() => handleToggleActive(member.id, member.is_active)} className="text-[11px] font-bold py-1 px-2 rounded bg-white border border-[var(--color-line)] shadow-sm flex-1 text-center">
-                        {member.is_active ? 'Inactivate' : 'Activate'}
+                    <div className="text-[10px] text-[var(--color-muted)] truncate">{member.email}</div>
+                    {member.staff_role && (
+                      <div className="text-[10px] font-semibold text-[var(--color-teal)] mt-0.5">👤 {member.staff_role}</div>
+                    )}
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={() => handleToggleActive(member.id, member.is_active)} className={`text-[11px] font-bold py-1 px-2 rounded border shadow-sm flex-1 text-center transition-colors ${member.is_active ? 'bg-white border-orange-200 text-orange-600 hover:bg-orange-50' : 'bg-white border-[var(--color-teal)]/30 text-[var(--color-teal)] hover:bg-[var(--color-teal-bg)]'}`}>
+                        {member.is_active ? 'Deactivate' : 'Activate'}
                       </button>
-                      <button onClick={() => handleRemove(member.id, branch.name)} className="text-[11px] font-bold py-1 px-2 rounded bg-white border border-red-200 text-red-600 shadow-sm hover:bg-red-50">
+                      <button onClick={() => handleRemove(member.id, branch.key)} className="text-[11px] font-bold py-1 px-2 rounded bg-white border border-red-200 text-red-600 shadow-sm hover:bg-red-50">
                         Delete
                       </button>
                     </div>
@@ -181,16 +313,16 @@ export function StaffManager() {
                 ))}
                 {branchStaff.length === 0 && (
                   <div className="text-[12px] text-[var(--color-muted)] text-center py-4 border border-dashed border-[var(--color-line)] rounded-lg">
-                    Empty slot
+                    No staff assigned
                   </div>
                 )}
               </div>
 
               {/* Add Button */}
-              <button 
+              <button
                 disabled={!hasAccess || branchStaff.length >= branch.maxSlots}
-                onClick={() => openModal(branch.name)}
-                className="mt-auto w-full py-2.5 rounded-lg border-2 border-dashed border-[var(--color-teal)] text-[var(--color-teal)] font-bold text-[13px] hover:bg-[var(--color-teal-bg)] disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                onClick={() => openModal(branch.key)}
+                className="mt-auto w-full py-2.5 rounded-lg border-2 border-dashed border-[var(--color-teal)] text-[var(--color-teal)] font-bold text-[13px] hover:bg-[var(--color-teal-bg)] disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
               >
                 + Add Staff
               </button>
@@ -199,12 +331,15 @@ export function StaffManager() {
         })}
       </div>
 
-      {/* Modal */}
+      {/* Add Staff Modal */}
       {modal.open && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[var(--color-ink)]/40 backdrop-blur-sm" onClick={() => setModal({ open: false, branch: '' })}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-[400px] shadow-[0_24px_64px_rgba(0,0,0,0.2)]" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-[420px] shadow-[0_24px_64px_rgba(0,0,0,0.2)]" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-5">
-              <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)]">Add Staff to {modal.branch}</h3>
+              <div>
+                <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)]">Add Staff Member</h3>
+                <p className="text-[12px] text-[var(--color-muted)] mt-0.5">Assigning to: <strong>{modal.branch}</strong></p>
+              </div>
               <button onClick={() => setModal({ open: false, branch: '' })} className="text-[20px] text-[var(--color-muted)] hover:text-[var(--color-ink)]">&times;</button>
             </div>
 
@@ -217,6 +352,12 @@ export function StaffManager() {
                 <input required value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="John Doe" />
               </div>
               <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Job Role / Position</label>
+                <select value={form.staff_role} onChange={e => setForm({...form, staff_role: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)] cursor-pointer">
+                  {STAFF_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Email (For Login)</label>
                 <input required type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="john@example.com" />
               </div>
@@ -225,8 +366,49 @@ export function StaffManager() {
                 <input required type="password" minLength={6} value={form.password} onChange={e => setForm({...form, password: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="Min 6 characters" />
               </div>
 
-              <button disabled={saving} type="submit" className="w-full py-3 mt-2 bg-[var(--color-teal)] text-white font-bold text-[14px] rounded-xl shadow-[0_4px_14px_rgba(20,83,88,0.25)] hover:bg-[#104347] disabled:opacity-50">
-                {saving ? 'Creating...' : 'Create Account'}
+              <button disabled={saving} type="submit" className="w-full py-3 mt-2 bg-[var(--color-teal)] text-white font-bold text-[14px] rounded-xl shadow-[0_4px_14px_rgba(20,83,88,0.25)] hover:bg-[#104347] disabled:opacity-50 transition-colors">
+                {saving ? 'Creating Account...' : 'Create Account'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Branch Profile Modal */}
+      {branchModal.open && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[var(--color-ink)]/40 backdrop-blur-sm" onClick={() => setBranchModal({ open: false, branch: '' })}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-[440px] shadow-[0_24px_64px_rgba(0,0,0,0.2)]" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-5">
+              <div>
+                <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)]">{branchModal.branch} Profile</h3>
+                <p className="text-[12px] text-[var(--color-muted)] mt-0.5">Set contact info for this branch</p>
+              </div>
+              <button onClick={() => setBranchModal({ open: false, branch: '' })} className="text-[20px] text-[var(--color-muted)] hover:text-[var(--color-ink)]">&times;</button>
+            </div>
+
+            <form onSubmit={handleSaveBranchProfile} className="space-y-4">
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Display Name</label>
+                <input value={branchForm.branch_display_name} onChange={e => setBranchForm({...branchForm, branch_display_name: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder={branchModal.branch === 'Main Branch' ? storeName || 'Main Branch' : branchModal.branch} />
+                {branchModal.branch === 'Main Branch' && (
+                  <p className="text-[11px] text-[var(--color-muted)] mt-1">Defaults to your store name. Change here to show a custom label.</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Branch Phone</label>
+                <input type="tel" value={branchForm.branch_phone} onChange={e => setBranchForm({...branchForm, branch_phone: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="+254 700 000 000" />
+              </div>
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Branch Email</label>
+                <input type="email" value={branchForm.branch_email} onChange={e => setBranchForm({...branchForm, branch_email: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="branch@example.com" />
+              </div>
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Branch Address</label>
+                <input value={branchForm.branch_address} onChange={e => setBranchForm({...branchForm, branch_address: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="e.g. Shop 5, Town Centre" />
+              </div>
+
+              <button disabled={savingBranch} type="submit" className="w-full py-3 bg-[var(--color-teal)] text-white font-bold text-[14px] rounded-xl shadow-[0_4px_14px_rgba(20,83,88,0.25)] hover:bg-[#104347] disabled:opacity-50 transition-colors">
+                {savingBranch ? 'Saving...' : '💾 Save Branch Profile'}
               </button>
             </form>
           </div>

@@ -112,6 +112,7 @@ export default function SituationRoomPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'overview' | 'stock' | 'alerts' | 'expiry'>('overview');
   const [stockSearch, setStockSearch] = useState('');
+  const [expirySearch, setExpirySearch] = useState('');
   const [qtys, setQtys] = useState<Record<string, number>>({});
   const [sent, setSent] = useState<Record<string, boolean>>({});
   const [manualOrders, setManualOrders] = useState<string[]>([]);
@@ -148,13 +149,24 @@ export default function SituationRoomPage() {
     fetchData();
   }, [storeId]);
 
-  const updateStock = async (id: string, currentStock: number, change: number) => {
-    const newStock = Math.max(0, currentStock + change);
+  const [loggedItems, setLoggedItems] = useState<Record<string, number>>({});
+
+  const updateStock = async (id: string, currentStock: number, delta: number) => {
+    const newStock = Math.max(0, currentStock + delta);
     if (newStock === currentStock) return;
-    setItems(prev => prev.map(p => p.id === id ? { ...p, stock: newStock } : p));
     const supabase = createClient();
     await supabase.from('inventory').update({ stock: newStock }).eq('id', id);
-    fire('✓ Stock updated');
+    setItems(prev => prev.map(i => i.id === id ? { ...i, stock: newStock } : i));
+    setLoggedItems(prev => ({ ...prev, [id]: newStock }));
+    fire(`✓ Stock updated to ${newStock}`);
+  };
+
+  const updateExpiryDate = async (id: string, dateStr: string) => {
+    const supabase = createClient();
+    const val = dateStr || null;
+    await supabase.from('inventory').update({ expiry_date: val }).eq('id', id);
+    setItems(items.map(i => i.id === id ? { ...i, expiry_date: val } : i));
+    fire('Expiry date updated');
   };
 
   const addToOrder = (id: string) => {
@@ -210,17 +222,27 @@ export default function SituationRoomPage() {
   const thirtyDaysFromNow = new Date();
   thirtyDaysFromNow.setDate(now.getDate() + 30);
   
-  const expiringItems = items.filter(i => {
+  const expiringAlertItems = items.filter(i => {
     if (!i.expiry_date) return false;
     const expDate = new Date(i.expiry_date);
     return expDate <= thirtyDaysFromNow;
-  }).sort((a, b) => new Date(a.expiry_date!).getTime() - new Date(b.expiry_date!).getTime());
+  });
+
+  const expiryList = items.filter(p => 
+    p.name.toLowerCase().includes(expirySearch.toLowerCase()) ||
+    (p.category || '').toLowerCase().includes(expirySearch.toLowerCase())
+  ).sort((a, b) => {
+    if (!a.expiry_date && !b.expiry_date) return 0;
+    if (!a.expiry_date) return 1;
+    if (!b.expiry_date) return -1;
+    return new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
+  });
 
   const TABS = [
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'stock', label: 'Stock Manager', icon: '📦' },
     { id: 'alerts', label: 'Alerts & Orders', icon: '⚡', badge: alertItems.length },
-    { id: 'expiry', label: 'Expiry Tracking', icon: '⏳', badge: expiringItems.length },
+    { id: 'expiry', label: 'Expiry Tracking', icon: '⏳', badge: expiringAlertItems.length },
   ] as const;
 
   return (
@@ -377,10 +399,14 @@ export default function SituationRoomPage() {
                     ) : filteredStock.map(p => {
                       const isOut = p.stock === 0;
                       const isLow = !isOut && p.stock <= p.reorder_level;
+                      const isLogged = loggedItems[p.id] !== undefined;
                       return (
-                        <tr key={p.id} className="border-b border-[var(--color-line-lt)] last:border-0 hover:bg-[#fafafa] transition-colors">
+                        <tr key={p.id} className={`border-b border-[var(--color-line-lt)] last:border-0 transition-colors ${isLogged ? 'bg-[var(--color-teal-bg)]/40' : 'hover:bg-[#fafafa]'}`}>
                           <td className="px-4 py-3">
-                            <div className="font-semibold text-[13px] text-[var(--color-ink)]">{p.name}</div>
+                            <div className="flex items-center gap-2">
+                              <div className="font-semibold text-[13px] text-[var(--color-ink)]">{p.name}</div>
+                              {isLogged && <span className="text-[9px] font-bold bg-[var(--color-emerald-bg)] text-[var(--color-emerald)] px-1.5 py-0.5 rounded-full border border-[var(--color-emerald)]/20">✓ Logged</span>}
+                            </div>
                           </td>
                           <td className="px-4 py-3">
                             <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-1 rounded-full">{p.category || 'General'}</span>
@@ -594,31 +620,53 @@ export default function SituationRoomPage() {
         {/* ─── TAB: EXPIRY TRACKING ─── */}
         {tab === 'expiry' && (
           <div className="bg-white rounded-xl border border-[var(--color-line-lt)] overflow-hidden shadow-sm">
-            <div className="p-4 border-b border-[var(--color-line-lt)]">
-              <h2 className="font-serif text-[16px] font-bold text-[var(--color-ink)]">Expiring within 30 days</h2>
+            <div className="p-4 border-b border-[var(--color-line-lt)] flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+              <div>
+                <h2 className="font-serif text-[16px] font-bold text-[var(--color-ink)]">Expiry Tracking</h2>
+                <p className="text-[12px] text-[var(--color-muted)] mt-0.5">Record and monitor product expiration dates</p>
+              </div>
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={expirySearch}
+                onChange={e => setExpirySearch(e.target.value)}
+                className="px-3 py-2 border border-[var(--color-line)] rounded-xl text-[13px] outline-none focus:border-[var(--color-teal)] w-full sm:w-[250px]"
+              />
             </div>
-            {expiringItems.length === 0 ? (
+            {expiryList.length === 0 ? (
               <div className="p-8 text-center">
-                <div className="text-[40px] mb-3">✅</div>
-                <h3 className="font-serif text-[16px] font-bold text-[var(--color-ink)]">No products expiring soon</h3>
-                <p className="text-[13px] text-[var(--color-muted)]">Your inventory is fresh.</p>
+                <div className="text-[40px] mb-3">📭</div>
+                <h3 className="font-serif text-[16px] font-bold text-[var(--color-ink)]">No products found</h3>
+                <p className="text-[13px] text-[var(--color-muted)]">Check your search filter.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[600px] text-left border-collapse">
+                <table className="w-full min-w-[700px] text-left border-collapse">
                   <thead>
                     <tr className="bg-[var(--color-canvas)] border-b border-[var(--color-line-lt)] text-[11px] uppercase tracking-wider text-[var(--color-muted)] font-bold">
                       <th className="p-3 pl-4">Product</th>
                       <th className="p-3">Category</th>
                       <th className="p-3">Current Stock</th>
-                      <th className="p-3 pr-4">Expiry Date</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3 pr-4">Set Expiry Date</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--color-line-lt)]">
-                    {expiringItems.map(item => {
-                      const expDate = new Date(item.expiry_date!);
-                      const daysLeft = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                      const isExpired = daysLeft < 0;
+                    {expiryList.map(item => {
+                      let statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-500 border border-gray-200">Not Set</span>;
+                      
+                      if (item.expiry_date) {
+                        const expDate = new Date(item.expiry_date);
+                        const daysLeft = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                        
+                        if (daysLeft < 0) {
+                          statusBadge = <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-50 text-[var(--color-red)] border border-red-100">Expired ({Math.abs(daysLeft)}d ago)</span>;
+                        } else if (daysLeft <= 30) {
+                          statusBadge = <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-orange-50 text-[var(--color-gold)] border border-orange-100">Expiring Soon ({daysLeft}d)</span>;
+                        } else {
+                          statusBadge = <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-[var(--color-emerald-bg)] text-[var(--color-emerald)] border border-[var(--color-emerald)]/20">Fresh ({daysLeft}d)</span>;
+                        }
+                      }
 
                       return (
                         <tr key={item.id} className="hover:bg-gray-50/50">
@@ -627,10 +675,16 @@ export default function SituationRoomPage() {
                           </td>
                           <td className="p-3 text-[13px] text-[var(--color-slate)]">{item.category}</td>
                           <td className="p-3 text-[13px] font-semibold text-[var(--color-slate)]">{fmt(item.stock)}</td>
+                          <td className="p-3">
+                            {statusBadge}
+                          </td>
                           <td className="p-3 pr-4">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${isExpired ? 'bg-red-50 text-[var(--color-red)] border border-red-100' : 'bg-orange-50 text-[var(--color-gold)] border border-orange-100'}`}>
-                              {expDate.toLocaleDateString()} {isExpired ? '(Expired)' : `(${daysLeft} days)`}
-                            </span>
+                            <input 
+                              type="date"
+                              value={item.expiry_date || ''}
+                              onChange={(e) => updateExpiryDate(item.id, e.target.value)}
+                              className="px-2 py-1.5 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]"
+                            />
                           </td>
                         </tr>
                       );
