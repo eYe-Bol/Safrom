@@ -81,11 +81,11 @@ export default function DashboardPage() {
       fourteenDaysAgo.setHours(0, 0, 0, 0);
 
       const [{ data: allSales }, { data: allExpenses }, { data: inventory }] = await Promise.all([
-        supabase.from('sales').select('*, inventory(cost_price)').eq('user_id', storeId!)
+        supabase.from('sales').select('*, inventory(cost_price)').eq('user_id', storeId!).eq('branch_name', branchName || 'Main Branch')
           .gte('created_at', fourteenDaysAgo.toISOString()).order('created_at', { ascending: false }),
-        supabase.from('expenses').select('amount, date').eq('user_id', storeId!)
+        supabase.from('expenses').select('amount, date').eq('user_id', storeId!).eq('branch_name', branchName || 'Main Branch')
           .gte('date', fourteenDaysAgo.toISOString().split('T')[0]),
-        supabase.from('inventory').select('stock, reorder_level, cost_price').eq('user_id', storeId!),
+        supabase.from('inventory').select('stock, reorder_level, cost_price').eq('user_id', storeId!).eq('branch_name', branchName || 'Main Branch'),
       ]);
 
       // Determine mode: all products have cost_price?
@@ -123,7 +123,7 @@ export default function DashboardPage() {
       setLoading(false);
     };
     fetchDashboardData();
-  }, [storeId]);
+  }, [storeId, branchName]);
 
   const modeLabel = profitMode === 'net_profit' ? 'Net Profit' : 'Net Sales';
   const modeHint = profitMode === 'net_profit'

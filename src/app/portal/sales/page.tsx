@@ -27,7 +27,7 @@ type SaleLog = {
 const fmt = (n: number) => `KES ${Number(n).toLocaleString()}`;
 
 export default function SalesTrackerPage() {
-  const { storeId } = useStore();
+  const { storeId, branchName } = useStore();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [saleLogs, setSaleLogs] = useState<SaleLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,11 +48,13 @@ export default function SalesTrackerPage() {
     setLoading(true);
     const supabase = createClient();
 
+    const curBranch = branchName || 'Main Branch';
     const [{ data: inv }, { data: logs }] = await Promise.all([
-      supabase.from('inventory').select('*').eq('user_id', storeId).order('name'),
+      supabase.from('inventory').select('*').eq('user_id', storeId).eq('branch_name', curBranch).order('name'),
       supabase.from('sales')
         .select('id, inventory_id, units_sold, revenue, created_at, inventory(name)')
         .eq('user_id', storeId)
+        .eq('branch_name', curBranch)
         .order('created_at', { ascending: false })
         .limit(100),
     ]);
@@ -80,7 +82,7 @@ export default function SalesTrackerPage() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchAll(); }, [storeId]);
+  useEffect(() => { fetchAll(); }, [storeId, branchName]);
 
   const cats = ['All', ...Array.from(new Set(items.map(p => p.category || 'General')))];
   const filtered = items.filter(p =>
@@ -112,6 +114,7 @@ export default function SalesTrackerPage() {
         inventory_id: sel.id,
         units_sold: units,
         revenue: rev,
+        branch_name: branchName || 'Main Branch',
       });
     }
 

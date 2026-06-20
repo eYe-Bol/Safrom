@@ -19,7 +19,7 @@ type Expense = {
 const fmt = (n: number) => `KES ${Number(n).toLocaleString()}`;
 
 export default function ExpensesPage() {
-  const { storeId } = useStore();
+  const { storeId, branchName } = useStore();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -40,12 +40,12 @@ export default function ExpensesPage() {
     setLoading(true);
     const supabase = createClient();
     
-    const { data } = await supabase.from('expenses').select('*').eq('user_id', storeId).order('date', { ascending: false });
+    const { data } = await supabase.from('expenses').select('*').eq('user_id', storeId).eq('branch_name', branchName || 'Main Branch').order('date', { ascending: false });
     if (data) setExpenses(data as Expense[]);
     setLoading(false);
   };
 
-  useEffect(() => { fetchExpenses(); }, [storeId]);
+  useEffect(() => { fetchExpenses(); }, [storeId, branchName]);
 
   const cats = ['All', ...CATEGORIES];
   const total = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
@@ -72,6 +72,7 @@ export default function ExpensesPage() {
       description: form.description,
       amount: parseFloat(form.amount),
       date: form.date,
+      branch_name: branchName || 'Main Branch',
     });
 
     if (!error) {

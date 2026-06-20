@@ -53,7 +53,7 @@ const defaultFrom = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(
 const defaultTo = new Date().toISOString().split('T')[0];
 
 export default function ReportsPage() {
-  const { storeId } = useStore();
+  const { storeId, branchName } = useStore();
   const [sales, setSales] = useState<SaleRow[]>([]);
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,18 +71,21 @@ export default function ReportsPage() {
 
     const toEnd = dateTo + 'T23:59:59';
 
+    const curBranch = branchName || 'Main Branch';
     const [{ data: salesData }, { data: expData }, { data: inventory }] = await Promise.all([
       supabase.from('sales').select('*, inventory(name, category, cost_price, sell_price)')
         .eq('user_id', storeId!)
+        .eq('branch_name', curBranch)
         .gte('created_at', dateFrom + 'T00:00:00')
         .lte('created_at', toEnd)
         .order('created_at', { ascending: false }),
       supabase.from('expenses').select('amount, category, date')
         .eq('user_id', storeId!)
+        .eq('branch_name', curBranch)
         .gte('date', dateFrom)
         .lte('date', dateTo)
         .order('date', { ascending: false }),
-      supabase.from('inventory').select('cost_price').eq('user_id', storeId!),
+      supabase.from('inventory').select('cost_price').eq('user_id', storeId!).eq('branch_name', curBranch),
     ]);
 
     if (salesData) setSales(salesData as unknown as SaleRow[]);
@@ -95,9 +98,9 @@ export default function ReportsPage() {
     setProfitMode(allHaveCost ? 'net_profit' : 'net_sales');
 
     setLoading(false);
-  }, [dateFrom, dateTo, storeId]);
+  }, [dateFrom, dateTo, storeId, branchName]);
 
-  useEffect(() => { fetchData(); }, [storeId]); // initial load with defaults
+  useEffect(() => { fetchData(); }, [storeId, branchName]); // initial load with defaults
 
   const filteredSales = sales.filter(s => catF === 'All' || s.inventory?.category === catF);
 

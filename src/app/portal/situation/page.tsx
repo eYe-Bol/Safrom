@@ -119,7 +119,7 @@ export default function SituationRoomPage() {
   const [manualOrders, setManualOrders] = useState<string[]>([]);
   const [toast, setToast] = useState('');
   const [storeProfile, setStoreProfile] = useState<any>(null);
-  const { storeId } = useStore();
+  const { storeId, branchName } = useStore();
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 4000); };
 
@@ -131,9 +131,10 @@ export default function SituationRoomPage() {
       if (!user) return;
       if (!storeId) return;
 
+      const curBranch = branchName || 'Main Branch';
       const [{ data: inv }, { data: sups }, { data: profile }] = await Promise.all([
-        supabase.from('inventory').select('*').eq('user_id', storeId!).order('name'),
-        supabase.from('suppliers').select('id, name, phone, email').eq('user_id', storeId!),
+        supabase.from('inventory').select('*').eq('user_id', storeId!).eq('branch_name', curBranch).order('name'),
+        supabase.from('suppliers').select('id, name, phone, email').eq('user_id', storeId!).eq('branch_name', curBranch),
         supabase.from('users').select('store_name, store_phone, store_email').eq('id', storeId!).single(),
       ]);
 
@@ -148,7 +149,7 @@ export default function SituationRoomPage() {
       setLoading(false);
     };
     fetchData();
-  }, [storeId]);
+  }, [storeId, branchName]);
 
   const [loggedItems, setLoggedItems] = useState<Record<string, number>>({});
 

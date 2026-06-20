@@ -20,7 +20,7 @@ type Supplier = {
 const CATS = ['General', 'Beverages', 'Produce', 'Meat', 'Dairy', 'Alcohol', 'Packaging'];
 
 export default function SuppliersPage() {
-  const { storeId } = useStore();
+  const { storeId, branchName } = useStore();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -37,12 +37,12 @@ export default function SuppliersPage() {
   const fetchSuppliers = async () => {
     if (!storeId) return;
     const supabase = createClient();
-    const { data, error } = await supabase.from('suppliers').select('*').eq('user_id', storeId).order('name', { ascending: true });
+    const { data, error } = await supabase.from('suppliers').select('*').eq('user_id', storeId).eq('branch_name', branchName || 'Main Branch').order('name', { ascending: true });
     if (!error && data) setSuppliers(data as Supplier[]);
     setLoading(false);
   };
 
-  useEffect(() => { fetchSuppliers(); }, [storeId]);
+  useEffect(() => { fetchSuppliers(); }, [storeId, branchName]);
 
   const cats = ['All', ...Array.from(new Set(suppliers.map(s => s.category || 'General')))];
   const filtered = suppliers.filter(s =>
@@ -59,7 +59,7 @@ export default function SuppliersPage() {
   const save = async () => {
     if (!form.name || !storeId) return;
     const supabase = createClient();
-    const entry = { user_id: storeId, name: form.name, category: form.category, contact_person: form.contact_person, phone: form.phone, email: form.email, terms: form.terms, rating: parseInt(form.rating) || 5, products: form.products };
+    const entry = { user_id: storeId, name: form.name, category: form.category, contact_person: form.contact_person, phone: form.phone, email: form.email, terms: form.terms, rating: parseInt(form.rating) || 5, products: form.products, branch_name: branchName || 'Main Branch' };
     let error;
     if (editItem) {
       const res = await supabase.from('suppliers').update(entry).eq('id', editItem.id);

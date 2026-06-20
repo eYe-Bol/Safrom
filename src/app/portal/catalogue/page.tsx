@@ -45,16 +45,17 @@ export default function CataloguePage() {
   const loadData = async () => {
     if (!storeId) return;
     const supabase = createClient();
+    const curBranch = branchName || 'Main Branch';
     const [{ data: prods }, { data: sups }] = await Promise.all([
-      supabase.from('inventory').select('*').eq('user_id', storeId).order('name'),
-      supabase.from('suppliers').select('name').eq('user_id', storeId),
+      supabase.from('inventory').select('*').eq('user_id', storeId).eq('branch_name', curBranch).order('name'),
+      supabase.from('suppliers').select('name').eq('user_id', storeId).eq('branch_name', curBranch),
     ]);
     if (prods) setProducts(prods);
     if (sups) setSupplierNames(sups.map((s: any) => s.name));
     setLoading(false);
   };
 
-  useEffect(() => { loadData(); }, [storeId]);
+  useEffect(() => { loadData(); }, [storeId, branchName]);
 
   const categories = ['All', ...Array.from(new Set(products.map(p => p.category || 'General')))];
   const filtered = products.filter(p =>
