@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 
 export type StoreContextType = {
   storeId: string | null;
-  role: 'owner' | 'staff' | null;
+  role: 'owner' | 'employee' | null;
   branchName: string | null;
   setBranchName: (name: string) => void;
   storeName: string | null;
@@ -56,13 +56,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           .single();
 
         if (profile) {
-          const isOwner = profile.role !== 'staff';
+          const isOwner = profile.role !== 'employee';
           let storeId = profile.id;
           let finalStoreName = profile.store_name;
           let isTrial = false;
           let subscriptionPlan = profile.subscription_plan;
 
-          if (profile.role === 'staff' && profile.owner_id) {
+          if (profile.role === 'employee' && profile.owner_id) {
             storeId = profile.owner_id;
             // Fetch owner's store name and trial info
             const { data: ownerProfile } = await supabase

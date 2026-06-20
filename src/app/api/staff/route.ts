@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       .from('users')
       .select('branch_name')
       .eq('owner_id', owner_id)
-      .eq('role', 'staff');
+      .eq('role', 'employee');
 
     const staffCount = currentStaff?.length || 0;
     if (staffCount >= maxTotal) {
@@ -90,14 +90,14 @@ export async function POST(req: Request) {
     // Step A: Delete any auto-created row from the trigger
     await supabaseAdmin.from('users').delete().eq('id', userId);
 
-    // Step B: Insert fresh with correct role = 'staff'
+    // Step B: Insert fresh with correct role = 'employee'
     const { error: dbError } = await supabaseAdmin
       .from('users')
       .insert({
         id: userId,
         email: email,
         full_name: full_name,
-        role: 'staff',
+        role: 'employee',
         owner_id: owner_id,
         branch_name: branch_name,
         staff_role: staff_role || 'Sales Staff',
@@ -109,17 +109,16 @@ export async function POST(req: Request) {
       // Fallback: try upsert if insert failed (row might exist)
       const { error: upsertError } = await supabaseAdmin
         .from('users')
-        .upsert({
-          id: userId,
-          email: email,
-          full_name: full_name,
-          role: 'staff',
+        .update({
+          role: 'employee',
           owner_id: owner_id,
           branch_name: branch_name,
+          full_name: full_name,
           staff_role: staff_role || 'Sales Staff',
           subscription_status: 'active',
           is_active: true,
-        }, { onConflict: 'id' });
+        })
+        .eq('id', userId);
 
       if (upsertError) {
         console.error('Staff linking failed:', upsertError);

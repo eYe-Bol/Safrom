@@ -81,7 +81,7 @@ export function StaffManager() {
       .from('users')
       .select('id, full_name, email, branch_name, staff_role, is_active')
       .eq('owner_id', storeId)
-      .eq('role', 'staff');
+      .eq('role', 'employee');
     setStaff(data || []);
     setLoading(false);
   };

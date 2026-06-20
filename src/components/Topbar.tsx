@@ -63,7 +63,7 @@ export function Topbar({ title, sub, storeName }: { title: string; sub?: string;
       </div>
 
       <div className="hidden md:flex items-center gap-2 flex-wrap justify-end">
-        {role !== 'staff' && (
+        {role !== 'employee' && (
           <select 
             value={branchName || 'Main Branch'} 
             onChange={(e) => setBranchName(e.target.value)}

@@ -42,7 +42,7 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userName, setUserName] = useState<string>('');
   
-  const { storeName, role, isActive } = useStore();
+  const { storeName, role, isActive, storeId, loading } = useStore();
 
   useEffect(() => {
     if (isActive === false) {
@@ -78,7 +78,7 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
           <span className="font-serif text-[14px] font-bold text-[var(--color-ink)] leading-tight">
             {storeName || 'Sales From Scratch'}
           </span>
-          {role === 'staff' && (
+          {role === 'employee' && (
             <span className="text-[10px] font-bold text-[var(--color-slate)] uppercase tracking-wider mt-0.5">Staff Account</span>
           )}
         </div>
@@ -88,7 +88,7 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
       <nav className="flex-1 p-3 flex flex-col gap-1 overflow-y-auto">
         {NAV_ITEMS.map(item => {
           // Hide ownerOnly routes from staff
-          if (role === 'staff' && item.ownerOnly) return null;
+          if (role === 'employee' && item.ownerOnly) return null;
 
           const isActive = pathname === item.href;
           return (
@@ -171,7 +171,23 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main className="flex-1 md:ml-[230px] flex flex-col min-h-screen pt-14 md:pt-0">
-        {children}
+        {loading ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-[var(--color-muted)] text-[14px]">
+            Loading...
+          </div>
+        ) : !storeId ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-4">
+            <div className="text-[48px]">⚠️</div>
+            <h2 className="font-serif text-[24px] font-bold text-[var(--color-ink)]">Account Setup Incomplete</h2>
+            <p className="text-[15px] text-[var(--color-muted)] max-w-lg">
+              Your staff account is missing its profile record. This usually happens if the account creation process was interrupted by database constraints.
+              <br /><br />
+              <strong>Please ask the store owner to delete this staff account in their settings and recreate it.</strong>
+            </p>
+          </div>
+        ) : (
+          children
+        )}
       </main>
     </div>
   );

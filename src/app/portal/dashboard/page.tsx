@@ -60,7 +60,14 @@ export default function DashboardPage() {
       setLoading(true);
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !storeId) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      if (!storeId) {
+        setLoading(false);
+        return;
+      }
 
       const { data: profile } = await supabase.from('users').select('*').eq('id', storeId!).single();
       setStoreName(profile?.store_name || '');
@@ -122,6 +129,27 @@ export default function DashboardPage() {
   const modeHint = profitMode === 'net_profit'
     ? 'Revenue – Cost – Expenses'
     : 'Revenue – Expenses (add cost prices to unlock Net Profit)';
+
+  if (loading) {
+    return <div className="p-10 text-center text-[var(--color-muted)] text-[14px]">Loading dashboard...</div>;
+  }
+
+  if (!storeId) {
+    return (
+      <div className="flex flex-col min-h-screen pb-10">
+        <Topbar title="Dashboard" sub="Overview" />
+        <div className="p-10 text-center flex flex-col items-center justify-center gap-4 mt-10">
+          <div className="text-[40px]">⚠️</div>
+          <h2 className="font-serif text-[20px] font-bold text-[var(--color-ink)]">Account Setup Incomplete</h2>
+          <p className="text-[14px] text-[var(--color-muted)] max-w-md">
+            Your staff account is missing its profile record. This usually happens if the account creation process was interrupted.
+            <br /><br />
+            <strong>Please ask the store owner to delete this staff account in their settings and recreate it.</strong>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen pb-10">
