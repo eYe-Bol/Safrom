@@ -14,6 +14,7 @@ type InvItem = {
   reorder_level: number;
   supplier: string;
   expiry_date?: string | null;
+  expiry_qty?: number;
 };
 
 type SupplierRecord = {
@@ -161,12 +162,13 @@ export default function SituationRoomPage() {
     fire(`✓ Stock updated to ${newStock}`);
   };
 
-  const updateExpiryDate = async (id: string, dateStr: string) => {
+  const updateExpiry = async (id: string, field: 'expiry_date' | 'expiry_qty', val: any) => {
     const supabase = createClient();
-    const val = dateStr || null;
-    await supabase.from('inventory').update({ expiry_date: val }).eq('id', id);
-    setItems(items.map(i => i.id === id ? { ...i, expiry_date: val } : i));
-    fire('Expiry date updated');
+    const cleanVal = val === '' ? null : val;
+    await supabase.from('inventory').update({ [field]: cleanVal }).eq('id', id);
+    setItems(items.map(i => i.id === id ? { ...i, [field]: cleanVal } : i));
+    if (field === 'expiry_date') fire('Expiry date updated');
+    if (field === 'expiry_qty') fire('Expiring quantity updated');
   };
 
   const addToOrder = (id: string) => {
@@ -247,7 +249,7 @@ export default function SituationRoomPage() {
 
   return (
     <div className="flex flex-col min-h-screen pb-10">
-      <Topbar title="Inventory & Order Tracker" sub="Stock management, alerts, and LPO generation" />
+      <Topbar title="Situation Room" sub="Inventory & Expiry Tracker" />
 
       {toast && (
         <div className="fixed top-4 right-4 z-[9999] bg-[var(--color-ink)] text-white px-4 py-3 rounded-xl text-[13px] font-semibold shadow-[0_8px_28px_rgba(0,0,0,0.22)] border-l-4 border-[var(--color-teal)]">
@@ -640,57 +642,118 @@ export default function SituationRoomPage() {
                 <p className="text-[13px] text-[var(--color-muted)]">Check your search filter.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[700px] text-left border-collapse">
-                  <thead>
-                    <tr className="bg-[var(--color-canvas)] border-b border-[var(--color-line-lt)] text-[11px] uppercase tracking-wider text-[var(--color-muted)] font-bold">
-                      <th className="p-3 pl-4">Product</th>
-                      <th className="p-3">Category</th>
-                      <th className="p-3">Current Stock</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3 pr-4">Set Expiry Date</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--color-line-lt)]">
-                    {expiryList.map(item => {
-                      let statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-500 border border-gray-200">Not Set</span>;
-                      
-                      if (item.expiry_date) {
-                        const expDate = new Date(item.expiry_date);
-                        const daysLeft = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                        
-                        if (daysLeft < 0) {
-                          statusBadge = <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-50 text-[var(--color-red)] border border-red-100">Expired ({Math.abs(daysLeft)}d ago)</span>;
-                        } else if (daysLeft <= 30) {
-                          statusBadge = <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-orange-50 text-[var(--color-gold)] border border-orange-100">Expiring Soon ({daysLeft}d)</span>;
-                        } else {
-                          statusBadge = <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-[var(--color-emerald-bg)] text-[var(--color-emerald)] border border-[var(--color-emerald)]/20">Fresh ({daysLeft}d)</span>;
-                        }
+              <div>
+                {/* Mobile View */}
+                <div className="md:hidden flex flex-col divide-y divide-[var(--color-line-lt)]">
+                  {expiryList.map(item => {
+                    let statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-500 border border-gray-200">Not Set</span>;
+                    if (item.expiry_date) {
+                      const expDate = new Date(item.expiry_date);
+                      const daysLeft = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                      if (daysLeft < 0) {
+                        statusBadge = <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-50 text-[var(--color-red)] border border-red-100">Expired ({Math.abs(daysLeft)}d ago)</span>;
+                      } else if (daysLeft <= 30) {
+                        statusBadge = <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-orange-50 text-[var(--color-gold)] border border-orange-100">Expiring Soon ({daysLeft}d)</span>;
+                      } else {
+                        statusBadge = <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-[var(--color-emerald-bg)] text-[var(--color-emerald)] border border-[var(--color-emerald)]/20">Fresh ({daysLeft}d)</span>;
                       }
-
-                      return (
-                        <tr key={item.id} className="hover:bg-gray-50/50">
-                          <td className="p-3 pl-4">
-                            <span className="font-bold text-[13px] text-[var(--color-ink)]">{item.name}</span>
-                          </td>
-                          <td className="p-3 text-[13px] text-[var(--color-slate)]">{item.category}</td>
-                          <td className="p-3 text-[13px] font-semibold text-[var(--color-slate)]">{fmt(item.stock)}</td>
-                          <td className="p-3">
-                            {statusBadge}
-                          </td>
-                          <td className="p-3 pr-4">
+                    }
+                    return (
+                      <div key={item.id} className="p-4 flex flex-col gap-3">
+                        <div className="flex justify-between items-start gap-2">
+                          <div>
+                            <div className="font-bold text-[14px] text-[var(--color-ink)]">{item.name}</div>
+                            <div className="text-[12px] text-[var(--color-slate)]">{item.category} · Stock: <span className="font-bold text-[var(--color-ink)]">{fmt(item.stock)}</span></div>
+                          </div>
+                          <div>{statusBadge}</div>
+                        </div>
+                        <div className="flex flex-col gap-2 bg-[var(--color-canvas)] p-3 rounded-xl border border-[var(--color-line-lt)]">
+                          <div className="flex justify-between items-center gap-2">
+                            <label className="text-[11px] font-bold text-[var(--color-slate)] uppercase tracking-wider">Date</label>
                             <input 
                               type="date"
                               value={item.expiry_date || ''}
-                              onChange={(e) => updateExpiryDate(item.id, e.target.value)}
-                              className="px-2 py-1.5 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]"
+                              onChange={(e) => updateExpiry(item.id, 'expiry_date', e.target.value)}
+                              className="px-2 py-1 border border-[var(--color-line)] rounded-md text-[13px] outline-none focus:border-[var(--color-teal)]"
                             />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                          </div>
+                          <div className="flex justify-between items-center gap-2">
+                            <label className="text-[11px] font-bold text-[var(--color-slate)] uppercase tracking-wider">Qty Expiring</label>
+                            <input 
+                              type="number" min="0" placeholder="All"
+                              value={item.expiry_qty || ''}
+                              onChange={(e) => updateExpiry(item.id, 'expiry_qty', e.target.value)}
+                              className="w-[100px] px-2 py-1 border border-[var(--color-line)] rounded-md text-[13px] outline-none text-right focus:border-[var(--color-teal)]"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Desktop View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full min-w-[700px] text-left border-collapse">
+                    <thead>
+                      <tr className="bg-[var(--color-canvas)] border-b border-[var(--color-line-lt)] text-[11px] uppercase tracking-wider text-[var(--color-muted)] font-bold">
+                        <th className="p-3 pl-4">Product</th>
+                        <th className="p-3">Category</th>
+                        <th className="p-3">Current Stock</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3">Qty Expiring</th>
+                        <th className="p-3 pr-4">Set Expiry Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--color-line-lt)]">
+                      {expiryList.map(item => {
+                        let statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-500 border border-gray-200">Not Set</span>;
+                        
+                        if (item.expiry_date) {
+                          const expDate = new Date(item.expiry_date);
+                          const daysLeft = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                          
+                          if (daysLeft < 0) {
+                            statusBadge = <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-50 text-[var(--color-red)] border border-red-100">Expired ({Math.abs(daysLeft)}d ago)</span>;
+                          } else if (daysLeft <= 30) {
+                            statusBadge = <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-orange-50 text-[var(--color-gold)] border border-orange-100">Expiring Soon ({daysLeft}d)</span>;
+                          } else {
+                            statusBadge = <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-[var(--color-emerald-bg)] text-[var(--color-emerald)] border border-[var(--color-emerald)]/20">Fresh ({daysLeft}d)</span>;
+                          }
+                        }
+
+                        return (
+                          <tr key={item.id} className="hover:bg-gray-50/50">
+                            <td className="p-3 pl-4">
+                              <span className="font-bold text-[13px] text-[var(--color-ink)]">{item.name}</span>
+                            </td>
+                            <td className="p-3 text-[13px] text-[var(--color-slate)]">{item.category}</td>
+                            <td className="p-3 text-[13px] font-semibold text-[var(--color-slate)]">{fmt(item.stock)}</td>
+                            <td className="p-3">
+                              {statusBadge}
+                            </td>
+                            <td className="p-3">
+                              <input 
+                                type="number" min="0" placeholder="All"
+                                value={item.expiry_qty || ''}
+                                onChange={(e) => updateExpiry(item.id, 'expiry_qty', e.target.value)}
+                                className="w-[80px] px-2 py-1.5 border border-[var(--color-line)] rounded-lg text-[13px] outline-none text-right focus:border-[var(--color-teal)]"
+                              />
+                            </td>
+                            <td className="p-3 pr-4">
+                              <input 
+                                type="date"
+                                value={item.expiry_date || ''}
+                                onChange={(e) => updateExpiry(item.id, 'expiry_date', e.target.value)}
+                                className="px-2 py-1.5 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]"
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>

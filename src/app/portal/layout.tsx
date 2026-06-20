@@ -9,7 +9,7 @@ import { StoreProvider, useStore } from '@/context/StoreContext';
 
 const NAV_ITEMS = [
   { href: '/portal/dashboard',   label: 'Dashboard',                    icon: '▦',  ownerOnly: false },
-  { href: '/portal/situation',   label: 'Inventory & Order Tracker',    icon: '📦', ownerOnly: false },
+  { href: '/portal/situation',   label: 'Inventory & Expiry Tracker',   icon: '📦', ownerOnly: false },
   { href: '/portal/catalogue',   label: 'Product Catalogue',            icon: '🗂', ownerOnly: false },
   { href: '/portal/suppliers',   label: 'Suppliers',                    icon: '🤝', ownerOnly: false },
   { href: '/portal/expenses',    label: 'Expenses',                     icon: '💸', ownerOnly: false },
