@@ -10,6 +10,7 @@ DROP POLICY IF EXISTS "Users can read own and owner profile" ON public.users;
 --    a) Users can read their own profile (id = auth.uid())
 --    b) Staff can read their owner's profile (id = get_my_owner_id())
 --    c) Owners can read their staff profiles (owner_id = auth.uid())
+DROP POLICY IF EXISTS "Users can read own, owner, and staff profiles" ON public.users;
 CREATE POLICY "Users can read own, owner, and staff profiles"
   ON public.users
   FOR SELECT
@@ -21,6 +22,7 @@ CREATE POLICY "Users can read own, owner, and staff profiles"
 
 -- 3. Drop existing UPDATE policy and replace with one that also allows owners to update staff
 DROP POLICY IF EXISTS "Users can update their own profile" ON public.users;
+DROP POLICY IF EXISTS "Users can update own and staff profiles" ON public.users;
 
 CREATE POLICY "Users can update own and staff profiles"
   ON public.users
