@@ -39,6 +39,7 @@ export default function SalesTrackerPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
   const [activeTab, setActiveTab] = useState<'log' | 'history'>('log');
+  const [loggedIds, setLoggedIds] = useState<Set<string>>(new Set());
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
@@ -106,6 +107,7 @@ export default function SalesTrackerPage() {
     }
 
     if (!invErr) {
+      setLoggedIds(prev => new Set([...prev, sel.id]));
       fire(`✓ ${sel.name} — ${units} units sold · ${fmt(rev)}`);
       setForm({ opening: '', added: '', closing: '', wastage: '' });
       setSel(null);
@@ -189,9 +191,21 @@ export default function SalesTrackerPage() {
                       <tr><td colSpan={5} className="p-4 text-center text-[13px] text-[var(--color-muted)]">No products found. Add them in the Catalogue.</td></tr>
                     ) : filtered.map(p => {
                       const isSel = sel?.id === p.id;
+                      const isLogged = loggedIds.has(p.id);
                       return (
-                        <tr key={p.id} className={`border-b border-[var(--color-line-lt)] last:border-0 transition-colors ${isSel ? 'bg-[#f0f7f8]' : 'hover:bg-[#fafafa]'}`}>
-                          <td className="px-4 py-3 font-semibold text-[13px] text-[var(--color-ink)]">{p.name}</td>
+                        <tr key={p.id} className={`border-b border-[var(--color-line-lt)] last:border-0 transition-colors ${
+                          isLogged ? 'bg-[var(--color-emerald-bg)]/60' : isSel ? 'bg-[#f0f7f8]' : 'hover:bg-[#fafafa]'
+                        }`}>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-[13px] text-[var(--color-ink)]">{p.name}</span>
+                              {isLogged && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-[var(--color-emerald)] text-white px-2 py-0.5 rounded-full">
+                                  ✓ Logged
+                                </span>
+                              )}
+                            </div>
+                          </td>
                           <td className="px-4 py-3">
                             <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-1 rounded-full">{p.category || 'General'}</span>
                           </td>
@@ -202,11 +216,21 @@ export default function SalesTrackerPage() {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={() => { setSel(p); setForm({ opening: String(p.stock), added: '', closing: '', wastage: '' }); }}
-                              className={`text-[12px] font-bold px-3 py-1.5 rounded-lg border transition-all ${isSel ? 'bg-[var(--color-teal)] text-white border-[var(--color-teal)]' : 'bg-[var(--color-teal-bg)] text-[var(--color-teal)] border-[var(--color-teal)]/20 hover:bg-[var(--color-teal)] hover:text-white'}`}>
-                              {isSel ? '✓ Selected' : 'Log Stock'}
-                            </button>
+                            {isLogged ? (
+                              <button
+                                onClick={() => { setSel(p); setForm({ opening: '', added: '', closing: '', wastage: '' }); setLoggedIds(prev => { const n = new Set(prev); n.delete(p.id); return n; }); }}
+                                className="text-[12px] font-bold px-3 py-1.5 rounded-lg border bg-white text-[var(--color-emerald)] border-[var(--color-emerald)]/30 hover:bg-[var(--color-emerald-bg)] transition-all"
+                              >
+                                Re-log
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => { setSel(p); setForm({ opening: String(p.stock), added: '', closing: '', wastage: '' }); }}
+                                className={`text-[12px] font-bold px-3 py-1.5 rounded-lg border transition-all ${isSel ? 'bg-[var(--color-teal)] text-white border-[var(--color-teal)]' : 'bg-[var(--color-teal-bg)] text-[var(--color-teal)] border-[var(--color-teal)]/20 hover:bg-[var(--color-teal)] hover:text-white'}`}
+                              >
+                                {isSel ? '✓ Selected' : 'Log Stock'}
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );
