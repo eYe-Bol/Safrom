@@ -15,6 +15,23 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Safrom | Business Portal",
   description: "Sales From Scratch: Manage your store's inventory, track daily sales, and oversee team operations effortlessly.",
+  openGraph: {
+    title: "Safrom | Business Portal",
+    description: "Manage your store's inventory, track daily sales, and oversee team operations effortlessly.",
+    url: "https://safrom.vercel.app",
+    siteName: "Safrom",
+    images: [
+      {
+        url: "/logo.png",
+        width: 800,
+        height: 600,
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  manifest: "/manifest.json",
+  themeColor: "#111827",
 };
 
 export default function RootLayout({

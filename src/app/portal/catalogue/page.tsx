@@ -15,6 +15,8 @@ type Product = {
   cost_price: number;
   reorder_level: number;
   stock: number;
+  expiry_date?: string | null;
+  branch_name?: string;
 };
 
 const fmt = (n: number) => `KES ${Number(n).toLocaleString()}`;
@@ -23,10 +25,10 @@ const margin = (p: Product) =>
     ? Math.round(((p.sell_price - p.cost_price) / p.sell_price) * 100)
     : null;
 
-const BLANK = { name: '', category: '', supplier: '', unit: 'pcs', sell_price: '', cost_price: '', reorder_level: '' };
+const BLANK = { name: '', category: '', supplier: '', unit: 'pcs', sell_price: '', cost_price: '', reorder_level: '', expiry_date: '' };
 
 export default function CataloguePage() {
-  const { storeId } = useStore();
+  const { storeId, branchName } = useStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [supplierNames, setSupplierNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +65,7 @@ export default function CataloguePage() {
   const openAdd = () => { setForm(BLANK); setEditItem(null); setShowAdd(true); };
   const openEdit = (p: Product) => {
     setForm({ name: p.name, category: p.category, supplier: p.supplier, unit: p.unit,
-      sell_price: String(p.sell_price), cost_price: p.cost_price > 0 ? String(p.cost_price) : '', reorder_level: String(p.reorder_level) });
+      sell_price: String(p.sell_price), cost_price: p.cost_price > 0 ? String(p.cost_price) : '', reorder_level: String(p.reorder_level), expiry_date: p.expiry_date || '' });
     setEditItem(p); setShowAdd(true);
   };
 
@@ -82,9 +84,13 @@ export default function CataloguePage() {
       sell_price: parseFloat(form.sell_price),
       cost_price: form.cost_price ? parseFloat(form.cost_price) : 0,
       reorder_level: parseInt(form.reorder_level) || 0,
+      expiry_date: form.expiry_date || null,
+      branch_name: branchName || 'Main Branch',
     };
     if (editItem) {
-      await supabase.from('inventory').update(entry).eq('id', editItem.id);
+      // Don't update branch_name on edit to avoid moving it
+      const { branch_name, ...updateEntry } = entry;
+      await supabase.from('inventory').update(updateEntry).eq('id', editItem.id);
       fire(`✓ ${form.name} updated`);
     } else {
       await supabase.from('inventory').insert([{ ...entry, stock: 0 }]);
@@ -291,9 +297,13 @@ export default function CataloguePage() {
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Selling Price (KES) *</label>
                 <input type="number" value={form.sell_price} onChange={e => setForm((p: any) => ({...p, sell_price: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" />
               </div>
-              <div className="col-span-2">
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Expiry Date (Optional)</label>
+                <input type="date" value={form.expiry_date} onChange={e => setForm((p: any) => ({...p, expiry_date: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" />
+              </div>
+              <div className="col-span-1">
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">
-                  Cost Price (KES) <span className="text-[var(--color-muted)] font-normal">— optional, enables Net Profit tracking</span>
+                  Cost Price (KES) <span className="text-[var(--color-muted)] font-normal">— optional</span>
                 </label>
                 <input type="number" value={form.cost_price} onChange={e => setForm((p: any) => ({...p, cost_price: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="Leave blank if unknown" />
               </div>

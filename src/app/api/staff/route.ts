@@ -80,33 +80,22 @@ export async function POST(req: Request) {
     }
 
     // 3. The auth hook might have auto-inserted the user into public.users. 
-    // We need to update it with the staff details.
+    // We use upsert to either create the staff row or update the trigger-created row.
     const { error: dbError } = await supabaseAdmin
       .from('users')
-      .update({
+      .upsert({
+        id: authData.user.id,
+        email: email,
+        full_name: full_name,
         role: 'staff',
         owner_id: owner_id,
         branch_name: branch_name,
-        full_name: full_name
-      })
-      .eq('id', authData.user.id);
+        subscription_status: 'active'
+      }, { onConflict: 'id' });
 
     if (dbError) {
-      // If auto-insert failed or didn't happen, we insert
-      const { error: insertError } = await supabaseAdmin
-        .from('users')
-        .insert({
-          id: authData.user.id,
-          email: email,
-          full_name: full_name,
-          role: 'staff',
-          owner_id: owner_id,
-          branch_name: branch_name
-        });
-        
-      if (insertError) {
-        return NextResponse.json({ error: 'Failed to link staff account' }, { status: 500 });
-      }
+      console.error("Staff linking upsert failed:", dbError);
+      return NextResponse.json({ error: `Failed to link staff account: ${dbError.message}` }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, user: authData.user });

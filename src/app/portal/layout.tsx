@@ -15,7 +15,6 @@ const NAV_ITEMS = [
   { href: '/portal/expenses',    label: 'Expenses',                     icon: '💸', ownerOnly: false },
   { href: '/portal/reports',     label: 'Reports',                      icon: '📊', ownerOnly: false },
   { href: '/portal/sales',       label: 'Sales Tracker',                icon: '🧮', ownerOnly: false },
-  { href: '/portal/staff',       label: 'Staff & Branches',             icon: '👥', ownerOnly: true  },
   { href: '/portal/settings',    label: 'Settings',                     icon: '⚙️', ownerOnly: true  },
 ];
 
@@ -43,7 +42,14 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userName, setUserName] = useState<string>('');
   
-  const { storeName, role } = useStore();
+  const { storeName, role, isActive } = useStore();
+
+  useEffect(() => {
+    if (isActive === false) {
+      alert('Your account has been deactivated. Please contact your manager.');
+      handleSignOut();
+    }
+  }, [isActive]);
 
   useEffect(() => {
     const fetchUser = async () => {

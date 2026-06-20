@@ -1,0 +1,23 @@
+{
+  "name": "Safrom Business Portal",
+  "short_name": "Safrom",
+  "description": "Manage your store's inventory, track daily sales, and oversee team operations.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#111827",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

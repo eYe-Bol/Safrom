@@ -13,6 +13,7 @@ type InvItem = {
   stock: number;
   reorder_level: number;
   supplier: string;
+  expiry_date?: string | null;
 };
 
 type SupplierRecord = {
@@ -109,7 +110,7 @@ export default function SituationRoomPage() {
   const [items, setItems] = useState<InvItem[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'overview' | 'stock' | 'alerts'>('overview');
+  const [tab, setTab] = useState<'overview' | 'stock' | 'alerts' | 'expiry'>('overview');
   const [stockSearch, setStockSearch] = useState('');
   const [qtys, setQtys] = useState<Record<string, number>>({});
   const [sent, setSent] = useState<Record<string, boolean>>({});
@@ -204,10 +205,22 @@ export default function SituationRoomPage() {
     (p.category || '').toLowerCase().includes(stockSearch.toLowerCase())
   );
 
+  // Expiry tracking
+  const now = new Date();
+  const thirtyDaysFromNow = new Date();
+  thirtyDaysFromNow.setDate(now.getDate() + 30);
+  
+  const expiringItems = items.filter(i => {
+    if (!i.expiry_date) return false;
+    const expDate = new Date(i.expiry_date);
+    return expDate <= thirtyDaysFromNow;
+  }).sort((a, b) => new Date(a.expiry_date!).getTime() - new Date(b.expiry_date!).getTime());
+
   const TABS = [
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'stock', label: 'Stock Manager', icon: '📦' },
     { id: 'alerts', label: 'Alerts & Orders', icon: '⚡', badge: alertItems.length },
+    { id: 'expiry', label: 'Expiry Tracking', icon: '⏳', badge: expiringItems.length },
   ] as const;
 
   return (
@@ -575,6 +588,57 @@ export default function SituationRoomPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* ─── TAB: EXPIRY TRACKING ─── */}
+        {tab === 'expiry' && (
+          <div className="bg-white rounded-xl border border-[var(--color-line-lt)] overflow-hidden shadow-sm">
+            <div className="p-4 border-b border-[var(--color-line-lt)]">
+              <h2 className="font-serif text-[16px] font-bold text-[var(--color-ink)]">Expiring within 30 days</h2>
+            </div>
+            {expiringItems.length === 0 ? (
+              <div className="p-8 text-center">
+                <div className="text-[40px] mb-3">✅</div>
+                <h3 className="font-serif text-[16px] font-bold text-[var(--color-ink)]">No products expiring soon</h3>
+                <p className="text-[13px] text-[var(--color-muted)]">Your inventory is fresh.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[600px] text-left border-collapse">
+                  <thead>
+                    <tr className="bg-[var(--color-canvas)] border-b border-[var(--color-line-lt)] text-[11px] uppercase tracking-wider text-[var(--color-muted)] font-bold">
+                      <th className="p-3 pl-4">Product</th>
+                      <th className="p-3">Category</th>
+                      <th className="p-3">Current Stock</th>
+                      <th className="p-3 pr-4">Expiry Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--color-line-lt)]">
+                    {expiringItems.map(item => {
+                      const expDate = new Date(item.expiry_date!);
+                      const daysLeft = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                      const isExpired = daysLeft < 0;
+
+                      return (
+                        <tr key={item.id} className="hover:bg-gray-50/50">
+                          <td className="p-3 pl-4">
+                            <span className="font-bold text-[13px] text-[var(--color-ink)]">{item.name}</span>
+                          </td>
+                          <td className="p-3 text-[13px] text-[var(--color-slate)]">{item.category}</td>
+                          <td className="p-3 text-[13px] font-semibold text-[var(--color-slate)]">{fmt(item.stock)}</td>
+                          <td className="p-3 pr-4">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${isExpired ? 'bg-red-50 text-[var(--color-red)] border border-red-100' : 'bg-orange-50 text-[var(--color-gold)] border border-orange-100'}`}>
+                              {expDate.toLocaleDateString()} {isExpired ? '(Expired)' : `(${daysLeft} days)`}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 

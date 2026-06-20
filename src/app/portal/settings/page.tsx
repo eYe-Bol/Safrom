@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/Topbar';
 import { createClient } from '@/utils/supabase/client';
+import { StaffManager } from './StaffManager';
 
 export default function SettingsPage() {
   const [user, setUser] = useState<any>(null);
@@ -110,26 +111,15 @@ export default function SettingsPage() {
           )}
         </div>
 
-        {/* Plan & Upgrades */}
-        <div className="bg-white rounded-xl p-5 border border-[var(--color-line-lt)]">
-          <h2 className="font-serif text-[16px] font-bold text-[var(--color-ink)] mb-4">Plan & Upgrades</h2>
-          {[
-            {label:'Add Branch', icon:'🏪', desc:'Open a new location'},
-            {label:'Upgrade Plan', icon:'🚀', desc:'More branches & users'},
-          ].map(a => (
-            <div key={a.label} className="flex justify-between items-center p-3.5 border border-[var(--color-line-lt)] rounded-xl mb-2.5">
-              <div className="flex gap-2.5 items-center">
-                <span className="text-[20px]">{a.icon}</span>
-                <div>
-                  <div className="text-[13px] font-bold text-[var(--color-ink)]">{a.label}</div>
-                  <div className="text-[11px] text-[var(--color-muted)]">{a.desc}</div>
-                </div>
-              </div>
-              <button onClick={() => setShowUpgrade(true)} className="px-3 py-1.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg text-[12px] font-semibold text-[var(--color-slate)] hover:bg-[var(--color-teal-bg)] cursor-pointer">
-                Go →
-              </button>
-            </div>
-          ))}
+        {/* Plan & Upgrades / Staff Management */}
+        <div className="md:col-span-2 bg-white rounded-xl p-5 border border-[var(--color-line-lt)]">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="font-serif text-[16px] font-bold text-[var(--color-ink)]">Plan & Upgrades (Staff & Branches)</h2>
+            <button onClick={() => setShowUpgrade(true)} className="px-3 py-1.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg text-[12px] font-semibold text-[var(--color-slate)] hover:bg-[var(--color-teal-bg)] cursor-pointer">
+              Upgrade Plan 🚀
+            </button>
+          </div>
+          <StaffManager />
         </div>
 
         {/* Access Levels note */}

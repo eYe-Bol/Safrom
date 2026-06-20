@@ -7,24 +7,28 @@ export type StoreContextType = {
   storeId: string | null;
   role: 'owner' | 'staff' | null;
   branchName: string | null;
+  setBranchName: (name: string) => void;
   storeName: string | null;
   loading: boolean;
   isTrial: boolean;
   subscriptionPlan: string | null;
+  isActive: boolean;
 };
 
 const StoreContext = createContext<StoreContextType>({
   storeId: null,
   role: null,
   branchName: null,
+  setBranchName: () => {},
   storeName: null,
   loading: true,
   isTrial: false,
   subscriptionPlan: null,
+  isActive: true,
 });
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<StoreContextType>({
+  const [state, setState] = useState<Omit<StoreContextType, 'setBranchName'>>({
     storeId: null,
     role: null,
     branchName: null,
@@ -32,6 +36,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     loading: true,
     isTrial: false,
     subscriptionPlan: null,
+    isActive: true,
   });
 
   useEffect(() => {
@@ -89,6 +94,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             loading: false,
             isTrial,
             subscriptionPlan,
+            isActive: profile.is_active !== false,
           });
         } else {
           console.error("Profile fetch error:", profileErr);
@@ -104,8 +110,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
 
+  const setBranchName = (name: string) => {
+    setState(s => ({ ...s, branchName: name }));
+  };
+
   return (
-    <StoreContext.Provider value={state}>
+    <StoreContext.Provider value={{ ...state, setBranchName }}>
       {children}
     </StoreContext.Provider>
   );

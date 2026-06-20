@@ -1,0 +1,237 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { useStore } from '@/context/StoreContext';
+
+type StaffMember = {
+  id: string;
+  full_name: string;
+  email: string;
+  branch_name: string;
+  is_active: boolean;
+};
+
+type BranchConfig = {
+  name: string;
+  icon: string;
+  maxSlots: number;
+  requiresPlan: '999' | '1499';
+};
+
+const BRANCHES: BranchConfig[] = [
+  { name: 'Main Branch', icon: '🏪', maxSlots: 2, requiresPlan: '999' },
+  { name: 'Branch 2',    icon: '🏬', maxSlots: 1, requiresPlan: '1499' },
+  { name: 'Branch 3',    icon: '🏢', maxSlots: 1, requiresPlan: '1499' },
+];
+
+export function StaffManager() {
+  const { storeId, isTrial, subscriptionPlan } = useStore();
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState<{ open: boolean; branch: string }>({ open: false, branch: '' });
+  const [form, setForm] = useState({ full_name: '', email: '', password: '' });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const canAccess999 = isTrial || subscriptionPlan === '999' || subscriptionPlan === '1499';
+  const canAccess1499 = isTrial || subscriptionPlan === '1499';
+
+  const fetchStaff = async () => {
+    if (!storeId) return;
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('users')
+      .select('id, full_name, email, branch_name, is_active')
+      .eq('owner_id', storeId)
+      .eq('role', 'staff');
+    setStaff(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (storeId) fetchStaff();
+  }, [storeId]);
+
+  const openModal = (branch: string) => {
+    setForm({ full_name: '', email: '', password: '' });
+    setError('');
+    setSuccess('');
+    setModal({ open: true, branch });
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+
+    const res = await fetch('/api/staff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        owner_id: storeId,
+        email: form.email,
+        password: form.password,
+        full_name: form.full_name,
+        branch_name: modal.branch,
+      }),
+    });
+
+    const result = await res.json();
+    setSaving(false);
+
+    if (!res.ok) {
+      setError(result.error || 'Failed to create staff account');
+    } else {
+      setSuccess(`✅ Account created for ${form.full_name}!`);
+      fetchStaff();
+      setTimeout(() => {
+        setModal({ open: false, branch: '' });
+        setSuccess('');
+      }, 3000);
+    }
+  };
+
+  const handleRemove = async (staff_id: string, branch_name: string) => {
+    if (!confirm(`Are you sure you want to permanently delete this staff member from ${branch_name}?`)) return;
+    const supabase = createClient();
+    
+    // Call our DELETE endpoint
+    const res = await fetch('/api/staff', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staff_id, owner_id: storeId }),
+    });
+
+    if (res.ok) {
+      setStaff(staff.filter(s => s.id !== staff_id));
+    } else {
+      alert('Failed to remove staff member. Ensure you are the owner.');
+    }
+  };
+
+  const handleToggleActive = async (staff_id: string, current_active: boolean) => {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('users')
+      .update({ is_active: !current_active })
+      .eq('id', staff_id);
+    
+    if (!error) {
+      setStaff(staff.map(s => s.id === staff_id ? { ...s, is_active: !current_active } : s));
+    } else {
+      alert('Failed to update status');
+    }
+  };
+
+  if (loading) return <div className="text-[13px] text-[var(--color-muted)] p-5">Loading branches...</div>;
+
+  return (
+    <div className="space-y-4">
+      {/* Branches List */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {BRANCHES.map(branch => {
+          const branchStaff = staff.filter(s => s.branch_name === branch.name);
+          const hasAccess = branch.requiresPlan === '999' ? canAccess999 : canAccess1499;
+
+          return (
+            <div key={branch.name} className={`bg-white rounded-xl p-5 border ${hasAccess ? 'border-[var(--color-teal)]/30' : 'border-[var(--color-line-lt)] opacity-60'} flex flex-col relative`}>
+              {!hasAccess && (
+                <div className="absolute top-3 right-3 bg-[var(--color-canvas)] border border-[var(--color-line)] text-[10px] font-bold px-2 py-0.5 rounded-full text-[var(--color-muted)] uppercase tracking-wider">
+                  Requires {branch.requiresPlan} Plan
+                </div>
+              )}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-[var(--color-canvas)] flex items-center justify-center text-[20px] shadow-inner">
+                  {branch.icon}
+                </div>
+                <div>
+                  <h2 className="font-serif text-[15px] font-bold text-[var(--color-ink)]">{branch.name}</h2>
+                  <div className="text-[12px] text-[var(--color-muted)] font-semibold mt-0.5">
+                    {branchStaff.length} / {branch.maxSlots} Slots Used
+                  </div>
+                </div>
+              </div>
+
+              {/* Slot indicators */}
+              <div className="flex gap-2 mb-4">
+                {Array.from({ length: branch.maxSlots }).map((_, i) => (
+                  <div key={i} className={`h-1.5 flex-1 rounded-full ${i < branchStaff.length ? 'bg-[var(--color-teal)]' : 'bg-[var(--color-line-lt)]'}`} />
+                ))}
+              </div>
+
+              {/* Staff List */}
+              <div className="flex-1 space-y-2 mb-4">
+                {branchStaff.map(member => (
+                  <div key={member.id} className={`p-2.5 rounded-lg border ${member.is_active ? 'bg-[var(--color-canvas)] border-[var(--color-line-lt)]' : 'bg-red-50 border-red-100 opacity-70'} flex flex-col`}>
+                    <div className="flex justify-between items-start mb-1">
+                      <div className="text-[13px] font-bold text-[var(--color-ink)] truncate">{member.full_name}</div>
+                    </div>
+                    <div className="text-[11px] text-[var(--color-muted)] truncate mb-2">{member.email}</div>
+                    <div className="flex gap-2 mt-auto">
+                      <button onClick={() => handleToggleActive(member.id, member.is_active)} className="text-[11px] font-bold py-1 px-2 rounded bg-white border border-[var(--color-line)] shadow-sm flex-1 text-center">
+                        {member.is_active ? 'Inactivate' : 'Activate'}
+                      </button>
+                      <button onClick={() => handleRemove(member.id, branch.name)} className="text-[11px] font-bold py-1 px-2 rounded bg-white border border-red-200 text-red-600 shadow-sm hover:bg-red-50">
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {branchStaff.length === 0 && (
+                  <div className="text-[12px] text-[var(--color-muted)] text-center py-4 border border-dashed border-[var(--color-line)] rounded-lg">
+                    Empty slot
+                  </div>
+                )}
+              </div>
+
+              {/* Add Button */}
+              <button 
+                disabled={!hasAccess || branchStaff.length >= branch.maxSlots}
+                onClick={() => openModal(branch.name)}
+                className="mt-auto w-full py-2.5 rounded-lg border-2 border-dashed border-[var(--color-teal)] text-[var(--color-teal)] font-bold text-[13px] hover:bg-[var(--color-teal-bg)] disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+              >
+                + Add Staff
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Modal */}
+      {modal.open && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[var(--color-ink)]/40 backdrop-blur-sm" onClick={() => setModal({ open: false, branch: '' })}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-[400px] shadow-[0_24px_64px_rgba(0,0,0,0.2)]" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)]">Add Staff to {modal.branch}</h3>
+              <button onClick={() => setModal({ open: false, branch: '' })} className="text-[20px] text-[var(--color-muted)] hover:text-[var(--color-ink)]">&times;</button>
+            </div>
+
+            {error && <div className="mb-4 p-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-[13px] font-semibold">{error}</div>}
+            {success && <div className="mb-4 p-3 bg-[var(--color-teal-bg)] text-[var(--color-teal)] border border-[var(--color-teal)]/20 rounded-xl text-[13px] font-semibold">{success}</div>}
+
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Full Name</label>
+                <input required value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="John Doe" />
+              </div>
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Email (For Login)</label>
+                <input required type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="john@example.com" />
+              </div>
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Password</label>
+                <input required type="password" minLength={6} value={form.password} onChange={e => setForm({...form, password: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="Min 6 characters" />
+              </div>
+
+              <button disabled={saving} type="submit" className="w-full py-3 mt-2 bg-[var(--color-teal)] text-white font-bold text-[14px] rounded-xl shadow-[0_4px_14px_rgba(20,83,88,0.25)] hover:bg-[#104347] disabled:opacity-50">
+                {saving ? 'Creating...' : 'Create Account'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
