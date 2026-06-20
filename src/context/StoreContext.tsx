@@ -13,6 +13,7 @@ export type StoreContextType = {
   isTrial: boolean;
   subscriptionPlan: string | null;
   isActive: boolean;
+  branchProfiles: Record<string, string>;
 };
 
 const StoreContext = createContext<StoreContextType>({
@@ -25,6 +26,7 @@ const StoreContext = createContext<StoreContextType>({
   isTrial: false,
   subscriptionPlan: null,
   isActive: true,
+  branchProfiles: {},
 });
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -37,6 +39,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     isTrial: false,
     subscriptionPlan: null,
     isActive: true,
+    branchProfiles: {},
   });
 
   useEffect(() => {
@@ -86,6 +89,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             isTrial = trialEnd > new Date();
           }
 
+          let branchProfilesMap: Record<string, string> = {};
+          if (storeId) {
+            const { data: bData } = await supabase
+              .from('branch_profiles')
+              .select('branch_name, branch_display_name')
+              .eq('owner_id', storeId);
+            
+            if (bData) {
+              bData.forEach(bp => {
+                if (bp.branch_display_name) {
+                  branchProfilesMap[bp.branch_name] = bp.branch_display_name;
+                }
+              });
+            }
+          }
+
           setState({
             storeId,
             role: profile.role || 'owner',
@@ -95,6 +114,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             isTrial,
             subscriptionPlan,
             isActive: profile.is_active !== false,
+            branchProfiles: branchProfilesMap,
           });
         } else {
           console.error("Profile fetch error:", profileErr);

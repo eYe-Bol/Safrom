@@ -43,7 +43,7 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userName, setUserName] = useState<string>('');
   
-  const { storeName, role, isActive, storeId, loading, branchName, setBranchName } = useStore();
+  const { storeName, role, isActive, storeId, loading, branchName, setBranchName, branchProfiles } = useStore();
 
   useEffect(() => {
     if (isActive === false) {
@@ -161,25 +161,15 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
             onChange={(e) => setBranchName(e.target.value)}
             className="text-[11px] bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg px-1.5 py-1 outline-none text-[var(--color-slate)] font-semibold cursor-pointer shrink-0 max-w-[100px]"
           >
-            <option value="Main Branch">Main Branch</option>
-            <option value="Branch 2">Branch 2</option>
-            <option value="Branch 3">Branch 3</option>
+            <option value="Main Branch">{branchProfiles['Main Branch'] || 'Main Branch'}</option>
+            <option value="Branch 2">{branchProfiles['Branch 2'] || 'Branch 2'}</option>
+            <option value="Branch 3">{branchProfiles['Branch 3'] || 'Branch 3'}</option>
           </select>
         )}
         {/* Live clock on right - visible on all screens */}
         <div className="flex flex-col items-end shrink-0">
           <LiveClock />
         </div>
-        {/* Red sign-out avatar */}
-        {userName && (
-          <button
-            onClick={handleSignOut}
-            title="Sign Out"
-            className="w-9 h-9 rounded-full bg-[var(--color-red)] text-white font-bold text-[13px] flex items-center justify-center shrink-0 shadow-[0_2px_8px_rgba(192,57,43,0.4)] hover:opacity-90 transition-opacity"
-          >
-            {userName[0]?.toUpperCase()}
-          </button>
-        )}
       </div>
 
       {/* Main Content */}

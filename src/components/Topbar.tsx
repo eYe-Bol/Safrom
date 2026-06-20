@@ -14,7 +14,7 @@ export function Topbar({ title, sub, storeName }: { title: string; sub?: string;
   const [now, setNow] = useState<Date | null>(null);
   const [user, setUser] = useState<{ initials: string; role: string } | null>(null);
   const router = useRouter();
-  const { role, branchName, setBranchName } = useStore();
+  const { role, branchName, setBranchName, branchProfiles } = useStore();
 
   useEffect(() => {
     setNow(new Date());
@@ -69,9 +69,9 @@ export function Topbar({ title, sub, storeName }: { title: string; sub?: string;
             onChange={(e) => setBranchName(e.target.value)}
             className="text-[12px] bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg px-2 py-1 outline-none text-[var(--color-slate)] font-semibold cursor-pointer"
           >
-            <option value="Main Branch">Main Branch</option>
-            <option value="Branch 2">Branch 2</option>
-            <option value="Branch 3">Branch 3</option>
+            <option value="Main Branch">{branchProfiles?.['Main Branch'] || 'Main Branch'}</option>
+            <option value="Branch 2">{branchProfiles?.['Branch 2'] || 'Branch 2'}</option>
+            <option value="Branch 3">{branchProfiles?.['Branch 3'] || 'Branch 3'}</option>
           </select>
         )}
         <div className="flex text-[11px] text-[var(--color-slate)] bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg px-[10px] py-[4px] font-medium">
