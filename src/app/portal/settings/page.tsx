@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/Topbar';
 import { createClient } from '@/utils/supabase/client';
-import { StaffManager } from './StaffManager';
 
 export default function SettingsPage() {
   const [user, setUser] = useState<any>(null);
@@ -111,7 +110,7 @@ export default function SettingsPage() {
           )}
         </div>
 
-        {/* Plan & Upgrades / Staff Management */}
+        {/* Plan & Upgrades */}
         <div className="md:col-span-2 bg-white rounded-xl p-5 border border-[var(--color-line-lt)]">
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-serif text-[16px] font-bold text-[var(--color-ink)]">Plan & Upgrades (Staff & Branches)</h2>
@@ -119,7 +118,6 @@ export default function SettingsPage() {
               Upgrade Plan 🚀
             </button>
           </div>
-          <StaffManager />
         </div>
 
         {/* Access Levels note */}

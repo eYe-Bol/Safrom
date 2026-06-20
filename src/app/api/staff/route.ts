@@ -82,18 +82,10 @@ export async function POST(req: Request) {
 
     const userId = authData.user.id;
 
-    // 3. Wait briefly for any DB trigger to fire, then forcefully set the role via raw update
-    // Use a raw SQL upsert that bypasses the check constraint race condition
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // First try to delete and re-insert to avoid constraint conflicts from triggers
-    // Step A: Delete any auto-created row from the trigger
-    await supabaseAdmin.from('users').delete().eq('id', userId);
-
-    // Step B: Insert fresh with correct role = 'employee'
+    // 3. Upsert into public.users to create or overwrite the profile
     const { error: dbError } = await supabaseAdmin
       .from('users')
-      .insert({
+      .upsert({
         id: userId,
         email: email,
         full_name: full_name,
@@ -106,24 +98,8 @@ export async function POST(req: Request) {
       });
 
     if (dbError) {
-      // Fallback: try upsert if insert failed (row might exist)
-      const { error: upsertError } = await supabaseAdmin
-        .from('users')
-        .update({
-          role: 'employee',
-          owner_id: owner_id,
-          branch_name: branch_name,
-          full_name: full_name,
-          staff_role: staff_role || 'Sales Staff',
-          subscription_status: 'active',
-          is_active: true,
-        })
-        .eq('id', userId);
-
-      if (upsertError) {
-        console.error('Staff linking failed:', upsertError);
-        return NextResponse.json({ error: `Failed to link staff account: ${upsertError.message}` }, { status: 500 });
-      }
+      console.error('Staff linking failed:', dbError);
+      return NextResponse.json({ error: `Failed to link staff account: ${dbError.message}` }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, userId });
@@ -160,6 +136,65 @@ export async function DELETE(req: Request) {
 
     // Also ensure the public.users row is deleted
     await supabaseAdmin.from('users').delete().eq('id', staff_id);
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const { staff_id, owner_id, full_name, branch_name, staff_role, password } = await req.json();
+
+    if (!staff_id || !owner_id) {
+      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    }
+
+    // Verify ownership
+    const { data: staffMember } = await supabaseAdmin
+      .from('users')
+      .select('owner_id')
+      .eq('id', staff_id)
+      .single();
+
+    if (!staffMember || staffMember.owner_id !== owner_id) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+    }
+
+    // Update public.users
+    const updates: any = {};
+    if (full_name) updates.full_name = full_name;
+    if (branch_name) updates.branch_name = branch_name;
+    if (staff_role) updates.staff_role = staff_role;
+
+    if (Object.keys(updates).length > 0) {
+      const { error: dbError } = await supabaseAdmin
+        .from('users')
+        .update(updates)
+        .eq('id', staff_id);
+      
+      if (dbError) {
+        return NextResponse.json({ error: dbError.message }, { status: 500 });
+      }
+    }
+
+    // Update auth credentials if password provided
+    if (password) {
+      const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(staff_id, {
+        password: password
+      });
+      if (authError) {
+        return NextResponse.json({ error: `Password update failed: ${authError.message}` }, { status: 500 });
+      }
+    }
+
+    // Update full name in auth metadata if changed
+    if (full_name) {
+      await supabaseAdmin.auth.admin.updateUserById(staff_id, {
+        user_metadata: { full_name }
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (err: any) {

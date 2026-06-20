@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: '/portal/expenses',    label: 'Expenses',                     icon: '💸', ownerOnly: false },
   { href: '/portal/reports',     label: 'Reports',                      icon: '📊', ownerOnly: false },
   { href: '/portal/sales',       label: 'Sales Tracker',                icon: '🧮', ownerOnly: false },
+  { href: '/portal/staff',       label: 'Staff & Branches',             icon: '👥', ownerOnly: true  },
   { href: '/portal/settings',    label: 'Settings',                     icon: '⚙️', ownerOnly: true  },
 ];
 

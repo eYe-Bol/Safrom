@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useStore } from '@/context/StoreContext';
+import { Topbar } from '@/components/Topbar';
 
 type StaffMember = {
   id: string;
@@ -54,12 +55,13 @@ const BLANK_PROFILE: BranchProfile = {
   branch_address: '',
 };
 
-export function StaffManager() {
+export default function StaffPage() {
   const { storeId, isTrial, subscriptionPlan, storeName } = useStore();
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [branchProfiles, setBranchProfiles] = useState<Record<string, BranchProfile>>({});
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<{ open: boolean; branch: string }>({ open: false, branch: '' });
+  const [editModal, setEditModal] = useState<{ open: boolean; staffId: string }>({ open: false, staffId: '' });
   const [branchModal, setBranchModal] = useState<{ open: boolean; branch: string }>({ open: false, branch: '' });
   const [form, setForm] = useState({ full_name: '', email: '', password: '', staff_role: 'Sales Staff' });
   const [branchForm, setBranchForm] = useState<BranchProfile>(BLANK_PROFILE);
@@ -115,6 +117,13 @@ export function StaffManager() {
     setModal({ open: true, branch });
   };
 
+  const openEditModal = (member: StaffMember) => {
+    setForm({ full_name: member.full_name, email: member.email, password: '', staff_role: member.staff_role });
+    setError('');
+    setSuccess('');
+    setEditModal({ open: true, staffId: member.id });
+  };
+
   const openBranchModal = (branch: string) => {
     const existing = branchProfiles[branch];
     setBranchForm(existing || {
@@ -155,6 +164,38 @@ export function StaffManager() {
         setModal({ open: false, branch: '' });
         setSuccess('');
       }, 3000);
+    }
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+
+    const res = await fetch('/api/staff', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        staff_id: editModal.staffId,
+        owner_id: storeId,
+        full_name: form.full_name,
+        staff_role: form.staff_role,
+        password: form.password || undefined,
+      }),
+    });
+
+    const result = await res.json();
+    setSaving(false);
+
+    if (!res.ok) {
+      setError(result.error || 'Failed to update staff account');
+    } else {
+      setSuccess(`✅ Account updated for ${form.full_name}!`);
+      fetchStaff();
+      setTimeout(() => {
+        setEditModal({ open: false, staffId: '' });
+        setSuccess('');
+      }, 2000);
     }
   };
 
@@ -223,7 +264,10 @@ export function StaffManager() {
   if (loading) return <div className="text-[13px] text-[var(--color-muted)] p-5">Loading branches...</div>;
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col min-h-screen pb-10">
+      <Topbar title="Staff & Branch Manager" sub="Record all staff, their branches, profiles, and login details" />
+      
+      <div className="p-3 sm:p-5 max-w-[1200px] mx-auto w-full space-y-4">
       {/* Toast */}
       {toast && (
         <div className="fixed top-4 right-4 z-[9999] bg-[var(--color-ink)] text-white px-4 py-3 rounded-xl text-[13px] font-semibold shadow-[0_8px_28px_rgba(0,0,0,0.22)] border-l-4 border-[var(--color-teal)]">
@@ -301,13 +345,10 @@ export function StaffManager() {
                     {member.staff_role && (
                       <div className="text-[10px] font-semibold text-[var(--color-teal)] mt-0.5">👤 {member.staff_role}</div>
                     )}
-                    <div className="flex gap-2 mt-2">
-                      <button onClick={() => handleToggleActive(member.id, member.is_active)} className={`text-[11px] font-bold py-1 px-2 rounded border shadow-sm flex-1 text-center transition-colors ${member.is_active ? 'bg-white border-orange-200 text-orange-600 hover:bg-orange-50' : 'bg-white border-[var(--color-teal)]/30 text-[var(--color-teal)] hover:bg-[var(--color-teal-bg)]'}`}>
-                        {member.is_active ? 'Deactivate' : 'Activate'}
-                      </button>
-                      <button onClick={() => handleRemove(member.id, branch.key)} className="text-[11px] font-bold py-1 px-2 rounded bg-white border border-red-200 text-red-600 shadow-sm hover:bg-red-50">
-                        Delete
-                      </button>
+                    <div className="flex items-center gap-1 mt-2 border-t border-[var(--color-line-lt)] pt-2">
+                      <button onClick={() => openEditModal(member)} className="flex-1 py-1 rounded-md text-[11px] font-bold text-[var(--color-teal)] hover:bg-[var(--color-teal-bg)] transition-colors">✏️ Edit</button>
+                      <button onClick={() => handleToggleActive(member.id, member.is_active)} className="flex-1 py-1 rounded-md text-[11px] font-bold text-[var(--color-slate)] hover:bg-gray-200 transition-colors">{member.is_active ? '⏸ Pause' : '▶️ Resume'}</button>
+                      <button onClick={() => handleRemove(member.id, branch.key)} className="flex-1 py-1 rounded-md text-[11px] font-bold text-red-500 hover:bg-red-50 transition-colors">🗑 Delete</button>
                     </div>
                   </div>
                 ))}
@@ -414,6 +455,7 @@ export function StaffManager() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
