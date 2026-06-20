@@ -415,6 +415,51 @@ export default function StaffPage() {
         </div>
       )}
 
+      {/* Edit Staff Modal */}
+      {editModal.open && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[var(--color-ink)]/40 backdrop-blur-sm" onClick={() => setEditModal({ open: false, staffId: '' })}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-[420px] shadow-[0_24px_64px_rgba(0,0,0,0.2)]" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-5">
+              <div>
+                <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)]">Edit Staff Member</h3>
+                <p className="text-[12px] text-[var(--color-muted)] mt-0.5">Update profile details</p>
+              </div>
+              <button onClick={() => setEditModal({ open: false, staffId: '' })} className="text-[20px] text-[var(--color-muted)] hover:text-[var(--color-ink)]">&times;</button>
+            </div>
+
+            {error && <div className="mb-4 p-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-[13px] font-semibold">{error}</div>}
+            {success && <div className="mb-4 p-3 bg-[var(--color-teal-bg)] text-[var(--color-teal)] border border-[var(--color-teal)]/20 rounded-xl text-[13px] font-semibold">{success}</div>}
+
+            {/* Read-only profile info */}
+            <div className="bg-[var(--color-canvas)] rounded-xl p-3 mb-4 border border-[var(--color-line-lt)]">
+              <div className="text-[11px] font-bold text-[var(--color-muted)] uppercase tracking-wider mb-1">Login Email</div>
+              <div className="text-[13px] font-semibold text-[var(--color-ink)]">{form.email}</div>
+            </div>
+
+            <form onSubmit={handleUpdate} className="space-y-4">
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Full Name</label>
+                <input required value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" />
+              </div>
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Job Role / Position</label>
+                <select value={form.staff_role} onChange={e => setForm({...form, staff_role: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)] cursor-pointer">
+                  {STAFF_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">New Password <span className="font-normal text-[var(--color-muted)]">(leave blank to keep current)</span></label>
+                <input type="password" minLength={6} value={form.password} onChange={e => setForm({...form, password: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="Min 6 characters" />
+              </div>
+
+              <button disabled={saving} type="submit" className="w-full py-3 mt-2 bg-[var(--color-teal)] text-white font-bold text-[14px] rounded-xl shadow-[0_4px_14px_rgba(20,83,88,0.25)] hover:bg-[#104347] disabled:opacity-50 transition-colors">
+                {saving ? 'Saving...' : '💾 Save Changes'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Branch Profile Modal */}
       {branchModal.open && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[var(--color-ink)]/40 backdrop-blur-sm" onClick={() => setBranchModal({ open: false, branch: '' })}>

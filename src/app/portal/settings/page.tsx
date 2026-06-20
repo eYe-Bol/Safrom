@@ -131,19 +131,87 @@ export default function SettingsPage() {
       {/* Upgrade Modal */}
       {showUpgrade && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[500] p-4" onClick={() => setShowUpgrade(false)}>
-          <div className="bg-white rounded-[18px] p-6 w-full max-w-[420px] shadow-[0_24px_64px_rgba(0,0,0,0.2)] text-center" onClick={e => e.stopPropagation()}>
-            <div className="text-[36px] mb-3">🚀</div>
-            <h2 className="font-serif text-[20px] font-bold text-[var(--color-ink)] mb-2">Upgrade Your Plan</h2>
-            <p className="text-[14px] text-[var(--color-muted)] leading-[1.7] mb-6">
-              Contact our team to upgrade instantly and unlock more branches and users.
-            </p>
-            <div className="flex gap-2.5">
-              <button onClick={() => setShowUpgrade(false)} className="flex-1 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[14px] text-[var(--color-slate)]">Maybe Later</button>
-              <a href="https://wa.me/254716630073" target="_blank" rel="noreferrer"
-                className="flex-1 py-2.5 bg-[var(--color-teal)] rounded-xl font-bold text-[14px] text-white text-center">
-                💬 Contact Sales
-              </a>
+          <div className="bg-white rounded-[18px] p-6 w-full max-w-[520px] shadow-[0_24px_64px_rgba(0,0,0,0.2)]" onClick={e => e.stopPropagation()}>
+            <div className="text-center mb-5">
+              <div className="text-[36px] mb-2">🚀</div>
+              <h2 className="font-serif text-[20px] font-bold text-[var(--color-ink)]">Upgrade Your Plan</h2>
+              {userData?.subscription_plan ? (
+                <p className="text-[13px] text-[var(--color-muted)] mt-1">
+                  Current plan: <strong className="text-[var(--color-teal)]">KES {userData.subscription_plan}/mo</strong>
+                </p>
+              ) : (
+                <p className="text-[13px] text-[var(--color-muted)] mt-1">
+                  You're on the <strong className="text-[var(--color-gold)]">Free Trial</strong>
+                </p>
+              )}
             </div>
+
+            <div className="flex flex-col gap-3 mb-5">
+              {/* Plan 999 */}
+              {userData?.subscription_plan !== '999' && userData?.subscription_plan !== '1499' && (
+                <div className="border-2 border-[var(--color-teal)]/30 rounded-xl p-4 bg-[var(--color-teal-bg)]/30">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-serif text-[16px] font-bold text-[var(--color-ink)]">Starter Plan</h3>
+                    <span className="font-serif text-[18px] font-bold text-[var(--color-teal)]">KES 999<span className="text-[11px] font-normal text-[var(--color-muted)]">/mo</span></span>
+                  </div>
+                  <ul className="text-[12px] text-[var(--color-slate)] space-y-1.5 mb-3">
+                    <li>✅ 1 Branch (Main Branch)</li>
+                    <li>✅ 1 Staff account</li>
+                    <li>✅ Full dashboard & reports</li>
+                    <li>✅ Sales tracker & inventory</li>
+                  </ul>
+                  <a
+                    href={`https://wa.me/254716630073?text=${encodeURIComponent(`Hi, I'd like to upgrade to the KES 999/mo Starter Plan for my store "${userData?.store_name || 'My Store'}". My email is ${user?.email || ''}.`)}`}
+                    target="_blank" rel="noreferrer"
+                    className="block w-full py-2.5 bg-[var(--color-teal)] rounded-xl font-bold text-[13px] text-white text-center hover:opacity-90 transition-opacity"
+                  >
+                    💬 Select Starter Plan
+                  </a>
+                </div>
+              )}
+
+              {/* Plan 1499 */}
+              {userData?.subscription_plan !== '1499' && (
+                <div className="border-2 border-[var(--color-gold)]/30 rounded-xl p-4 bg-[var(--color-gold-pale)]/30">
+                  <div className="flex justify-between items-center mb-2">
+                    <div>
+                      <h3 className="font-serif text-[16px] font-bold text-[var(--color-ink)]">Growth Plan</h3>
+                      {userData?.subscription_plan === '999' && (
+                        <span className="text-[10px] font-bold text-[var(--color-gold)] bg-[var(--color-gold-pale)] px-2 py-0.5 rounded-full uppercase tracking-wider">Recommended Upgrade</span>
+                      )}
+                    </div>
+                    <span className="font-serif text-[18px] font-bold text-[var(--color-gold)]">KES 1,499<span className="text-[11px] font-normal text-[var(--color-muted)]">/mo</span></span>
+                  </div>
+                  <ul className="text-[12px] text-[var(--color-slate)] space-y-1.5 mb-3">
+                    <li>✅ 3 Branches (Main + 2 extra)</li>
+                    <li>✅ Up to 4 Staff accounts</li>
+                    <li>✅ Full dashboard & reports</li>
+                    <li>✅ Multi-branch analytics</li>
+                    <li>✅ Priority support</li>
+                  </ul>
+                  <a
+                    href={`https://wa.me/254716630073?text=${encodeURIComponent(`Hi, I'd like to upgrade to the KES 1499/mo Growth Plan for my store "${userData?.store_name || 'My Store'}". My email is ${user?.email || ''}.`)}`}
+                    target="_blank" rel="noreferrer"
+                    className="block w-full py-2.5 bg-[var(--color-gold)] rounded-xl font-bold text-[13px] text-white text-center hover:opacity-90 transition-opacity"
+                  >
+                    💬 Select Growth Plan
+                  </a>
+                </div>
+              )}
+
+              {/* Already on highest plan */}
+              {userData?.subscription_plan === '1499' && (
+                <div className="border-2 border-[var(--color-emerald)]/30 rounded-xl p-4 bg-[var(--color-emerald-bg)] text-center">
+                  <div className="text-[28px] mb-2">🎉</div>
+                  <h3 className="font-serif text-[16px] font-bold text-[var(--color-emerald)]">You're on the Growth Plan!</h3>
+                  <p className="text-[13px] text-[var(--color-slate)] mt-1">You have access to all features including 3 branches and 4 staff accounts.</p>
+                </div>
+              )}
+            </div>
+
+            <button onClick={() => setShowUpgrade(false)} className="w-full py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[14px] text-[var(--color-slate)] hover:bg-gray-50 transition-colors">
+              Maybe Later
+            </button>
           </div>
         </div>
       )}

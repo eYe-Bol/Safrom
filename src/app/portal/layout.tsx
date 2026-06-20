@@ -43,7 +43,7 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userName, setUserName] = useState<string>('');
   
-  const { storeName, role, isActive, storeId, loading } = useStore();
+  const { storeName, role, isActive, storeId, loading, branchName, setBranchName } = useStore();
 
   useEffect(() => {
     if (isActive === false) {
@@ -154,8 +154,20 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
         <span className="font-serif text-[14px] font-bold text-[var(--color-ink)] truncate flex-1">
           {storeName || 'Sales From Scratch'}
         </span>
-        {/* Live clock on right */}
-        <div className="hidden sm:flex flex-col items-end shrink-0">
+        {/* Branch filter on mobile for owners */}
+        {role !== 'employee' && (
+          <select 
+            value={branchName || 'Main Branch'} 
+            onChange={(e) => setBranchName(e.target.value)}
+            className="text-[11px] bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg px-1.5 py-1 outline-none text-[var(--color-slate)] font-semibold cursor-pointer shrink-0 max-w-[100px]"
+          >
+            <option value="Main Branch">Main Branch</option>
+            <option value="Branch 2">Branch 2</option>
+            <option value="Branch 3">Branch 3</option>
+          </select>
+        )}
+        {/* Live clock on right - visible on all screens */}
+        <div className="flex flex-col items-end shrink-0">
           <LiveClock />
         </div>
         {/* Red sign-out avatar */}

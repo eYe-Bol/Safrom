@@ -59,14 +59,23 @@ export default function SalesTrackerPage() {
 
     if (inv) setItems(inv as InventoryItem[]);
     if (logs) {
-      setSaleLogs(logs.map((s: any) => ({
+      const mapped = logs.map((s: any) => ({
         id: s.id,
         inventory_id: s.inventory_id,
         units_sold: s.units_sold,
         revenue: s.revenue,
         created_at: s.created_at,
         product_name: s.inventory?.name || 'Unknown',
-      })));
+      }));
+      setSaleLogs(mapped);
+
+      // Auto-populate logged tags from today's sales so they persist across refresh
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayLoggedIds = new Set(
+        mapped.filter((s: SaleLog) => s.created_at.startsWith(todayStr))
+             .map((s: SaleLog) => s.inventory_id)
+      );
+      setLoggedIds(todayLoggedIds);
     }
     setLoading(false);
   };
