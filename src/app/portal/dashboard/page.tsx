@@ -44,7 +44,7 @@ function groupByDay(sales: any[], expenses: any[], mode: 'net_sales' | 'net_prof
 }
 
 export default function DashboardPage() {
-  const { storeId } = useStore();
+  const { storeId, branchName } = useStore();
   const [storeName, setStoreName] = useState('');
   const [todayRevenue, setTodayRevenue] = useState(0);
   const [todayTransactions, setTodayTransactions] = useState(0);
