@@ -70,7 +70,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             // Fetch owner's store name and trial info
             const { data: ownerProfile } = await supabase
               .from('users')
-              .select('store_name, created_at, subscription_plan')
+              .select('store_name, created_at, subscription_plan, subscription_end_date')
               .eq('id', profile.owner_id)
               .single();
               
@@ -81,12 +81,38 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
               const trialEnd = new Date(ownerProfile.created_at);
               trialEnd.setDate(trialEnd.getDate() + 7);
               isTrial = trialEnd > new Date();
+              
+              if (!isTrial) {
+                if (ownerProfile.subscription_end_date) {
+                  const subEnd = new Date(ownerProfile.subscription_end_date);
+                  if (subEnd < new Date()) {
+                    profile.is_active = false;
+                  }
+                } else if (ownerProfile.subscription_plan) {
+                  // Legacy handling or infinite for basic/pro without sub end date
+                } else {
+                  profile.is_active = false;
+                }
+              }
             }
           } else {
             // It's the owner
             const trialEnd = new Date(profile.created_at);
             trialEnd.setDate(trialEnd.getDate() + 7);
             isTrial = trialEnd > new Date();
+            
+            if (!isTrial) {
+              if (profile.subscription_end_date) {
+                const subEnd = new Date(profile.subscription_end_date);
+                if (subEnd < new Date()) {
+                  profile.is_active = false;
+                }
+              } else if (profile.subscription_plan) {
+                // Legacy or active without date
+              } else {
+                profile.is_active = false;
+              }
+            }
           }
 
           let branchProfilesMap: Record<string, string> = {};

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Topbar } from '@/components/Topbar';
 import { createClient } from '@/utils/supabase/client';
 
@@ -12,8 +13,20 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [paymentCycle, setPaymentCycle] = useState<4 | 8 | 12>(4);
+  const [checkingOut, setCheckingOut] = useState(false);
+  const storeId = userData?.id;
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+
+  useEffect(() => {
+    if (searchParams.get('payment') === 'success') {
+      fire('🎉 Payment successful! Your subscription is being updated.');
+      router.replace('/portal/settings');
+    }
+  }, [searchParams, router]);
 
   useEffect(() => {
     const load = async () => {
@@ -48,6 +61,39 @@ export default function SettingsPage() {
     }
     setSaving(false);
     setEditMode(false);
+  };
+
+  const handleCheckout = async (plan: 'BASIC' | 'PRO') => {
+    if (!storeId || !user?.email) {
+      fire('User email or store ID missing');
+      return;
+    }
+    setCheckingOut(true);
+    try {
+      const amount = plan === 'BASIC' ? 999 * paymentCycle : 1499 * paymentCycle;
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storeId,
+          plan,
+          months: paymentCycle,
+          amount,
+          email: user.email,
+          name: userData?.store_name
+        })
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        fire('Checkout error: ' + (data.error || 'Unknown'));
+        setCheckingOut(false);
+      }
+    } catch (err) {
+      fire('Failed to start checkout');
+      setCheckingOut(false);
+    }
   };
 
   const trialDaysLeft = userData?.trial_end
@@ -147,12 +193,29 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex flex-col gap-3 mb-5">
+              
+              <div className="flex flex-col mb-2">
+                <label className="text-[12px] font-bold text-[var(--color-slate)] mb-1">Select Payment Cycle</label>
+                <select 
+                  value={paymentCycle} 
+                  onChange={e => setPaymentCycle(parseInt(e.target.value) as 4 | 8 | 12)}
+                  className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none"
+                >
+                  <option value={4}>4 Months</option>
+                  <option value={8}>8 Months</option>
+                  <option value={12}>12 Months</option>
+                </select>
+              </div>
+
               {/* Plan 999 */}
-              {userData?.subscription_plan !== '999' && userData?.subscription_plan !== '1499' && (
+              {userData?.subscription_plan !== '999' && userData?.subscription_plan !== 'basic' && userData?.subscription_plan !== '1499' && userData?.subscription_plan !== 'pro' && (
                 <div className="border-2 border-[var(--color-teal)]/30 rounded-xl p-4 bg-[var(--color-teal-bg)]/30">
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="font-serif text-[16px] font-bold text-[var(--color-ink)]">Starter Plan</h3>
-                    <span className="font-serif text-[18px] font-bold text-[var(--color-teal)]">KES 999<span className="text-[11px] font-normal text-[var(--color-muted)]">/mo</span></span>
+                    <div className="text-right">
+                      <div className="font-serif text-[18px] font-bold text-[var(--color-teal)]">KES {(999 * paymentCycle).toLocaleString()}</div>
+                      <div className="text-[11px] font-normal text-[var(--color-muted)]">for {paymentCycle} months (KES 999/mo)</div>
+                    </div>
                   </div>
                   <ul className="text-[12px] text-[var(--color-slate)] space-y-1.5 mb-3">
                     <li>✅ 1 Branch (Main Branch)</li>
@@ -160,27 +223,30 @@ export default function SettingsPage() {
                     <li>✅ Full dashboard & reports</li>
                     <li>✅ Sales tracker & inventory</li>
                   </ul>
-                  <a
-                    href={`https://wa.me/254716630073?text=${encodeURIComponent(`Hi, I'd like to upgrade to the KES 999/mo Starter Plan for my store "${userData?.store_name || 'My Store'}". My email is ${user?.email || ''}.`)}`}
-                    target="_blank" rel="noreferrer"
-                    className="block w-full py-2.5 bg-[var(--color-teal)] rounded-xl font-bold text-[13px] text-white text-center hover:opacity-90 transition-opacity"
+                  <button
+                    onClick={() => handleCheckout('BASIC')}
+                    disabled={checkingOut}
+                    className="block w-full py-2.5 bg-[var(--color-teal)] rounded-xl font-bold text-[13px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50"
                   >
-                    💬 Select Starter Plan
-                  </a>
+                    {checkingOut ? 'Loading...' : 'Pay with Intasend'}
+                  </button>
                 </div>
               )}
 
               {/* Plan 1499 */}
-              {userData?.subscription_plan !== '1499' && (
+              {userData?.subscription_plan !== '1499' && userData?.subscription_plan !== 'pro' && (
                 <div className="border-2 border-[var(--color-gold)]/30 rounded-xl p-4 bg-[var(--color-gold-pale)]/30">
                   <div className="flex justify-between items-center mb-2">
                     <div>
                       <h3 className="font-serif text-[16px] font-bold text-[var(--color-ink)]">Growth Plan</h3>
-                      {userData?.subscription_plan === '999' && (
+                      {(userData?.subscription_plan === '999' || userData?.subscription_plan === 'basic') && (
                         <span className="text-[10px] font-bold text-[var(--color-gold)] bg-[var(--color-gold-pale)] px-2 py-0.5 rounded-full uppercase tracking-wider">Recommended Upgrade</span>
                       )}
                     </div>
-                    <span className="font-serif text-[18px] font-bold text-[var(--color-gold)]">KES 1,499<span className="text-[11px] font-normal text-[var(--color-muted)]">/mo</span></span>
+                    <div className="text-right">
+                      <div className="font-serif text-[18px] font-bold text-[var(--color-gold)]">KES {(1499 * paymentCycle).toLocaleString()}</div>
+                      <div className="text-[11px] font-normal text-[var(--color-muted)]">for {paymentCycle} months (KES 1499/mo)</div>
+                    </div>
                   </div>
                   <ul className="text-[12px] text-[var(--color-slate)] space-y-1.5 mb-3">
                     <li>✅ 3 Branches (Main + 2 extra)</li>
@@ -189,18 +255,18 @@ export default function SettingsPage() {
                     <li>✅ Multi-branch analytics</li>
                     <li>✅ Priority support</li>
                   </ul>
-                  <a
-                    href={`https://wa.me/254716630073?text=${encodeURIComponent(`Hi, I'd like to upgrade to the KES 1499/mo Growth Plan for my store "${userData?.store_name || 'My Store'}". My email is ${user?.email || ''}.`)}`}
-                    target="_blank" rel="noreferrer"
-                    className="block w-full py-2.5 bg-[var(--color-gold)] rounded-xl font-bold text-[13px] text-white text-center hover:opacity-90 transition-opacity"
+                  <button
+                    onClick={() => handleCheckout('PRO')}
+                    disabled={checkingOut}
+                    className="block w-full py-2.5 bg-[var(--color-gold)] rounded-xl font-bold text-[13px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50"
                   >
-                    💬 Select Growth Plan
-                  </a>
+                    {checkingOut ? 'Loading...' : 'Pay with Intasend'}
+                  </button>
                 </div>
               )}
 
               {/* Already on highest plan */}
-              {userData?.subscription_plan === '1499' && (
+              {(userData?.subscription_plan === '1499' || userData?.subscription_plan === 'pro') && (
                 <div className="border-2 border-[var(--color-emerald)]/30 rounded-xl p-4 bg-[var(--color-emerald-bg)] text-center">
                   <div className="text-[28px] mb-2">🎉</div>
                   <h3 className="font-serif text-[16px] font-bold text-[var(--color-emerald)]">You're on the Growth Plan!</h3>
@@ -209,7 +275,7 @@ export default function SettingsPage() {
               )}
             </div>
 
-            <button onClick={() => setShowUpgrade(false)} className="w-full py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[14px] text-[var(--color-slate)] hover:bg-gray-50 transition-colors">
+            <button onClick={() => setShowUpgrade(false)} disabled={checkingOut} className="w-full py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[14px] text-[var(--color-slate)] hover:bg-gray-50 transition-colors disabled:opacity-50">
               Maybe Later
             </button>
           </div>
