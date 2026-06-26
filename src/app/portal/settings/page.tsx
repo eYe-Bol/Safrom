@@ -84,7 +84,9 @@ export default function SettingsPage() {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        fire('Checkout error: ' + (data.error || 'Unknown'));
+        const errorMessage = data.details ? JSON.stringify(data.details) : data.error;
+        fire('Checkout error: ' + errorMessage);
+        console.error('Intasend error details:', data);
         setCheckingOut(false);
       }
     } catch (err) {
