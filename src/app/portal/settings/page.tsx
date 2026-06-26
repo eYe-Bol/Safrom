@@ -227,7 +227,7 @@ export default function SettingsPage() {
                     disabled={checkingOut}
                     className="block w-full py-2.5 bg-[var(--color-teal)] rounded-xl font-bold text-[13px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50"
                   >
-                    {checkingOut ? 'Loading...' : 'Pay with Intasend'}
+                    {checkingOut ? 'Loading...' : 'Proceed to Payment'}
                   </button>
                 </div>
               )}
@@ -259,7 +259,7 @@ export default function SettingsPage() {
                     disabled={checkingOut}
                     className="block w-full py-2.5 bg-[var(--color-gold)] rounded-xl font-bold text-[13px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50"
                   >
-                    {checkingOut ? 'Loading...' : 'Pay with Intasend'}
+                    {checkingOut ? 'Loading...' : 'Proceed to Payment'}
                   </button>
                 </div>
               )}
