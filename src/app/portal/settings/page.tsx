@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/Topbar';
 import { createClient } from '@/utils/supabase/client';
 
-function SettingsInner() {
+export default function SettingsPage() {
   const [user, setUser] = useState<any>(null);
   const [userData, setUserData] = useState<any>(null);
   const [editMode, setEditMode] = useState(false);
@@ -16,17 +15,15 @@ function SettingsInner() {
   const [paymentCycle, setPaymentCycle] = useState<4 | 8 | 12>(4);
   const [checkingOut, setCheckingOut] = useState(false);
   const storeId = userData?.id;
-  const searchParams = useSearchParams();
-  const router = useRouter();
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
   useEffect(() => {
-    if (searchParams.get('payment') === 'success') {
+    if (typeof window !== 'undefined' && window.location.search.includes('payment=success')) {
       fire('🎉 Payment successful! Your subscription is being updated.');
-      router.replace('/portal/settings');
+      window.history.replaceState({}, '', '/portal/settings');
     }
-  }, [searchParams, router]);
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -282,13 +279,5 @@ function SettingsInner() {
         </div>
       )}
     </div>
-  );
-}
-
-export default function SettingsPage() {
-  return (
-    <Suspense fallback={null}>
-      <SettingsInner />
-    </Suspense>
   );
 }
