@@ -17,41 +17,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Intasend keys not configured on server' }, { status: 500 });
     }
 
-    // Prepare payload for Intasend
-    // api_ref allows us to track this specific transaction in the webhook
+    const IntaSend = require('intasend-node');
+    const intasend = new IntaSend(
+      INTASEND_PUBLISHABLE_KEY,
+      INTASEND_SECRET_KEY,
+      false // test mode = false
+    );
+
     const apiRef = `${storeId}_${plan}_${months}_${Date.now()}`;
 
-    const payload = {
-      public_key: INTASEND_PUBLISHABLE_KEY,
-      amount: amount,
-      currency: 'KES',
-      email: email,
+    const collection = intasend.collection();
+    const response = await collection.charge({
       first_name: name || 'SFS',
       last_name: 'User',
+      email: email,
       host: HOST,
-      redirect_url: `${HOST}/portal/settings?payment=success`,
+      amount: amount,
+      currency: 'KES',
       api_ref: apiRef,
-    };
-
-    const response = await fetch('https://payment.intasend.com/api/v1/checkout/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${INTASEND_SECRET_KEY}`
-      },
-      body: JSON.stringify(payload)
+      redirect_url: `${HOST}/portal/settings?payment=success`
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('Intasend Checkout Error:', data);
-      return NextResponse.json({ error: 'Payment gateway error', details: data }, { status: response.status });
-    }
-
-    return NextResponse.json({ url: data.url });
+    return NextResponse.json({ url: response.url });
   } catch (err: any) {
     console.error('Checkout error:', err);
-    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: err.message || 'Internal Server Error', details: err }, { status: 500 });
   }
 }
