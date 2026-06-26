@@ -13,7 +13,7 @@ export default function SettingsPage() {
   const [toast, setToast] = useState('');
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [paymentCycle, setPaymentCycle] = useState<4 | 8 | 12>(4);
-  const [checkingOut, setCheckingOut] = useState(false);
+  const [checkingOutPlan, setCheckingOutPlan] = useState<'BASIC' | 'PRO' | null>(null);
   const storeId = userData?.id;
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
@@ -65,7 +65,7 @@ export default function SettingsPage() {
       fire('User email or store ID missing');
       return;
     }
-    setCheckingOut(true);
+    setCheckingOutPlan(plan);
     try {
       const amount = plan === 'BASIC' ? 999 * paymentCycle : 1499 * paymentCycle;
       const res = await fetch('/api/checkout', {
@@ -87,11 +87,11 @@ export default function SettingsPage() {
         const errorMessage = data.details ? JSON.stringify(data.details) : data.error;
         fire('Checkout error: ' + errorMessage);
         console.error('Intasend error details:', data);
-        setCheckingOut(false);
+        setCheckingOutPlan(null);
       }
     } catch (err) {
       fire('Failed to start checkout');
-      setCheckingOut(false);
+      setCheckingOutPlan(null);
     }
   };
 
@@ -224,10 +224,10 @@ export default function SettingsPage() {
                   </ul>
                   <button
                     onClick={() => handleCheckout('BASIC')}
-                    disabled={checkingOut}
+                    disabled={checkingOutPlan !== null}
                     className="block w-full py-2.5 bg-[var(--color-teal)] rounded-xl font-bold text-[13px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50"
                   >
-                    {checkingOut ? 'Loading...' : 'Proceed to Payment'}
+                    {checkingOutPlan === 'BASIC' ? 'Loading...' : 'Proceed to Payment'}
                   </button>
                 </div>
               )}
@@ -256,10 +256,10 @@ export default function SettingsPage() {
                   </ul>
                   <button
                     onClick={() => handleCheckout('PRO')}
-                    disabled={checkingOut}
+                    disabled={checkingOutPlan !== null}
                     className="block w-full py-2.5 bg-[var(--color-gold)] rounded-xl font-bold text-[13px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50"
                   >
-                    {checkingOut ? 'Loading...' : 'Proceed to Payment'}
+                    {checkingOutPlan === 'PRO' ? 'Loading...' : 'Proceed to Payment'}
                   </button>
                 </div>
               )}
