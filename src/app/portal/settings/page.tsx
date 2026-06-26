@@ -13,7 +13,7 @@ export default function SettingsPage() {
   const [toast, setToast] = useState('');
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [paymentCycle, setPaymentCycle] = useState<4 | 8 | 12>(4);
-  const [checkingOutPlan, setCheckingOutPlan] = useState<'BASIC' | 'PRO' | null>(null);
+  const [checkingOutPlan, setCheckingOutPlan] = useState<string | null>(null);
   const storeId = userData?.id;
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
@@ -274,7 +274,7 @@ export default function SettingsPage() {
               )}
             </div>
 
-            <button onClick={() => setShowUpgrade(false)} disabled={checkingOut} className="w-full py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[14px] text-[var(--color-slate)] hover:bg-gray-50 transition-colors disabled:opacity-50">
+            <button onClick={() => setShowUpgrade(false)} disabled={checkingOutPlan !== null} className="w-full py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[14px] text-[var(--color-slate)] hover:bg-gray-50 transition-colors disabled:opacity-50">
               Maybe Later
             </button>
           </div>
