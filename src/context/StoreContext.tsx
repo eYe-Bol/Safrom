@@ -96,7 +96,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
               }
             }
           } else {
-            // It's the owner
             const trialEnd = new Date(profile.created_at);
             trialEnd.setDate(trialEnd.getDate() + 7);
             isTrial = trialEnd > new Date();
@@ -107,9 +106,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
                 if (subEnd < new Date()) {
                   profile.is_active = false;
                 }
-              } else if (profile.subscription_plan) {
-                // Legacy or active without date
-              } else {
+              } else if (!profile.subscription_plan) {
                 profile.is_active = false;
               }
             }
