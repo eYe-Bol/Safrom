@@ -38,8 +38,11 @@ export default function SalesTrackerPage() {
   const [form, setForm] = useState({ opening: '', added: '', closing: '', wastage: '' });
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
-  const [activeTab, setActiveTab] = useState<'log' | 'history'>('log');
+  const [activeTab, setActiveTab] = useState<'pos' | 'log' | 'history'>('pos');
   const [loggedIds, setLoggedIds] = useState<Set<string>>(new Set());
+  
+  const [cart, setCart] = useState<{ item: InventoryItem; qty: number }[]>([]);
+  const [checkingOut, setCheckingOut] = useState(false);
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
@@ -131,6 +134,65 @@ export default function SalesTrackerPage() {
     setSaving(false);
   };
 
+  const addToCart = (item: InventoryItem) => {
+    setCart(prev => {
+      const ex = prev.find(c => c.item.id === item.id);
+      if (ex) {
+        if (ex.qty >= item.stock) return prev;
+        return prev.map(c => c.item.id === item.id ? { ...c, qty: c.qty + 1 } : c);
+      }
+      if (item.stock < 1) {
+        fire('⚠ Out of stock');
+        return prev;
+      }
+      return [...prev, { item, qty: 1 }];
+    });
+  };
+
+  const updateCartQty = (id: string, delta: number) => {
+    setCart(prev => prev.map(c => {
+      if (c.item.id !== id) return c;
+      const newQty = c.qty + delta;
+      if (newQty < 1 || newQty > c.item.stock) return c;
+      return { ...c, qty: newQty };
+    }));
+  };
+
+  const removeFromCart = (id: string) => {
+    setCart(prev => prev.filter(c => c.item.id !== id));
+  };
+
+  const cartTotal = cart.reduce((sum, c) => sum + c.item.sell_price * c.qty, 0);
+
+  const handlePOSCheckout = async () => {
+    if (cart.length === 0 || !storeId) return;
+    setCheckingOut(true);
+    const supabase = createClient();
+
+    const salesData = cart.map(c => ({
+      user_id: storeId,
+      inventory_id: c.item.id,
+      units_sold: c.qty,
+      revenue: c.qty * c.item.sell_price,
+      branch_name: branchName || 'Main Branch',
+    }));
+
+    for (const c of cart) {
+      await supabase.from('inventory').update({ stock: c.item.stock - c.qty }).eq('id', c.item.id);
+    }
+
+    const { error } = await supabase.from('sales').insert(salesData);
+
+    if (error) {
+      fire('⚠ Error processing checkout.');
+    } else {
+      fire(`✓ Checkout successful! ${fmt(cartTotal)} collected.`);
+      setCart([]);
+      fetchAll();
+    }
+    setCheckingOut(false);
+  };
+
   // Today's summary from logs
   const todayStr = new Date().toISOString().split('T')[0];
   const todayLogs = saleLogs.filter(s => s.created_at.startsWith(todayStr));
@@ -165,13 +227,110 @@ export default function SalesTrackerPage() {
 
         {/* Tab switcher */}
         <div className="flex gap-2">
+          <button onClick={() => setActiveTab('pos')} className={`px-4 py-2 rounded-xl font-semibold text-[13px] border-[1.5px] transition-all cursor-pointer ${activeTab === 'pos' ? 'bg-[var(--color-teal)] border-[var(--color-teal)] text-white' : 'bg-white border-[var(--color-line)] text-[var(--color-slate)] hover:bg-[var(--color-canvas)]'}`}>
+            🛒 POS Checkout
+          </button>
           <button onClick={() => setActiveTab('log')} className={`px-4 py-2 rounded-xl font-semibold text-[13px] border-[1.5px] transition-all cursor-pointer ${activeTab === 'log' ? 'bg-[var(--color-teal)] border-[var(--color-teal)] text-white' : 'bg-white border-[var(--color-line)] text-[var(--color-slate)] hover:bg-[var(--color-canvas)]'}`}>
-            📝 Log Sale
+            📝 Log Shift
           </button>
           <button onClick={() => setActiveTab('history')} className={`px-4 py-2 rounded-xl font-semibold text-[13px] border-[1.5px] transition-all cursor-pointer ${activeTab === 'history' ? 'bg-[var(--color-teal)] border-[var(--color-teal)] text-white' : 'bg-white border-[var(--color-line)] text-[var(--color-slate)] hover:bg-[var(--color-canvas)]'}`}>
             📋 Sales History
           </button>
         </div>
+
+        {/* ─── TAB: POS CHECKOUT ─── */}
+        {activeTab === 'pos' && (
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
+            {/* Left: Product Grid */}
+            <div className="bg-white rounded-xl border border-[var(--color-line-lt)] overflow-hidden shadow-sm flex flex-col min-h-[500px]">
+              <div className="p-3 border-b border-[var(--color-line-lt)] flex gap-2.5 flex-wrap items-center">
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products…"
+                  className="flex-1 min-w-[140px] px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" />
+                <select value={catF} onChange={e => setCatF(e.target.value)}
+                  className="w-[140px] px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none bg-white">
+                  {cats.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 overflow-y-auto max-h-[60vh]">
+                {loading ? (
+                  <div className="col-span-full text-center text-[13px] text-[var(--color-muted)] p-10">Loading products...</div>
+                ) : filtered.length === 0 ? (
+                  <div className="col-span-full text-center text-[13px] text-[var(--color-muted)] p-10">No products found.</div>
+                ) : (
+                  filtered.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => addToCart(p)}
+                      disabled={p.stock < 1}
+                      className={`text-left flex flex-col p-3 rounded-xl border-[1.5px] transition-all ${p.stock < 1 ? 'opacity-50 border-[var(--color-line-lt)] cursor-not-allowed bg-[var(--color-canvas)]' : 'border-[var(--color-line-lt)] hover:border-[var(--color-teal)] bg-white cursor-pointer hover:shadow-md'}`}
+                    >
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-slate)] mb-1 truncate">{p.category || 'General'}</div>
+                      <div className="font-semibold text-[13px] text-[var(--color-ink)] leading-tight mb-2 flex-1">{p.name}</div>
+                      <div className="flex justify-between items-end w-full mt-auto">
+                        <div className="font-bold text-[14px] text-[var(--color-teal)]">{fmt(p.sell_price)}</div>
+                        <div className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${p.stock < 10 ? 'bg-[var(--color-red-bg)] text-[var(--color-red)]' : 'bg-[var(--color-canvas)] text-[var(--color-slate)]'}`}>
+                          {p.stock} left
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Right: Cart */}
+            <div className="bg-white rounded-xl border border-[var(--color-line-lt)] overflow-hidden shadow-sm sticky top-[80px] flex flex-col max-h-[70vh]">
+              <div className="p-4 border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)]">
+                <h3 className="font-serif text-[16px] font-bold text-[var(--color-ink)] flex justify-between">
+                  <span>Current Sale</span>
+                  <span className="text-[var(--color-teal)] bg-[var(--color-teal-bg)] px-2 rounded-full text-[13px]">{cart.length} items</span>
+                </h3>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-2">
+                {cart.length === 0 ? (
+                  <div className="text-center text-[13px] text-[var(--color-muted)] p-10 flex flex-col items-center gap-3">
+                    <span className="text-[40px]">🛒</span>
+                    Cart is empty.<br/>Tap products to add them.
+                  </div>
+                ) : (
+                  <div className="flex flex-col">
+                    {cart.map(c => (
+                      <div key={c.item.id} className="p-3 border-b border-[var(--color-line-lt)] last:border-0 flex gap-2 items-center">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[13px] font-semibold text-[var(--color-ink)] truncate">{c.item.name}</div>
+                          <div className="text-[12px] text-[var(--color-teal)]">{fmt(c.item.sell_price)}</div>
+                        </div>
+                        <div className="flex items-center gap-2 bg-[var(--color-canvas)] rounded-lg p-1 border border-[var(--color-line-lt)]">
+                          <button onClick={() => updateCartQty(c.item.id, -1)} className="w-6 h-6 flex items-center justify-center bg-white rounded text-[16px] font-bold border border-[var(--color-line-lt)] text-[var(--color-slate)] hover:text-[var(--color-ink)] cursor-pointer">−</button>
+                          <span className="text-[13px] font-bold w-4 text-center">{c.qty}</span>
+                          <button onClick={() => updateCartQty(c.item.id, 1)} disabled={c.qty >= c.item.stock} className="w-6 h-6 flex items-center justify-center bg-white rounded text-[16px] font-bold border border-[var(--color-line-lt)] text-[var(--color-slate)] hover:text-[var(--color-ink)] disabled:opacity-50 cursor-pointer">+</button>
+                        </div>
+                        <button onClick={() => removeFromCart(c.item.id)} className="w-8 h-8 flex items-center justify-center text-[var(--color-red)] bg-[var(--color-red-bg)] rounded-lg hover:bg-[var(--color-red)] hover:text-white transition-colors cursor-pointer">
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              <div className="p-4 border-t border-[var(--color-line-lt)] bg-white">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-[14px] font-bold text-[var(--color-slate)]">Total</span>
+                  <span className="font-serif text-[24px] font-bold text-[var(--color-teal)]">{fmt(cartTotal)}</span>
+                </div>
+                <button
+                  onClick={handlePOSCheckout}
+                  disabled={cart.length === 0 || checkingOut}
+                  className="w-full py-3.5 rounded-xl border-none font-bold text-[15px] transition-all flex items-center justify-center gap-2 bg-[var(--color-teal)] text-white shadow-[0_4px_14px_rgba(10,92,107,0.25)] hover:opacity-90 disabled:opacity-50 disabled:shadow-none cursor-pointer disabled:cursor-not-allowed"
+                >
+                  {checkingOut ? 'Processing...' : 'Charge ' + fmt(cartTotal)}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ─── TAB: LOG SALE ─── */}
         {activeTab === 'log' && (
