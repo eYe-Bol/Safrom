@@ -221,54 +221,8 @@ export default function ReportsPage() {
           <div className="p-3.5 border-b border-[var(--color-line-lt)]">
             <span className="font-serif text-[15px] font-bold text-[var(--color-ink)]">Sales by Product</span>
           </div>
-          {/* Mobile Card View */}
-          <div className="md:hidden flex flex-col divide-y divide-[var(--color-line-lt)]">
-            {loading ? (
-              <div className="p-4 text-center text-[13px] text-[var(--color-muted)]">Loading products...</div>
-            ) : topProducts.length === 0 ? (
-              <div className="p-4 text-center text-[13px] text-[var(--color-muted)]">No sales for this period. Click Apply after adjusting filters.</div>
-            ) : topProducts.map(([name, r]) => {
-              const m = r.sell > 0 && r.cost > 0 ? Math.round(((r.sell - r.cost) / r.sell) * 100) : null;
-              const share = totalRevenue > 0 ? (r.revenue / totalRevenue) * 100 : 0;
-              return (
-                <div key={name} className="p-4 flex flex-col gap-2 hover:bg-[#fafafa] transition-colors">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="font-semibold text-[14px] text-[var(--color-ink)]">{name}</div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-1 rounded-full mt-1 inline-block">{r.cat}</span>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-serif text-[16px] font-bold text-[var(--color-ink)]">{fmt(r.revenue)}</div>
-                      <div className="text-[11px] text-[var(--color-muted)] font-semibold">{share.toFixed(1)}% of total</div>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center mt-2 pt-2 border-t border-[var(--color-line-lt)]">
-                    <div className="flex gap-4">
-                      <div>
-                        <span className="text-[var(--color-muted)] block text-[10px] uppercase font-bold mb-0.5">Units</span>
-                        <span className="text-[13px] font-bold text-[var(--color-slate)]">{r.units}</span>
-                      </div>
-                      <div>
-                        <span className="text-[var(--color-muted)] block text-[10px] uppercase font-bold mb-0.5">Avg Sell</span>
-                        <span className="text-[13px] text-[var(--color-slate)]">{r.sell > 0 ? fmt(r.sell) : '—'}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-[var(--color-muted)] block text-[10px] uppercase font-bold mb-0.5 text-right">Margin</span>
-                      {m !== null ? (
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full inline-block ${m >= 30 ? 'bg-[var(--color-emerald-bg)] text-[var(--color-emerald)]' : m >= 15 ? 'bg-[var(--color-amber-bg)] text-[var(--color-amber)]' : 'bg-[var(--color-red-bg)] text-[var(--color-red)]'}`}>
-                          {m}%
-                        </span>
-                      ) : <span className="text-[11px] text-[var(--color-muted)] italic">—</span>}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Desktop Table */}
-          <div className="hidden md:block overflow-x-auto">
+          {/* Responsive Table */}
+          <div className="overflow-x-auto">
             <table className="w-full border-collapse" style={{ minWidth: 600 }}>
               <thead>
                 <tr className="border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)]">
