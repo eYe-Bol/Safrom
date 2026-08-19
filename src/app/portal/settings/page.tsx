@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/Topbar';
 import { createClient } from '@/utils/supabase/client';
+import { useStore } from '@/context/StoreContext';
 
 export default function SettingsPage() {
   const [user, setUser] = useState<any>(null);
@@ -14,6 +15,7 @@ export default function SettingsPage() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [paymentCycle, setPaymentCycle] = useState<6 | 12>(6);
   const [checkingOutPlan, setCheckingOutPlan] = useState<string | null>(null);
+  const { role, branchName, setBranchName, branchProfiles } = useStore();
   const storeId = userData?.id;
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
@@ -154,6 +156,26 @@ export default function SettingsPage() {
             </>
           )}
         </div>
+
+        {/* Active Branch Selector */}
+        {role !== 'employee' && (
+          <div className="bg-white rounded-xl p-5 border border-[var(--color-line-lt)]">
+            <h2 className="font-serif text-[16px] font-bold text-[var(--color-ink)] mb-4">Active Branch</h2>
+            <p className="text-[13px] text-[var(--color-slate)] mb-4 leading-relaxed">
+              Select which branch's data you want to view across the dashboard, sales, and reports.
+            </p>
+            <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Current Workspace</label>
+            <select 
+              value={branchName || 'Main Branch'} 
+              onChange={(e) => setBranchName(e.target.value)}
+              className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none bg-[var(--color-canvas)] text-[var(--color-ink)] font-semibold cursor-pointer"
+            >
+              <option value="Main Branch">{branchProfiles?.['Main Branch'] || 'Main Branch'}</option>
+              <option value="Branch 2">{branchProfiles?.['Branch 2'] || 'Branch 2'}</option>
+              <option value="Branch 3">{branchProfiles?.['Branch 3'] || 'Branch 3'}</option>
+            </select>
+          </div>
+        )}
 
         {/* Plan & Upgrades */}
         <div className="md:col-span-2 bg-white rounded-xl p-5 border border-[var(--color-line-lt)]">

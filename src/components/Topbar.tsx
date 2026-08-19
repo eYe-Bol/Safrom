@@ -63,17 +63,7 @@ export function Topbar({ title, sub, storeName }: { title: string; sub?: string;
       </div>
 
       <div className="hidden md:flex items-center gap-2 flex-wrap justify-end">
-        {role !== 'employee' && (
-          <select 
-            value={branchName || 'Main Branch'} 
-            onChange={(e) => setBranchName(e.target.value)}
-            className="text-[12px] bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg px-2 py-1 outline-none text-[var(--color-slate)] font-semibold cursor-pointer"
-          >
-            <option value="Main Branch">{branchProfiles?.['Main Branch'] || 'Main Branch'}</option>
-            <option value="Branch 2">{branchProfiles?.['Branch 2'] || 'Branch 2'}</option>
-            <option value="Branch 3">{branchProfiles?.['Branch 3'] || 'Branch 3'}</option>
-          </select>
-        )}
+
         <div className="flex text-[11px] text-[var(--color-slate)] bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg px-[10px] py-[4px] font-medium">
           {dateStr}
         </div>
