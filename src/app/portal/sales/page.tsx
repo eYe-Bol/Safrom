@@ -327,42 +327,8 @@ export default function SalesTrackerPage() {
               <span className="font-serif text-[15px] font-bold text-[var(--color-ink)]">Sales History</span>
               <span className="text-[12px] text-[var(--color-muted)]">Last 100 transactions · timestamps auto-recorded</span>
             </div>
-            {/* Mobile Card View */}
-            <div className="md:hidden flex flex-col divide-y divide-[var(--color-line-lt)]">
-              {loading ? (
-                <div className="p-4 text-center text-[13px] text-[var(--color-muted)]">Loading history...</div>
-              ) : saleLogs.length === 0 ? (
-                <div className="p-4 text-center text-[13px] text-[var(--color-muted)]">No sales logged yet.</div>
-              ) : saleLogs.map(s => {
-                const dt = new Date(s.created_at);
-                const isToday = dt.toDateString() === new Date().toDateString();
-                const dStr = isToday ? 'Today' : dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-                const tStr = dt.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-                return (
-                  <div key={s.id} className="p-4 flex flex-col gap-2 hover:bg-[#fafafa] transition-colors">
-                    <div className="flex justify-between items-start">
-                      <div className="font-semibold text-[14px] text-[var(--color-ink)]">{s.product_name}</div>
-                      <div className="text-right">
-                        <div className="font-serif text-[15px] font-bold text-[var(--color-ink)]">{fmt(s.revenue)}</div>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-end mt-1">
-                      <div>
-                         <span className="text-[12px] font-semibold text-[var(--color-slate)]">{s.units_sold}</span>
-                         <span className="text-[11px] text-[var(--color-muted)] ml-1">units sold</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[12px] font-bold text-[var(--color-ink)]">{dStr}</span>
-                        <span className="text-[11px] text-[var(--color-muted)] ml-1">{tStr}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Desktop Table */}
-            <div className="hidden md:block overflow-x-auto">
+            {/* Responsive Table */}
+            <div className="overflow-x-auto">
               <table className="w-full border-collapse" style={{ minWidth: 480 }}>
                 <thead>
                   <tr className="border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)]">
