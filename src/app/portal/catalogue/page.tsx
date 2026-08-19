@@ -144,64 +144,8 @@ export default function CataloguePage() {
             </div>
           </div>
 
-          {/* Mobile Card View */}
-          <div className="md:hidden flex flex-col divide-y divide-[var(--color-line-lt)]">
-            {loading ? (
-              <div className="p-4 text-center text-[13px] text-[var(--color-muted)]">Loading…</div>
-            ) : filtered.length === 0 ? (
-              <div className="p-8 text-center">
-                <div className="text-[14px] font-semibold text-[var(--color-ink)] mb-1">No products found</div>
-                <div className="text-[12px] text-[var(--color-muted)]">Click "+ Add Product" to start building your catalogue.</div>
-              </div>
-            ) : filtered.map(p => {
-              const m = margin(p);
-              const isLow = p.stock < p.reorder_level;
-              return (
-                <div key={p.id} className="p-4 flex flex-col gap-3 hover:bg-[#fafafa] transition-colors">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="font-semibold text-[14px] text-[var(--color-ink)]">{p.name}</div>
-                      <div className="text-[11px] text-[var(--color-muted)]">{p.unit}</div>
-                    </div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-1 rounded-full">{p.category || 'General'}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-[12px]">
-                    <div>
-                      <span className="text-[var(--color-muted)] block text-[10px] uppercase font-bold mb-0.5">Supplier</span>
-                      <span className="text-[var(--color-slate)]">{p.supplier || '—'}</span>
-                    </div>
-                    <div>
-                      <span className="text-[var(--color-muted)] block text-[10px] uppercase font-bold mb-0.5">Stock</span>
-                      <span className={`font-semibold ${isLow ? 'text-[var(--color-red)]' : 'text-[var(--color-ink)]'}`}>
-                        {p.stock} {isLow && '⚠'} <span className="font-normal text-[10px] text-[var(--color-muted)]">(min {p.reorder_level})</span>
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[var(--color-muted)] block text-[10px] uppercase font-bold mb-0.5">Sell Price</span>
-                      <span className="font-bold text-[var(--color-ink)]">{fmt(p.sell_price)}</span>
-                    </div>
-                    <div>
-                      <span className="text-[var(--color-muted)] block text-[10px] uppercase font-bold mb-0.5">Margin</span>
-                      {m !== null ? (
-                        <span className="text-[10px] font-bold px-2 py-1 rounded-full inline-block" style={{ color: marginColor(m), background: marginBg(m) }}>{m}%</span>
-                      ) : (
-                        <span className="text-[10px] text-[var(--color-muted)] italic">—</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex justify-end items-center mt-1 pt-3 border-t border-[var(--color-line-lt)]">
-                    <div className="flex gap-2">
-                      <button onClick={() => openEdit(p)} className="text-[11px] font-bold text-[var(--color-teal)] bg-[var(--color-teal-bg)] rounded px-3 py-1.5">Edit</button>
-                      <button onClick={() => del(p)} className="text-[11px] font-bold text-[var(--color-red)] bg-[var(--color-red-bg)] rounded px-3 py-1.5">Del</button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Desktop Table */}
-          <div className="hidden md:block overflow-x-auto">
+          {/* Responsive Table */}
+          <div className="overflow-x-auto">
             <table className="w-full border-collapse" style={{ minWidth: 720 }}>
               <thead>
                 <tr className="border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)]">
