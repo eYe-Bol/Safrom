@@ -12,7 +12,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const [paymentCycle, setPaymentCycle] = useState<4 | 8 | 12>(4);
+  const [paymentCycle, setPaymentCycle] = useState<6 | 12>(6);
   const [checkingOutPlan, setCheckingOutPlan] = useState<string | null>(null);
   const storeId = userData?.id;
 
@@ -197,11 +197,10 @@ export default function SettingsPage() {
                 <label className="text-[12px] font-bold text-[var(--color-slate)] mb-1">Select Payment Cycle</label>
                 <select 
                   value={paymentCycle} 
-                  onChange={e => setPaymentCycle(parseInt(e.target.value) as 4 | 8 | 12)}
+                  onChange={e => setPaymentCycle(parseInt(e.target.value) as 6 | 12)}
                   className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none"
                 >
-                  <option value={4}>4 Months</option>
-                  <option value={8}>8 Months</option>
+                  <option value={6}>6 Months</option>
                   <option value={12}>12 Months</option>
                 </select>
               </div>
