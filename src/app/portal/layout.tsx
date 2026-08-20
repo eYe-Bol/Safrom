@@ -77,7 +77,7 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
         <SFSLogo size={42} href="/portal/dashboard" />
         <div className="flex flex-col">
           <span className="font-serif text-[14px] font-bold text-[var(--color-ink)] leading-tight">
-            {storeName || 'Sales From Scratch'}
+            {branchProfiles?.[branchName || 'Main Branch'] || (branchName === 'Main Branch' ? storeName : branchName) || 'Sales From Scratch'}
           </span>
           {role === 'employee' && (
             <span className="text-[10px] font-bold text-[var(--color-slate)] uppercase tracking-wider mt-0.5">Staff Account</span>
@@ -152,20 +152,8 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
         </button>
         <SFSLogo size={32} href="/portal/dashboard" />
         <span className="font-serif text-[14px] font-bold text-[var(--color-ink)] truncate flex-1">
-          {storeName || 'Sales From Scratch'}
+          {branchProfiles?.[branchName || 'Main Branch'] || (branchName === 'Main Branch' ? storeName : branchName) || 'Sales From Scratch'}
         </span>
-        {/* Branch filter on mobile for owners */}
-        {role !== 'employee' && (
-          <select 
-            value={branchName || 'Main Branch'} 
-            onChange={(e) => setBranchName(e.target.value)}
-            className="text-[11px] bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg px-1.5 py-1 outline-none text-[var(--color-slate)] font-semibold cursor-pointer shrink-0 max-w-[100px]"
-          >
-            <option value="Main Branch">{branchProfiles['Main Branch'] || 'Main Branch'}</option>
-            <option value="Branch 2">{branchProfiles['Branch 2'] || 'Branch 2'}</option>
-            <option value="Branch 3">{branchProfiles['Branch 3'] || 'Branch 3'}</option>
-          </select>
-        )}
         {/* Live clock on right - visible on all screens */}
         <div className="flex flex-col items-end shrink-0">
           <LiveClock />

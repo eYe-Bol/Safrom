@@ -51,7 +51,7 @@ export function Topbar({ title, sub, storeName }: { title: string; sub?: string;
 
         <div className="flex flex-col min-w-0">
           <h1 className="font-serif text-[20px] font-bold text-[var(--color-ink)] tracking-[-0.02em] flex items-center gap-2">
-            {storeName ? storeName : title}
+            {storeName ? (branchProfiles?.[branchName || 'Main Branch'] || (branchName === 'Main Branch' ? storeName : branchName) || storeName) : title}
             {user && storeName && <span className="text-[10px] font-sans font-bold bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-0.5 rounded-full uppercase tracking-wider">{user.role}</span>}
           </h1>
           <div className="flex items-center gap-3 mt-[1px]">
