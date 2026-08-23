@@ -97,30 +97,117 @@ export default function SuppliersPage() {
       <div className="p-3 sm:p-5 max-w-[1200px] mx-auto w-full flex flex-col gap-4">
         <div className="bg-white rounded-xl border border-[var(--color-line-lt)] overflow-hidden shadow-sm">
           {/* Toolbar */}
-          <div className="p-3.5 border-b border-[var(--color-line-lt)] flex justify-between items-center flex-wrap gap-3">
-            <div className="flex items-center gap-3">
+          <div className="p-3.5 border-b border-[var(--color-line-lt)] flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+            <div className="flex items-center gap-2">
               <span className="font-serif text-[15px] font-bold text-[var(--color-ink)]">All Suppliers</span>
-              <span className="text-[13px] text-[var(--color-muted)]">{filtered.length} of {suppliers.length}</span>
+              <span className="text-[12px] bg-[var(--color-canvas)] text-[var(--color-slate)] font-bold px-2 py-0.5 rounded-full border border-[var(--color-line)]">
+                {filtered.length} of {suppliers.length}
+              </span>
             </div>
-            <div className="flex gap-2 items-center flex-wrap">
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search suppliers…"
-                className="px-3 py-1.5 border-[1.5px] border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)] min-w-[150px]" />
-              <select value={catF} onChange={e => setCatF(e.target.value)}
-                className="px-3 py-1.5 border-[1.5px] border-[var(--color-line)] rounded-lg text-[13px] outline-none bg-white">
-                {cats.map(c => <option key={c}>{c}</option>)}
-              </select>
-              <button onClick={openAdd}
-                className="px-4 py-1.5 bg-[var(--color-teal)] text-white font-bold text-[13px] rounded-lg hover:opacity-90 whitespace-nowrap">
+            <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+              <div className="flex gap-2 w-full sm:w-auto">
+                <input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search suppliers…"
+                  className="flex-1 sm:w-[170px] px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)] bg-white"
+                />
+                <select
+                  value={catF}
+                  onChange={e => setCatF(e.target.value)}
+                  className="w-[110px] sm:w-[130px] px-2 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none bg-white font-medium text-[var(--color-ink)]"
+                >
+                  {cats.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <button
+                onClick={openAdd}
+                className="w-full sm:w-auto px-4 py-2 bg-[var(--color-teal)] text-white font-bold text-[12px] rounded-lg hover:opacity-90 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+              >
                 + Add Supplier
               </button>
             </div>
           </div>
 
-          {/* Responsive Table */}
-          <div className="overflow-auto max-h-[70vh]">
+          {/* ─── MOBILE CARD VIEW (< md) ─── */}
+          <div className="block md:hidden divide-y divide-[var(--color-line-lt)] max-h-[70vh] overflow-y-auto">
+            {loading ? (
+              <div className="p-6 text-center text-[13px] text-[var(--color-muted)]">Loading suppliers...</div>
+            ) : filtered.length === 0 ? (
+              <div className="p-8 text-center">
+                <div className="text-[36px] mb-2">🚚</div>
+                <div className="text-[14px] font-semibold text-[var(--color-ink)] mb-1">No suppliers found</div>
+                <div className="text-[12px] text-[var(--color-muted)]">Click "+ Add Supplier" to register your first vendor.</div>
+              </div>
+            ) : filtered.map(s => (
+              <div key={s.id} className="p-3.5 flex flex-col gap-2.5 bg-white hover:bg-[var(--color-canvas)] transition-colors">
+                <div className="flex justify-between items-start gap-2">
+                  <div>
+                    <div className="font-semibold text-[14px] text-[var(--color-ink)]">{s.name}</div>
+                    {s.contact_person && <div className="text-[11px] text-[var(--color-slate)] mt-0.5">Contact: {s.contact_person}</div>}
+                    {s.products && <div className="text-[11px] text-[var(--color-muted)]">Supplies: {s.products}</div>}
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-teal-bg)] text-[var(--color-teal)] px-2 py-0.5 rounded-full border border-[var(--color-teal)]/20 shrink-0">
+                    {s.category || 'General'}
+                  </span>
+                </div>
+
+                {/* Info Pills */}
+                <div className="flex items-center gap-2 flex-wrap text-[11px] text-[var(--color-slate)]">
+                  {s.terms && (
+                    <span className="bg-[var(--color-canvas)] px-2 py-0.5 rounded-md border border-[var(--color-line-lt)]">
+                      💳 {s.terms}
+                    </span>
+                  )}
+                  <span className="text-[var(--color-gold)] font-bold">{stars(s.rating || 5)}</span>
+                </div>
+
+                {/* Direct Actions: WhatsApp / Email */}
+                <div className="flex gap-2">
+                  {s.phone && (
+                    <a
+                      href={`https://wa.me/${s.phone.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 py-1.5 bg-[#E8F8EE] text-[#1E7E34] border border-[#25D366]/30 font-bold text-[11px] rounded-lg text-center flex items-center justify-center gap-1 hover:opacity-90"
+                    >
+                      💬 WhatsApp
+                    </a>
+                  )}
+                  {s.email && (
+                    <a
+                      href={`mailto:${s.email}`}
+                      className="flex-1 py-1.5 bg-[var(--color-teal-bg)] text-[var(--color-teal)] font-bold text-[11px] rounded-lg text-center flex items-center justify-center gap-1 hover:opacity-90"
+                    >
+                      ✉️ Email
+                    </a>
+                  )}
+                </div>
+
+                {/* Edit & Delete */}
+                <div className="flex gap-2 pt-1 border-t border-[var(--color-line-lt)]">
+                  <button
+                    onClick={() => openEdit(s)}
+                    className="flex-1 py-1.5 bg-[var(--color-canvas)] text-[var(--color-teal)] border border-[var(--color-line)] font-bold text-[11px] rounded-lg text-center hover:bg-[var(--color-teal-bg)] cursor-pointer"
+                  >
+                    ✏️ Edit
+                  </button>
+                  <button
+                    onClick={() => del(s)}
+                    className="flex-1 py-1.5 bg-[var(--color-red-bg)] text-[var(--color-red)] font-bold text-[11px] rounded-lg text-center hover:opacity-80 cursor-pointer"
+                  >
+                    🗑️ Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* ─── DESKTOP DATA TABLE (md+) ─── */}
+          <div className="hidden md:block overflow-auto max-h-[70vh]">
             <table className="w-full border-collapse" style={{ minWidth: 700 }}>
               <thead className="sticky top-0 z-10 shadow-[0_1px_0_var(--color-line-lt)]">
-                <tr className=" bg-[var(--color-canvas)]">
+                <tr className="bg-[var(--color-canvas)]">
                   {['Supplier', 'Category', 'Contact Person', 'WhatsApp', 'Email', 'Payment Terms', 'Rating', 'Actions'].map((h, i) => (
                     <th key={h} className={`px-4 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em] whitespace-nowrap ${i === 0 ? 'sticky left-0 z-20 bg-[var(--color-canvas)] shadow-[1px_0_0_var(--color-line-lt)]' : ''}`}>{h}</th>
                   ))}

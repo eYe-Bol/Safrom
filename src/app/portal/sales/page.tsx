@@ -374,10 +374,67 @@ export default function SalesTrackerPage() {
                 </select>
               </div>
 
-              <div className="overflow-auto max-h-[70vh]">
+              {/* ─── MOBILE CARD VIEW (< md) ─── */}
+              <div className="block md:hidden divide-y divide-[var(--color-line-lt)] max-h-[70vh] overflow-y-auto">
+                {loading ? (
+                  <div className="p-6 text-center text-[13px] text-[var(--color-muted)]">Loading products…</div>
+                ) : filtered.length === 0 ? (
+                  <div className="p-6 text-center text-[13px] text-[var(--color-muted)]">No products found. Add them in the Catalogue.</div>
+                ) : filtered.map(p => {
+                  const isSel = sel?.id === p.id;
+                  const isLogged = loggedIds.has(p.id);
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => {
+                        if (isLogged) {
+                          setSel(p);
+                          setForm({ opening: '', added: '', closing: '', wastage: '' });
+                          setLoggedIds(prev => { const n = new Set(prev); n.delete(p.id); return n; });
+                        } else {
+                          setSel(p);
+                          setForm({ opening: String(p.stock), added: '', closing: '', wastage: '' });
+                        }
+                      }}
+                      className={`p-3 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
+                        isLogged ? 'bg-[var(--color-emerald-bg)]/40' : isSel ? 'bg-[#f0f7f8] border-l-4 border-[var(--color-teal)]' : 'bg-white hover:bg-[var(--color-canvas)]'
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-[13px] text-[var(--color-ink)] truncate">{p.name}</span>
+                          {isLogged && (
+                            <span className="text-[9px] font-bold bg-[var(--color-emerald)] text-white px-1.5 py-0.2 rounded-full shrink-0">
+                              ✓ Logged
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5 text-[11px] text-[var(--color-muted)]">
+                          <span>{p.category || 'General'}</span>
+                          <span>·</span>
+                          <span className={p.stock < 10 ? 'text-[var(--color-red)] font-semibold' : 'text-[var(--color-slate)]'}>
+                            {p.stock} {p.unit}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-bold text-[13px] text-[var(--color-ink)]">{fmt(p.sell_price)}</div>
+                        <span className={`inline-block text-[11px] font-bold mt-1 px-2.5 py-1 rounded-md transition-all ${
+                          isSel ? 'bg-[var(--color-teal)] text-white' : 'bg-[var(--color-teal-bg)] text-[var(--color-teal)]'
+                        }`}>
+                          {isSel ? 'Selected' : 'Select'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* ─── DESKTOP DATA TABLE (md+) ─── */}
+              <div className="hidden md:block overflow-auto max-h-[70vh]">
                 <table className="w-full border-collapse" style={{ minWidth: 420 }}>
                   <thead className="sticky top-0 z-10 shadow-[0_1px_0_var(--color-line-lt)]">
-                <tr className=" bg-[var(--color-canvas)]">
+                    <tr className="bg-[var(--color-canvas)]">
                       {['Product', 'Category', 'Sell Price', 'Stock', ''].map(h => (
                         <th key={h} className="px-4 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">{h}</th>
                       ))}
@@ -516,11 +573,35 @@ export default function SalesTrackerPage() {
                 {saleLogs.length} total transactions · timestamps auto-recorded
               </span>
             </div>
-            {/* Responsive Table */}
-            <div className="overflow-auto max-h-[70vh]">
+            {/* ─── MOBILE CARD VIEW (< md) ─── */}
+            <div className="block md:hidden divide-y divide-[var(--color-line-lt)] max-h-[70vh] overflow-y-auto">
+              {loading ? (
+                <div className="p-6 text-center text-[13px] text-[var(--color-muted)]">Loading…</div>
+              ) : saleLogs.length === 0 ? (
+                <div className="p-8 text-center text-[13px] text-[var(--color-muted)]">No sales recorded yet.</div>
+              ) : saleLogs
+                  .slice((historyPage - 1) * HISTORY_PAGE_SIZE, historyPage * HISTORY_PAGE_SIZE)
+                  .map(s => (
+                <div key={s.id} className="p-3.5 flex justify-between items-center bg-white hover:bg-[var(--color-canvas)] transition-colors">
+                  <div className="flex flex-col gap-0.5">
+                    <div className="font-semibold text-[13px] text-[var(--color-ink)]">{s.product_name}</div>
+                    <div className="text-[11px] text-[var(--color-muted)]">
+                      {new Date(s.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })} · {new Date(s.created_at).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                    <div className="text-[12px] text-[var(--color-slate)] font-medium mt-0.5">{s.units_sold} units sold</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-serif text-[15px] font-bold text-[var(--color-teal)]">{fmt(Number(s.revenue))}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ─── DESKTOP DATA TABLE (md+) ─── */}
+            <div className="hidden md:block overflow-auto max-h-[70vh]">
               <table className="w-full border-collapse" style={{ minWidth: 480 }}>
                 <thead className="sticky top-0 z-10 shadow-[0_1px_0_var(--color-line-lt)]">
-                <tr className=" bg-[var(--color-canvas)]">
+                  <tr className="bg-[var(--color-canvas)]">
                     {['Date & Time', 'Product', 'Units Sold', 'Revenue'].map(h => (
                       <th key={h} className="px-4 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">{h}</th>
                     ))}

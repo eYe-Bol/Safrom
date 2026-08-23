@@ -281,34 +281,123 @@ export default function CataloguePage() {
       <div className="p-3 sm:p-5 max-w-[1200px] mx-auto w-full flex flex-col gap-4">
         <div className="bg-white rounded-xl border border-[var(--color-line-lt)] overflow-hidden shadow-sm">
           {/* Toolbar */}
-          <div className="p-3.5 border-b border-[var(--color-line-lt)] flex justify-between items-center flex-wrap gap-3">
-            <div className="flex items-center gap-3">
+          <div className="p-3.5 border-b border-[var(--color-line-lt)] flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+            <div className="flex items-center gap-2">
               <span className="font-serif text-[15px] font-bold text-[var(--color-ink)]">All Products</span>
-              <span className="text-[13px] text-[var(--color-muted)]">{filtered.length} of {products.length}</span>
+              <span className="text-[12px] bg-[var(--color-canvas)] text-[var(--color-slate)] font-bold px-2 py-0.5 rounded-full border border-[var(--color-line)]">
+                {filtered.length} of {products.length}
+              </span>
             </div>
-            <div className="flex gap-2 items-center flex-wrap">
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products…"
-                className="px-3 py-1.5 border-[1.5px] border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)] min-w-[150px]" />
-              <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
-                className="px-3 py-1.5 border-[1.5px] border-[var(--color-line)] rounded-lg text-[13px] outline-none bg-white">
-                {categories.map(c => <option key={c}>{c}</option>)}
-              </select>
-              <button onClick={() => setShowImport(true)}
-                className="px-4 py-1.5 bg-[var(--color-gold)] text-white font-bold text-[13px] rounded-lg hover:opacity-90 whitespace-nowrap flex items-center gap-1.5">
-                📥 Import Excel
-              </button>
-              <button onClick={openAdd}
-                className="px-4 py-1.5 bg-[var(--color-teal)] text-white font-bold text-[13px] rounded-lg hover:opacity-90 whitespace-nowrap">
-                + Add Product
-              </button>
+            
+            <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+              <div className="flex gap-2 w-full sm:w-auto">
+                <input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search products…"
+                  className="flex-1 sm:w-[170px] px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)] bg-white"
+                />
+                <select
+                  value={catFilter}
+                  onChange={e => setCatFilter(e.target.value)}
+                  className="w-[110px] sm:w-[130px] px-2 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none bg-white font-medium text-[var(--color-ink)]"
+                >
+                  {categories.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => setShowImport(true)}
+                  className="flex-1 sm:flex-initial px-3.5 py-2 bg-[var(--color-gold)] text-white font-bold text-[12px] rounded-lg hover:opacity-90 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  📥 Import Excel
+                </button>
+                <button
+                  onClick={openAdd}
+                  className="flex-1 sm:flex-initial px-3.5 py-2 bg-[var(--color-teal)] text-white font-bold text-[12px] rounded-lg hover:opacity-90 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  + Add Product
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Responsive Table */}
-          <div className="overflow-auto max-h-[70vh]">
+          {/* ─── MOBILE CARD VIEW (< md) ─── */}
+          <div className="block md:hidden divide-y divide-[var(--color-line-lt)] max-h-[70vh] overflow-y-auto">
+            {loading ? (
+              <div className="p-6 text-center text-[13px] text-[var(--color-muted)]">Loading products…</div>
+            ) : filtered.length === 0 ? (
+              <div className="p-8 text-center">
+                <div className="text-[36px] mb-2">📦</div>
+                <div className="text-[14px] font-semibold text-[var(--color-ink)] mb-1">No products found</div>
+                <div className="text-[12px] text-[var(--color-muted)]">Click "+ Add Product" or "Import Excel" to start.</div>
+              </div>
+            ) : filtered.map(p => {
+              const m = margin(p);
+              const isLow = p.stock < p.reorder_level;
+              return (
+                <div key={p.id} className="p-3.5 flex flex-col gap-2.5 bg-white hover:bg-[var(--color-canvas)] transition-colors">
+                  {/* Top Row: Name & Category */}
+                  <div className="flex justify-between items-start gap-2">
+                    <div>
+                      <div className="font-semibold text-[14px] text-[var(--color-ink)] leading-snug">{p.name}</div>
+                      <div className="text-[11px] text-[var(--color-muted)] mt-0.5">Unit: {p.unit} · Supplier: {p.supplier || 'N/A'}</div>
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-0.5 rounded-full border border-[var(--color-line)] shrink-0">
+                      {p.category || 'General'}
+                    </span>
+                  </div>
+
+                  {/* Middle Row: Numbers Grid */}
+                  <div className="grid grid-cols-3 gap-2 bg-[var(--color-canvas)] p-2.5 rounded-lg border border-[var(--color-line-lt)] text-center">
+                    <div>
+                      <div className="text-[10px] font-bold uppercase text-[var(--color-muted)]">Sell Price</div>
+                      <div className="font-bold text-[13px] text-[var(--color-ink)] mt-0.5">{fmt(p.sell_price)}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase text-[var(--color-muted)]">Stock</div>
+                      <div className={`font-bold text-[13px] mt-0.5 ${isLow ? 'text-[var(--color-red)]' : 'text-[var(--color-ink)]'}`}>
+                        {p.stock} {isLow && '⚠'}
+                      </div>
+                      <div className="text-[9px] text-[var(--color-muted)]">min {p.reorder_level}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase text-[var(--color-muted)]">Margin</div>
+                      <div className="mt-0.5">
+                        {m !== null ? (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ color: marginColor(m), background: marginBg(m) }}>{m}%</span>
+                        ) : (
+                          <span className="text-[11px] text-[var(--color-muted)] italic">—</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom Row: Actions */}
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => openEdit(p)}
+                      className="flex-1 py-1.5 bg-[var(--color-teal-bg)] text-[var(--color-teal)] font-bold text-[12px] rounded-lg text-center hover:opacity-80 cursor-pointer"
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      onClick={() => del(p)}
+                      className="flex-1 py-1.5 bg-[var(--color-red-bg)] text-[var(--color-red)] font-bold text-[12px] rounded-lg text-center hover:opacity-80 cursor-pointer"
+                    >
+                      🗑️ Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ─── DESKTOP DATA TABLE (md+) ─── */}
+          <div className="hidden md:block overflow-auto max-h-[70vh]">
             <table className="w-full border-collapse" style={{ minWidth: 720 }}>
               <thead className="sticky top-0 z-10 shadow-[0_1px_0_var(--color-line-lt)]">
-                <tr className=" bg-[var(--color-canvas)]">
+                <tr className="bg-[var(--color-canvas)]">
                   {['Product', 'Category', 'Supplier', 'Sell Price', 'Cost Price', 'Margin', 'Stock', 'Actions'].map((h, i) => (
                     <th key={h} className={`px-4 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em] whitespace-nowrap ${i === 0 ? 'sticky left-0 z-20 bg-[var(--color-canvas)] shadow-[1px_0_0_var(--color-line-lt)]' : ''}`}>{h}</th>
                   ))}

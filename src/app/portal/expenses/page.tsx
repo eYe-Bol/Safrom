@@ -180,10 +180,42 @@ export default function ExpensesPage() {
             </div>
           </div>
 
-          <div className="overflow-auto max-h-[70vh]">
+          {/* ─── MOBILE CARD VIEW (< md) ─── */}
+          <div className="block md:hidden divide-y divide-[var(--color-line-lt)] max-h-[70vh] overflow-y-auto">
+            {loading ? (
+              <div className="p-6 text-center text-[13px] text-[var(--color-muted)]">Loading expenses…</div>
+            ) : filtered.length === 0 ? (
+              <div className="p-8 text-center text-[13px] text-[var(--color-muted)]">No expenses recorded.</div>
+            ) : filtered.map(r => {
+              const color = catColor[r.category] || catColor['Other'];
+              return (
+                <div key={r.id} className="p-3 flex justify-between items-center bg-white hover:bg-[var(--color-canvas)] transition-colors">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ color: color.text, backgroundColor: color.bg }}>
+                        {r.category}
+                      </span>
+                      <span className="text-[11px] text-[var(--color-muted)]">{r.date}</span>
+                    </div>
+                    <div className="font-serif text-[15px] font-bold text-[var(--color-ink)]">{fmt(Number(r.amount))}</div>
+                    {r.description && <div className="text-[12px] text-[var(--color-slate)]">{r.description}</div>}
+                  </div>
+                  <button
+                    onClick={() => confirmDelete(r)}
+                    className="text-[11px] font-bold text-[var(--color-red)] bg-[var(--color-red-bg)] px-2.5 py-1.5 rounded-[6px] hover:opacity-80 cursor-pointer shrink-0"
+                  >
+                    Delete
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ─── DESKTOP DATA TABLE (md+) ─── */}
+          <div className="hidden md:block overflow-auto max-h-[70vh]">
             <table className="w-full border-collapse" style={{ minWidth: 400 }}>
               <thead className="sticky top-0 z-10 shadow-[0_1px_0_var(--color-line-lt)]">
-                <tr className=" bg-[var(--color-canvas)]">
+                <tr className="bg-[var(--color-canvas)]">
                   {['Date', 'Category', 'Amount', 'Notes', ''].map(h => (
                     <th key={h} className="px-3 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">{h}</th>
                   ))}

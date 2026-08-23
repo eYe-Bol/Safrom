@@ -228,13 +228,68 @@ export default function ReportsPage() {
 
         {/* Sales by Product Table */}
         <div className="bg-white rounded-xl border border-[var(--color-line-lt)] shadow-sm overflow-hidden">
-          <div className="p-3.5 border-b border-[var(--color-line-lt)]">
+          <div className="p-3.5 border-b border-[var(--color-line-lt)] flex justify-between items-center">
             <span className="font-serif text-[15px] font-bold text-[var(--color-ink)]">Sales by Product</span>
+            <span className="text-[12px] text-[var(--color-muted)] font-semibold">{topProducts.length} items</span>
           </div>
-          <div className="overflow-auto max-h-[70vh]">
+
+          {/* ─── MOBILE CARD VIEW (< md) ─── */}
+          <div className="block md:hidden divide-y divide-[var(--color-line-lt)] max-h-[70vh] overflow-y-auto">
+            {loading ? (
+              <div className="p-6 text-center text-[13px] text-[var(--color-muted)]">Loading products...</div>
+            ) : topProducts.length === 0 ? (
+              <div className="p-8 text-center text-[13px] text-[var(--color-muted)]">No sales for this period. Click Apply after adjusting filters.</div>
+            ) : topProducts.map(([name, r]) => {
+              const m = r.sell > 0 && r.cost > 0 ? Math.round(((r.sell - r.cost) / r.sell) * 100) : null;
+              const share = totalRevenue > 0 ? (r.revenue / totalRevenue) * 100 : 0;
+              return (
+                <div key={name} className="p-3.5 flex flex-col gap-2 bg-white hover:bg-[var(--color-canvas)] transition-colors">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="font-semibold text-[14px] text-[var(--color-ink)]">{name}</div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-0.5 rounded-full border border-[var(--color-line)] shrink-0">
+                      {r.cat}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 bg-[var(--color-canvas)] p-2.5 rounded-lg border border-[var(--color-line-lt)] text-center">
+                    <div>
+                      <div className="text-[10px] font-bold uppercase text-[var(--color-muted)]">Units</div>
+                      <div className="font-bold text-[13px] text-[var(--color-ink)] mt-0.5">{r.units}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase text-[var(--color-muted)]">Revenue</div>
+                      <div className="font-bold text-[13px] text-[var(--color-ink)] mt-0.5">{fmt(r.revenue)}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase text-[var(--color-muted)]">Margin</div>
+                      <div className="mt-0.5">
+                        {m !== null ? (
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${m >= 30 ? 'bg-[var(--color-emerald-bg)] text-[var(--color-emerald)]' : m >= 15 ? 'bg-[var(--color-amber-bg)] text-[var(--color-amber)]' : 'bg-[var(--color-red-bg)] text-[var(--color-red)]'}`}>
+                            {m}%
+                          </span>
+                        ) : <span className="text-[11px] text-[var(--color-muted)] italic">—</span>}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Revenue Share Bar */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className="text-[11px] text-[var(--color-muted)] shrink-0">Share:</span>
+                    <div className="flex-1 h-2 bg-[var(--color-line-lt)] rounded-full overflow-hidden">
+                      <div className="h-full bg-[var(--color-teal)] rounded-full" style={{ width: `${share}%` }} />
+                    </div>
+                    <span className="text-[11px] font-bold text-[var(--color-slate)] shrink-0">{share.toFixed(1)}%</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ─── DESKTOP DATA TABLE (md+) ─── */}
+          <div className="hidden md:block overflow-auto max-h-[70vh]">
             <table className="w-full border-collapse" style={{ minWidth: 600 }}>
               <thead className="sticky top-0 z-10 shadow-[0_1px_0_var(--color-line-lt)]">
-                <tr className=" bg-[var(--color-canvas)]">
+                <tr className="bg-[var(--color-canvas)]">
                   {['Product', 'Category', 'Units', 'Sell Price', 'Cost', 'Revenue', 'Margin', 'Share'].map((h, i) => (
                     <th key={h} className={`px-4 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em] whitespace-nowrap ${i === 0 ? 'sticky left-0 z-20 bg-[var(--color-canvas)] shadow-[1px_0_0_var(--color-line-lt)]' : ''}`}>{h}</th>
                   ))}
