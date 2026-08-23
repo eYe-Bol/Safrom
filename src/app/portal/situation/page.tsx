@@ -231,9 +231,11 @@ export default function SituationRoomPage() {
     return expDate <= thirtyDaysFromNow;
   });
 
+  // Only show products that have expiry information tracked
   const expiryList = items.filter(p => 
-    p.name.toLowerCase().includes(expirySearch.toLowerCase()) ||
-    (p.category || '').toLowerCase().includes(expirySearch.toLowerCase())
+    Boolean(p.expiry_date) &&
+    (p.name.toLowerCase().includes(expirySearch.toLowerCase()) ||
+    (p.category || '').toLowerCase().includes(expirySearch.toLowerCase()))
   ).sort((a, b) => {
     if (!a.expiry_date && !b.expiry_date) return 0;
     if (!a.expiry_date) return 1;
@@ -500,11 +502,70 @@ export default function SituationRoomPage() {
                     )}
                   </div>
 
-                  {/* Responsive Table */}
-                  <div className="overflow-auto max-h-[70vh]">
+                  {/* ─── MOBILE ITEM LIST (< md) ─── */}
+                  <div className="block md:hidden divide-y divide-[var(--color-line-lt)]">
+                    {group.items.map(item => {
+                      const invItem = items.find(i => i.name === item.name);
+                      const currentOrderQty = qtys[invItem?.id || ''] ?? item.reorder_level;
+                      return (
+                        <div key={item.name} className="p-3.5 flex flex-col gap-2.5 bg-white">
+                          <div className="flex justify-between items-start gap-2">
+                            <div>
+                              <div className="font-semibold text-[14px] text-[var(--color-ink)]">{item.name}</div>
+                              <div className="text-[11px] text-[var(--color-muted)] mt-0.5">
+                                Stock: <span className="font-bold text-[var(--color-ink)]">{item.stock}</span> · Min Level: {item.reorder_level}
+                              </div>
+                            </div>
+                            {item.stock === 0 ? (
+                              <span className="text-[10px] font-bold uppercase bg-[var(--color-red-bg)] text-[var(--color-red)] px-2 py-0.5 rounded-full shrink-0">Out</span>
+                            ) : (
+                              <span className="text-[10px] font-bold uppercase bg-[var(--color-amber-bg)] text-[var(--color-amber)] px-2 py-0.5 rounded-full shrink-0">Low</span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3 pt-2 border-t border-[var(--color-line-lt)] bg-[var(--color-canvas)] p-2.5 rounded-xl border border-[var(--color-line-lt)]">
+                            <span className="text-[11px] font-bold text-[var(--color-slate)] uppercase tracking-wider">Order Quantity:</span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (invItem) setQtys(prev => ({ ...prev, [invItem.id]: Math.max(1, (prev[invItem.id] ?? item.reorder_level) - 1) }));
+                                }}
+                                className="w-8 h-8 rounded-lg bg-white border border-[var(--color-line)] font-bold text-[14px] flex items-center justify-center text-[var(--color-slate)] hover:bg-[var(--color-line-lt)] cursor-pointer shadow-sm"
+                              >
+                                −
+                              </button>
+                              <input
+                                type="number"
+                                min="1"
+                                value={currentOrderQty}
+                                onChange={e => {
+                                  const val = parseInt(e.target.value);
+                                  if (invItem) setQtys(prev => ({ ...prev, [invItem.id]: isNaN(val) ? 1 : Math.max(1, val) }));
+                                }}
+                                className="w-[64px] h-8 px-2 border border-[var(--color-line)] rounded-lg text-[13px] font-bold text-center outline-none bg-white focus:border-[var(--color-teal)]"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (invItem) setQtys(prev => ({ ...prev, [invItem.id]: (prev[invItem.id] ?? item.reorder_level) + 1 }));
+                                }}
+                                className="w-8 h-8 rounded-lg bg-white border border-[var(--color-line)] font-bold text-[14px] flex items-center justify-center text-[var(--color-slate)] hover:bg-[var(--color-line-lt)] cursor-pointer shadow-sm"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* ─── DESKTOP DATA TABLE (md+) ─── */}
+                  <div className="hidden md:block overflow-auto max-h-[70vh]">
                     <table className="w-full border-collapse" style={{ minWidth: 400 }}>
                       <thead className="sticky top-0 z-10 shadow-[0_1px_0_var(--color-line-lt)]">
-                <tr className="">
+                        <tr className="bg-[var(--color-canvas)]">
                           {['Product', 'Status', 'Current Stock', 'Reorder Level', 'Order Qty'].map(h => (
                             <th key={h} className="px-4 py-2 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">{h}</th>
                           ))}
@@ -540,38 +601,38 @@ export default function SituationRoomPage() {
                   </div>
 
                   {/* LPO preview + actions */}
-                  <div className="px-5 py-4 border-t border-[var(--color-line-lt)] flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+                  <div className="px-4 sm:px-5 py-4 border-t border-[var(--color-line-lt)] flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
                     <div className="text-[12px] text-[var(--color-muted)] bg-[var(--color-canvas)] rounded-lg p-3 flex-1 font-mono whitespace-pre-wrap max-h-[80px] overflow-y-auto">
                       {lpoText.split('\n').slice(0, 4).join('\n')}…
                     </div>
-                    <div className="flex gap-2 shrink-0">
+                    <div className="flex gap-2 flex-wrap sm:flex-nowrap shrink-0">
                       {waUrl ? (
                         <a
                           href={waUrl}
                           target="_blank"
                           rel="noreferrer"
                           onClick={() => { setSent(prev => ({ ...prev, [groupKey]: true })); fire(`✓ LPO Successfully Sent to ${group.supplier} via WhatsApp`); }}
-                          className="flex items-center gap-1.5 px-4 py-2 bg-[#25D366] text-white font-bold text-[13px] rounded-xl hover:opacity-90 transition-opacity"
+                          className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 bg-[#25D366] text-white font-bold text-[13px] rounded-xl hover:opacity-90 transition-opacity"
                         >
                           💬 WhatsApp
                         </a>
                       ) : (
-                        <span className="px-4 py-2 bg-[var(--color-canvas)] text-[var(--color-muted)] font-semibold text-[12px] rounded-xl border border-[var(--color-line)]">No phone</span>
+                        <span className="flex-1 sm:flex-initial text-center px-4 py-2 bg-[var(--color-canvas)] text-[var(--color-muted)] font-semibold text-[12px] rounded-xl border border-[var(--color-line)]">No phone</span>
                       )}
                       {mailUrl ? (
                         <a
                           href={mailUrl}
                           onClick={() => { setSent(prev => ({ ...prev, [groupKey]: true })); fire(`✓ LPO Successfully Sent to ${group.supplier} via Email`); }}
-                          className="flex items-center gap-1.5 px-4 py-2 bg-[var(--color-teal)] text-white font-bold text-[13px] rounded-xl hover:opacity-90 transition-opacity whitespace-nowrap"
+                          className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 bg-[var(--color-teal)] text-white font-bold text-[13px] rounded-xl hover:opacity-90 transition-opacity whitespace-nowrap"
                         >
                           ✉️ Email
                         </a>
                       ) : (
-                        <span className="px-4 py-2 bg-[var(--color-canvas)] text-[var(--color-muted)] font-semibold text-[12px] rounded-xl border border-[var(--color-line)] whitespace-nowrap">No email</span>
+                        <span className="flex-1 sm:flex-initial text-center px-4 py-2 bg-[var(--color-canvas)] text-[var(--color-muted)] font-semibold text-[12px] rounded-xl border border-[var(--color-line)] whitespace-nowrap">No email</span>
                       )}
                       <button
                         onClick={() => { generatePDF(group, storeProfile, fire); setSent(prev => ({ ...prev, [groupKey]: true })); }}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-white border-2 border-[var(--color-teal)] text-[var(--color-teal)] font-bold text-[13px] rounded-xl hover:bg-[var(--color-teal-bg)] transition-colors whitespace-nowrap cursor-pointer"
+                        className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 bg-white border-2 border-[var(--color-teal)] text-[var(--color-teal)] font-bold text-[13px] rounded-xl hover:bg-[var(--color-teal-bg)] transition-colors whitespace-nowrap cursor-pointer"
                       >
                         📤 Share PDF
                       </button>

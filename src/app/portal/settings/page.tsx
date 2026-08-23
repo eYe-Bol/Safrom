@@ -94,8 +94,26 @@ export default function SettingsPage() {
     setSaving(false);
   };
 
-  const handleUpdateScale = async (newScale: string) => {
+  const isStarterPaid = userData?.subscription_plan === '999' || userData?.subscription_plan === 'basic' || userData?.subscription_plan === 'starter';
+  const isGrowthPaid = userData?.subscription_plan === '1499' || userData?.subscription_plan === 'pro' || userData?.subscription_plan === 'growth';
+
+  const [modalScale, setModalScale] = useState<'single' | 'multi'>('single');
+
+  const openUpgradeModal = (targetScale?: 'single' | 'multi') => {
+    setModalScale(targetScale || (scale === 'multi' ? 'multi' : 'single'));
+    setShowUpgrade(true);
+  };
+
+  const handleUpdateScale = async (newScale: 'single' | 'multi') => {
     if (!user) return;
+
+    // If user has paid for a single store plan and tries to switch to multi-branch, require Growth Plan upgrade
+    if (newScale === 'multi' && isStarterPaid) {
+      fire('Multi-Branch features require the Growth Plan. Please upgrade to unlock.');
+      openUpgradeModal('multi');
+      return;
+    }
+
     setUpdatingScale(true);
     const supabase = createClient();
     const { error } = await supabase.from('users').update({ scale: newScale }).eq('id', user.id);
@@ -206,33 +224,40 @@ export default function SettingsPage() {
 
         {/* Business Scale Toggle (Owner only) */}
         {role !== 'employee' && (
-          <div className="bg-white rounded-xl p-5 border border-[var(--color-line-lt)]">
-            <h2 className="font-serif text-[16px] font-bold text-[var(--color-ink)] mb-4">Business Scale</h2>
-            <p className="text-[13px] text-[var(--color-slate)] mb-4 leading-relaxed">
-              Tailor the portal to your business size. Single store mode hides unnecessary branch management features.
-            </p>
+          <div className="bg-white rounded-xl p-5 border border-[var(--color-line-lt)] flex flex-col justify-between">
+            <div>
+              <h2 className="font-serif text-[16px] font-bold text-[var(--color-ink)] mb-2">Business Scale</h2>
+              <p className="text-[13px] text-[var(--color-slate)] mb-4 leading-relaxed">
+                Tailor the portal to your business size. Single store mode focuses on 1 branch. Multi-branch allows 3 branches with independent staff.
+              </p>
+            </div>
             <div className="flex gap-3">
               <button 
                 onClick={() => handleUpdateScale('single')}
                 disabled={updatingScale}
-                className={`flex-1 py-3 px-2 border-2 rounded-[10px] text-center transition-all disabled:opacity-50 ${scale === 'single' ? 'border-[var(--color-teal)] bg-[var(--color-teal-bg)] text-[var(--color-teal)] font-bold' : 'border-[var(--color-line-lt)] text-[var(--color-slate)] font-semibold hover:border-[var(--color-line)] cursor-pointer'}`}
+                className={`flex-1 py-3 px-2 border-2 rounded-[12px] text-center transition-all disabled:opacity-50 ${scale === 'single' ? 'border-[var(--color-teal)] bg-[var(--color-teal-bg)] text-[var(--color-teal)] font-bold' : 'border-[var(--color-line-lt)] text-[var(--color-slate)] font-semibold hover:border-[var(--color-line)] cursor-pointer'}`}
               >
-                <div className="text-[18px] mb-1">🏪</div>
-                <div className="text-[12px]">Single Store</div>
+                <div className="text-[20px] mb-1">🏪</div>
+                <div className="text-[13px]">Single Store</div>
               </button>
               <button 
                 onClick={() => handleUpdateScale('multi')}
                 disabled={updatingScale}
-                className={`flex-1 py-3 px-2 border-2 rounded-[10px] text-center transition-all disabled:opacity-50 ${scale === 'multi' ? 'border-[var(--color-teal)] bg-[var(--color-teal-bg)] text-[var(--color-teal)] font-bold' : 'border-[var(--color-line-lt)] text-[var(--color-slate)] font-semibold hover:border-[var(--color-line)] cursor-pointer'}`}
+                className={`flex-1 py-3 px-2 border-2 rounded-[12px] text-center transition-all disabled:opacity-50 relative ${scale === 'multi' ? 'border-[var(--color-teal)] bg-[var(--color-teal-bg)] text-[var(--color-teal)] font-bold' : 'border-[var(--color-line-lt)] text-[var(--color-slate)] font-semibold hover:border-[var(--color-line)] cursor-pointer'}`}
               >
-                <div className="text-[18px] mb-1">🏬</div>
-                <div className="text-[12px]">Multi Branch</div>
+                {isStarterPaid && (
+                  <span className="absolute -top-2.5 -right-1 bg-[var(--color-gold)] text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                    🔒 Upgrade
+                  </span>
+                )}
+                <div className="text-[20px] mb-1">🏬</div>
+                <div className="text-[13px]">Multi Branch</div>
               </button>
             </div>
           </div>
         )}
 
-        {/* Active Branch Selector */}
+        {/* Active Branch Selector (Only available if multi-branch) */}
         {role !== 'employee' && scale === 'multi' && (
           <div className="bg-white rounded-xl p-5 border border-[var(--color-line-lt)]">
             <h2 className="font-serif text-[16px] font-bold text-[var(--color-ink)] mb-4">Active Branch</h2>
@@ -252,12 +277,26 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Plan & Upgrades */}
+        {/* Plan & Upgrades Card */}
         <div className="md:col-span-2 bg-white rounded-xl p-5 border border-[var(--color-line-lt)]">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="font-serif text-[16px] font-bold text-[var(--color-ink)]">Plan & Upgrades (Staff & Branches)</h2>
-            <button onClick={() => setShowUpgrade(true)} className="px-3 py-1.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg text-[12px] font-semibold text-[var(--color-slate)] hover:bg-[var(--color-teal-bg)] cursor-pointer">
-              Upgrade Plan 🚀
+          <div className="flex justify-between items-center flex-wrap gap-3">
+            <div>
+              <h2 className="font-serif text-[16px] font-bold text-[var(--color-ink)]">
+                Subscription Plan ({scale === 'multi' ? 'Multi-Branch' : 'Single Store'})
+              </h2>
+              <p className="text-[13px] text-[var(--color-slate)] mt-0.5">
+                {userData?.subscription_plan ? (
+                  <>Active plan: <strong className="text-[var(--color-teal)]">{userData.subscription_plan === 'pro' || userData.subscription_plan === '1499' ? 'Growth Plan (Multi-Branch)' : 'Starter Plan (Single Store)'}</strong></>
+                ) : (
+                  <>Current status: <strong className="text-[var(--color-gold)]">7-Day Free Trial</strong></>
+                )}
+              </p>
+            </div>
+            <button
+              onClick={() => openUpgradeModal(scale === 'multi' ? 'multi' : 'single')}
+              className="px-4 py-2 bg-[var(--color-gold)] text-white rounded-lg text-[13px] font-bold hover:opacity-90 cursor-pointer shadow-sm"
+            >
+              {userData?.subscription_plan ? 'Upgrade / Renew 🚀' : 'Choose Subscription Plan 🚀'}
             </button>
           </div>
         </div>
@@ -270,106 +309,121 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Upgrade Modal */}
+      {/* ─── UPGRADE / PAYMENT MODAL (TAILORED TO CHOSEN PLAN) ─── */}
       {showUpgrade && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[500] p-4" onClick={() => setShowUpgrade(false)}>
-          <div className="bg-white rounded-[18px] p-6 w-full max-w-[520px] shadow-[0_24px_64px_rgba(0,0,0,0.2)]" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-[20px] p-6 w-full max-w-[480px] shadow-[0_24px_64px_rgba(0,0,0,0.2)]" onClick={e => e.stopPropagation()}>
             <div className="text-center mb-5">
-              <div className="text-[36px] mb-2">🚀</div>
-              <h2 className="font-serif text-[20px] font-bold text-[var(--color-ink)]">Upgrade Your Plan</h2>
-              {userData?.subscription_plan ? (
-                <p className="text-[13px] text-[var(--color-muted)] mt-1">
-                  Current plan: <strong className="text-[var(--color-teal)]">KES {userData.subscription_plan}/mo</strong>
-                </p>
-              ) : (
-                <p className="text-[13px] text-[var(--color-muted)] mt-1">
-                  You're on the <strong className="text-[var(--color-gold)]">Free Trial</strong>
-                </p>
-              )}
+              <div className="text-[36px] mb-2">{modalScale === 'single' ? '🏪' : '🏬'}</div>
+              <h2 className="font-serif text-[20px] font-bold text-[var(--color-ink)]">
+                {modalScale === 'single' ? 'Single Store Starter Plan' : 'Multi-Branch Growth Plan'}
+              </h2>
+              <p className="text-[13px] text-[var(--color-muted)] mt-1">
+                {modalScale === 'single' 
+                  ? 'Complete business operations tailored for 1 single shop'
+                  : 'Advanced multi-location management for up to 3 branches'}
+              </p>
             </div>
 
-            <div className="flex flex-col gap-3 mb-5">
-              <div className="flex flex-col mb-2">
+            <div className="flex flex-col gap-4 mb-5">
+              <div className="flex flex-col">
                 <label className="text-[12px] font-bold text-[var(--color-slate)] mb-1">Select Payment Cycle</label>
                 <select
                   value={paymentCycle}
                   onChange={e => setPaymentCycle(parseInt(e.target.value) as 6 | 12)}
-                  className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none"
+                  className="w-full px-3 py-2.5 border border-[var(--color-teal)] rounded-xl text-[14px] outline-none bg-white font-semibold text-[var(--color-ink)] cursor-pointer"
                 >
-                  <option value={6}>6 Months</option>
-                  <option value={12}>12 Months</option>
+                  <option value={6}>6 Months (Save time with semi-annual billing)</option>
+                  <option value={12}>12 Months (Full annual coverage)</option>
                 </select>
               </div>
 
-              {/* Plan 999 */}
-              {userData?.subscription_plan !== '999' && userData?.subscription_plan !== 'basic' && userData?.subscription_plan !== '1499' && userData?.subscription_plan !== 'pro' && (
-                <div className="border-2 border-[var(--color-teal)]/30 rounded-xl p-4 bg-[var(--color-teal-bg)]/30">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-serif text-[16px] font-bold text-[var(--color-ink)]">Starter Plan</h3>
+              {/* ─── SINGLE STORE: STARTER PLAN CARD ONLY ─── */}
+              {modalScale === 'single' && (
+                <div className="border-2 border-[var(--color-teal)] rounded-2xl p-5 bg-[var(--color-teal-bg)]/20 shadow-sm">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-teal)] text-white px-2 py-0.5 rounded-full">Single Store</span>
+                      <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)] mt-1">Starter Plan</h3>
+                    </div>
                     <div className="text-right">
-                      <div className="font-serif text-[18px] font-bold text-[var(--color-teal)]">KES {(999 * paymentCycle).toLocaleString()}</div>
-                      <div className="text-[11px] font-normal text-[var(--color-muted)]">for {paymentCycle} months (KES 999/mo)</div>
+                      <div className="font-serif text-[20px] font-bold text-[var(--color-teal)]">KES {(999 * paymentCycle).toLocaleString()}</div>
+                      <div className="text-[11px] text-[var(--color-muted)]">KES 999 / month</div>
                     </div>
                   </div>
-                  <ul className="text-[12px] text-[var(--color-slate)] space-y-1.5 mb-3">
-                    <li>✅ 1 Branch (Main Branch)</li>
-                    <li>✅ 1 Staff account</li>
-                    <li>✅ Full dashboard & reports</li>
-                    <li>✅ Sales tracker & inventory</li>
+                  <ul className="text-[13px] text-[var(--color-slate)] space-y-2 mb-4">
+                    <li className="flex items-center gap-2">✅ <strong>1 Branch</strong> (Main Branch)</li>
+                    <li className="flex items-center gap-2">✅ <strong>1 Staff account</strong> included</li>
+                    <li className="flex items-center gap-2">✅ <strong>Full dashboard & reporting</strong></li>
+                    <li className="flex items-center gap-2">✅ <strong>Sales Tracker & POS checkout</strong></li>
+                    <li className="flex items-center gap-2">✅ <strong>Product Catalogue with Excel import</strong></li>
                   </ul>
                   <button
                     onClick={() => handleCheckout('BASIC')}
                     disabled={checkingOutPlan !== null}
-                    className="block w-full py-2.5 bg-[var(--color-teal)] rounded-xl font-bold text-[13px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
+                    className="block w-full py-3 bg-[var(--color-teal)] rounded-xl font-bold text-[14px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer shadow-md"
                   >
-                    {checkingOutPlan === 'BASIC' ? 'Loading...' : 'Proceed to Payment'}
+                    {checkingOutPlan === 'BASIC' ? 'Processing Checkout...' : `Proceed to Pay KES ${(999 * paymentCycle).toLocaleString()}`}
                   </button>
+
+                  <div className="text-center mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setModalScale('multi')}
+                      className="text-[12px] text-[var(--color-teal)] font-semibold hover:underline bg-transparent border-none cursor-pointer"
+                    >
+                      Need multiple branches instead? Switch to Growth Plan →
+                    </button>
+                  </div>
                 </div>
               )}
 
-              {/* Plan 1499 */}
-              {userData?.subscription_plan !== '1499' && userData?.subscription_plan !== 'pro' && (
-                <div className="border-2 border-[var(--color-gold)]/30 rounded-xl p-4 bg-[var(--color-gold-pale)]/30">
-                  <div className="flex justify-between items-center mb-2">
+              {/* ─── MULTI BRANCH: GROWTH PLAN CARD ONLY ─── */}
+              {modalScale === 'multi' && (
+                <div className="border-2 border-[var(--color-gold)] rounded-2xl p-5 bg-[var(--color-gold-pale)]/30 shadow-sm">
+                  <div className="flex justify-between items-start mb-3">
                     <div>
-                      <h3 className="font-serif text-[16px] font-bold text-[var(--color-ink)]">Growth Plan</h3>
-                      {(userData?.subscription_plan === '999' || userData?.subscription_plan === 'basic') && (
-                        <span className="text-[10px] font-bold text-[var(--color-gold)] bg-[var(--color-gold-pale)] px-2 py-0.5 rounded-full uppercase tracking-wider">Recommended Upgrade</span>
-                      )}
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-gold)] text-white px-2 py-0.5 rounded-full">Multi Branch</span>
+                      <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)] mt-1">Growth Plan</h3>
                     </div>
                     <div className="text-right">
-                      <div className="font-serif text-[18px] font-bold text-[var(--color-gold)]">KES {(1499 * paymentCycle).toLocaleString()}</div>
-                      <div className="text-[11px] font-normal text-[var(--color-muted)]">for {paymentCycle} months (KES 1499/mo)</div>
+                      <div className="font-serif text-[20px] font-bold text-[var(--color-gold)]">KES {(1499 * paymentCycle).toLocaleString()}</div>
+                      <div className="text-[11px] text-[var(--color-muted)]">KES 1,499 / month</div>
                     </div>
                   </div>
-                  <ul className="text-[12px] text-[var(--color-slate)] space-y-1.5 mb-3">
-                    <li>✅ 3 Branches (Main + 2 extra)</li>
-                    <li>✅ Up to 4 Staff accounts</li>
-                    <li>✅ Full dashboard & reports</li>
-                    <li>✅ Multi-branch analytics</li>
-                    <li>✅ Priority support</li>
+                  <ul className="text-[13px] text-[var(--color-slate)] space-y-2 mb-4">
+                    <li className="flex items-center gap-2">✅ <strong>3 Branches</strong> (Main Branch + Branch 2 + Branch 3)</li>
+                    <li className="flex items-center gap-2">✅ <strong>Up to 4 Staff accounts</strong> with branch assignment</li>
+                    <li className="flex items-center gap-2">✅ <strong>Multi-branch analytics & comparative reports</strong></li>
+                    <li className="flex items-center gap-2">✅ <strong>Independent branch inventories & POS</strong></li>
+                    <li className="flex items-center gap-2">✅ <strong>Priority support & PDF export</strong></li>
                   </ul>
                   <button
                     onClick={() => handleCheckout('PRO')}
                     disabled={checkingOutPlan !== null}
-                    className="block w-full py-2.5 bg-[var(--color-gold)] rounded-xl font-bold text-[13px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
+                    className="block w-full py-3 bg-[var(--color-gold)] rounded-xl font-bold text-[14px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer shadow-md"
                   >
-                    {checkingOutPlan === 'PRO' ? 'Loading...' : 'Proceed to Payment'}
+                    {checkingOutPlan === 'PRO' ? 'Processing Checkout...' : `Proceed to Pay KES ${(1499 * paymentCycle).toLocaleString()}`}
                   </button>
-                </div>
-              )}
 
-              {/* Already on highest plan */}
-              {(userData?.subscription_plan === '1499' || userData?.subscription_plan === 'pro') && (
-                <div className="border-2 border-[var(--color-emerald)]/30 rounded-xl p-4 bg-[var(--color-emerald-bg)] text-center">
-                  <div className="text-[28px] mb-2">🎉</div>
-                  <h3 className="font-serif text-[16px] font-bold text-[var(--color-emerald)]">You're on the Growth Plan!</h3>
-                  <p className="text-[13px] text-[var(--color-slate)] mt-1">You have access to all features including 3 branches and 4 staff accounts.</p>
+                  <div className="text-center mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setModalScale('single')}
+                      className="text-[12px] text-[var(--color-slate)] font-semibold hover:underline bg-transparent border-none cursor-pointer"
+                    >
+                      Need a single shop plan instead? Switch to Starter Plan →
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
 
-            <button onClick={() => setShowUpgrade(false)} disabled={checkingOutPlan !== null} className="w-full py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[14px] text-[var(--color-slate)] hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-pointer">
+            <button
+              onClick={() => setShowUpgrade(false)}
+              disabled={checkingOutPlan !== null}
+              className="w-full py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[13px] text-[var(--color-slate)] hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-pointer"
+            >
               Maybe Later
             </button>
           </div>

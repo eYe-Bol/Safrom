@@ -148,6 +148,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             finalStoreName = owner.store_name;
             subscriptionPlan = owner.subscription_plan;
             scale = owner.scale || 'single';
+            if (subscriptionPlan === 'basic' || subscriptionPlan === '999' || subscriptionPlan === 'starter') {
+              scale = 'single';
+            }
             const trialEnd = new Date(owner.created_at);
             trialEnd.setDate(trialEnd.getDate() + 7);
             isTrial = trialEnd > new Date();
@@ -158,6 +161,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             }
           }
         } else {
+          if (subscriptionPlan === 'basic' || subscriptionPlan === '999' || subscriptionPlan === 'starter') {
+            scale = 'single';
+          }
           const trialEnd = new Date(typedProfile.created_at);
           trialEnd.setDate(trialEnd.getDate() + 7);
           isTrial = trialEnd > new Date();
