@@ -56,13 +56,14 @@ const BLANK_PROFILE: BranchProfile = {
 };
 
 export default function StaffPage() {
-  const { storeId, isTrial, subscriptionPlan, storeName } = useStore();
+  const { storeId, isTrial, subscriptionPlan, storeName, refreshBranchProfiles, scale } = useStore();
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [branchProfiles, setBranchProfiles] = useState<Record<string, BranchProfile>>({});
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<{ open: boolean; branch: string }>({ open: false, branch: '' });
   const [editModal, setEditModal] = useState<{ open: boolean; staffId: string }>({ open: false, staffId: '' });
   const [branchModal, setBranchModal] = useState<{ open: boolean; branch: string }>({ open: false, branch: '' });
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; staffId: string; branchLabel: string; name: string }>({ open: false, staffId: '', branchLabel: '', name: '' });
   const [form, setForm] = useState({ full_name: '', email: '', password: '', staff_role: 'Sales Staff' });
   const [branchForm, setBranchForm] = useState<BranchProfile>(BLANK_PROFILE);
   const [saving, setSaving] = useState(false);
@@ -97,7 +98,7 @@ export default function StaffPage() {
       .eq('owner_id', storeId);
 
     const map: Record<string, BranchProfile> = {};
-    (data || []).forEach((bp: any) => {
+    (data as BranchProfile[] | null || []).forEach(bp => {
       map[bp.branch_name] = bp;
     });
     setBranchProfiles(map);
@@ -223,23 +224,31 @@ export default function StaffPage() {
     if (error) {
       fire(`Error: ${error.message}`);
     } else {
+      // Update local state
       setBranchProfiles(prev => ({ ...prev, [branchModal.branch]: { ...branchForm, branch_name: branchModal.branch } }));
+      // Refresh global context so topbar name updates instantly
+      await refreshBranchProfiles();
       fire(`✅ ${branchModal.branch} profile saved!`);
       setBranchModal({ open: false, branch: '' });
     }
   };
 
-  const handleRemove = async (staff_id: string, branch_name: string) => {
-    if (!confirm(`Are you sure you want to permanently delete this staff member from ${branch_name}?`)) return;
+  const openDeleteModal = (member: StaffMember) => {
+    setDeleteModal({ open: true, staffId: member.id, branchLabel: member.branch_name, name: member.full_name });
+  };
+
+  const handleRemove = async () => {
+    const { staffId } = deleteModal;
+    setDeleteModal({ open: false, staffId: '', branchLabel: '', name: '' });
 
     const res = await fetch('/api/staff', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ staff_id, owner_id: storeId }),
+      body: JSON.stringify({ staff_id: staffId, owner_id: storeId }),
     });
 
     if (res.ok) {
-      setStaff(staff.filter(s => s.id !== staff_id));
+      setStaff(staff.filter(s => s.id !== staffId));
       fire('Staff member removed.');
     } else {
       fire('Failed to remove staff member.');
@@ -264,7 +273,7 @@ export default function StaffPage() {
   if (loading) return <div className="text-[13px] text-[var(--color-muted)] p-5">Loading branches...</div>;
 
   return (
-    <div className="flex flex-col min-h-screen pb-10">
+    <div className="flex flex-col min-h-dvh pb-10 w-full">
       <Topbar title="Staff & Branch Manager" sub="Record all staff, their branches, profiles, and login details" />
       
       <div className="p-3 sm:p-5 max-w-[1200px] mx-auto w-full space-y-4">
@@ -275,17 +284,35 @@ export default function StaffPage() {
         </div>
       )}
 
+      {/* Delete Staff Confirmation Modal */}
+      {deleteModal.open && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[var(--color-ink)]/40 backdrop-blur-sm" onClick={() => setDeleteModal({ open: false, staffId: '', branchLabel: '', name: '' })}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-[380px] shadow-[0_24px_64px_rgba(0,0,0,0.2)]" onClick={e => e.stopPropagation()}>
+            <div className="text-[28px] mb-3 text-center">🗑️</div>
+            <h3 className="font-serif text-[17px] font-bold text-[var(--color-ink)] text-center mb-1">Remove Staff Member?</h3>
+            <p className="text-[13px] text-[var(--color-muted)] text-center mb-5 leading-relaxed">
+              Permanently remove <strong>{deleteModal.name}</strong> from <strong>{deleteModal.branchLabel}</strong>?<br />
+              Their login access will be revoked immediately.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteModal({ open: false, staffId: '', branchLabel: '', name: '' })} className="flex-1 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[14px] text-[var(--color-slate)] cursor-pointer">Cancel</button>
+              <button onClick={handleRemove} className="flex-1 py-2.5 bg-[var(--color-red)] text-white rounded-xl font-bold text-[14px] hover:opacity-90 cursor-pointer">Remove</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Branches Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {BRANCH_CONFIGS.map(branch => {
+        {BRANCH_CONFIGS.filter(b => scale === 'multi' || b.key === 'Main Branch').map(branch => {
           const branchStaff = staff.filter(s => s.branch_name === branch.key);
-          const hasAccess = branch.requiresPlan === '999' ? canAccess999 : canAccess1499;
+          const hasAccess = scale === 'single' ? true : (branch.requiresPlan === '999' ? canAccess999 : canAccess1499);
           const profile = branchProfiles[branch.key];
           const displayName = profile?.branch_display_name || (branch.key === 'Main Branch' ? storeName : branch.key) || branch.key;
 
           return (
             <div key={branch.key} className={`bg-white rounded-xl p-5 border ${hasAccess ? 'border-[var(--color-teal)]/30' : 'border-[var(--color-line-lt)] opacity-60'} flex flex-col relative`}>
-              {!hasAccess && (
+              {!hasAccess && scale === 'multi' && (
                 <div className="absolute top-3 right-3 bg-[var(--color-canvas)] border border-[var(--color-line)] text-[10px] font-bold px-2 py-0.5 rounded-full text-[var(--color-muted)] uppercase tracking-wider">
                   Requires {branch.requiresPlan} Plan
                 </div>
@@ -348,7 +375,7 @@ export default function StaffPage() {
                     <div className="flex items-center gap-1 mt-2 border-t border-[var(--color-line-lt)] pt-2">
                       <button onClick={() => openEditModal(member)} className="flex-1 py-1 rounded-md text-[11px] font-bold text-[var(--color-teal)] hover:bg-[var(--color-teal-bg)] transition-colors">✏️ Edit</button>
                       <button onClick={() => handleToggleActive(member.id, member.is_active)} className="flex-1 py-1 rounded-md text-[11px] font-bold text-[var(--color-slate)] hover:bg-gray-200 transition-colors">{member.is_active ? '⏸ Pause' : '▶️ Resume'}</button>
-                      <button onClick={() => handleRemove(member.id, branch.key)} className="flex-1 py-1 rounded-md text-[11px] font-bold text-red-500 hover:bg-red-50 transition-colors">🗑 Delete</button>
+                      <button onClick={() => openDeleteModal(member)} className="flex-1 py-1 rounded-md text-[11px] font-bold text-red-500 hover:bg-red-50 transition-colors">🗑 Delete</button>
                     </div>
                   </div>
                 ))}

@@ -7,7 +7,7 @@ import { SFSBadge } from '@/components/SFSBadge';
 import { createClient } from '@/utils/supabase/client';
 
 export default function RegisterPage() {
-  const [form, setForm] = useState({ name: '', email: '', password: '', type: 'retail' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', type: 'retail', scale: 'single' });
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,6 +28,7 @@ export default function RegisterPage() {
         data: {
           full_name: form.name,
           business_type: form.type,
+          scale: form.scale,
         }
       }
     });
@@ -90,6 +91,28 @@ export default function RegisterPage() {
               <select value={form.type} onChange={e=>setForm({...form, type: e.target.value})} className="w-full py-[9px] px-[12px] border-[1.5px] border-[var(--color-line)] rounded-[8px] text-[13px] text-[var(--color-ink)] bg-white outline-none focus:border-[var(--color-teal)]">
                 {BIZ.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
               </select>
+            </div>
+
+            <div className="mb-[24px]">
+              <label className="text-[12px] font-bold text-[var(--color-slate)] block mb-2">Business Scale</label>
+              <div className="flex gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => setForm({...form, scale: 'single'})}
+                  className={`flex-1 py-3 px-2 border-2 rounded-[10px] text-center transition-all ${form.scale === 'single' ? 'border-[var(--color-teal)] bg-[var(--color-teal-bg)] text-[var(--color-teal)] font-bold' : 'border-[var(--color-line-lt)] text-[var(--color-slate)] font-semibold hover:border-[var(--color-line)]'}`}
+                >
+                  <div className="text-[18px] mb-1">🏪</div>
+                  <div className="text-[12px]">Single Store</div>
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => setForm({...form, scale: 'multi'})}
+                  className={`flex-1 py-3 px-2 border-2 rounded-[10px] text-center transition-all ${form.scale === 'multi' ? 'border-[var(--color-teal)] bg-[var(--color-teal-bg)] text-[var(--color-teal)] font-bold' : 'border-[var(--color-line-lt)] text-[var(--color-slate)] font-semibold hover:border-[var(--color-line)]'}`}
+                >
+                  <div className="text-[18px] mb-1">🏬</div>
+                  <div className="text-[12px]">Multi Branch</div>
+                </button>
+              </div>
             </div>
 
             {error && (

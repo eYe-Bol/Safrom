@@ -6,46 +6,10 @@ import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useStore } from '@/context/StoreContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-
-const fmt = (n: number) => `KES ${Number(n).toLocaleString()}`;
-
-function groupByDay(sales: any[], expenses: any[], mode: 'net_sales' | 'net_profit') {
-  const map: Record<string, { revenue: number; expenses: number; profit: number }> = {};
-
-  sales.forEach(r => {
-    const day = r.created_at.slice(0, 10);
-    if (!map[day]) map[day] = { revenue: 0, expenses: 0, profit: 0 };
-    const rev = Number(r.revenue);
-    map[day].revenue += rev;
-    if (mode === 'net_profit') {
-      map[day].profit += rev - (r.units_sold * (r.inventory?.cost_price || 0));
-    }
-  });
-
-  expenses.forEach(e => {
-    const day = e.date;
-    if (!map[day]) map[day] = { revenue: 0, expenses: 0, profit: 0 };
-    map[day].expenses += Number(e.amount);
-  });
-
-  // compute net for each day
-  Object.values(map).forEach(d => {
-    if (mode === 'net_profit') {
-      d.profit = d.profit - d.expenses;
-    } else {
-      d.profit = d.revenue - d.expenses;
-    }
-  });
-
-  return Object.entries(map)
-    .map(([day, data]) => ({ day, ...data }))
-    .sort((a, b) => a.day.localeCompare(b.day))
-    .slice(-14); // last 14 days
-}
+import { fmt, groupByDate } from '@/utils/format';
 
 export default function DashboardPage() {
   const { storeId, branchName } = useStore();
-  const [storeName, setStoreName] = useState('');
   const [todayRevenue, setTodayRevenue] = useState(0);
   const [todayTransactions, setTodayTransactions] = useState(0);
   const [lowStockCount, setLowStockCount] = useState(0);
@@ -68,9 +32,6 @@ export default function DashboardPage() {
         setLoading(false);
         return;
       }
-
-      const { data: profile } = await supabase.from('users').select('*').eq('id', storeId!).single();
-      setStoreName(profile?.store_name || '');
 
       const startOfToday = new Date();
       startOfToday.setHours(0, 0, 0, 0);
@@ -118,8 +79,8 @@ export default function DashboardPage() {
       // Low stock
       if (inventory) setLowStockCount(inventory.filter(i => i.stock < i.reorder_level).length);
 
-      // Chart data
-      setChartData(groupByDay(allSales || [], allExpenses || [], mode));
+      // Chart data (last 14 days)
+      setChartData(groupByDate(allSales || [], allExpenses || [], mode).slice(-14));
       setLoading(false);
     };
     fetchDashboardData();
@@ -136,7 +97,7 @@ export default function DashboardPage() {
 
   if (!storeId) {
     return (
-      <div className="flex flex-col min-h-screen pb-10">
+      <div className="flex flex-col min-h-dvh pb-10 w-full">
         <Topbar title="Dashboard" sub="Overview" />
         <div className="p-10 text-center flex flex-col items-center justify-center gap-4 mt-10">
           <div className="text-[40px]">⚠️</div>
@@ -152,7 +113,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen pb-10">
+    <div className="flex flex-col min-h-dvh pb-10 w-full">
       <Topbar title="Dashboard" sub="Store Overview" />
 
       <div className="p-3 sm:p-5 max-w-[1200px] mx-auto w-full flex flex-col gap-4 sm:gap-5">

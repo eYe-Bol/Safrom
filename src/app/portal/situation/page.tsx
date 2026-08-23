@@ -249,7 +249,7 @@ export default function SituationRoomPage() {
   ] as const;
 
   return (
-    <div className="flex flex-col min-h-screen pb-10">
+    <div className="flex flex-col min-h-dvh pb-10 w-full">
       <Topbar title="Situation Room" sub="Inventory & Expiry Tracker" />
 
       {toast && (
@@ -342,10 +342,10 @@ export default function SituationRoomPage() {
               </div>
 
               {/* Responsive Table */}
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[70vh]">
                 <table className="w-full border-collapse" style={{ minWidth: 480 }}>
-                  <thead>
-                    <tr className="border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)]">
+                  <thead className="sticky top-0 z-10 shadow-[0_1px_0_var(--color-line-lt)]">
+                <tr className=" bg-[var(--color-canvas)]">
                       {['Product', 'Category', 'Status', 'Stock Level', 'Quick Adjust'].map(h => (
                         <th key={h} className="px-4 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">{h}</th>
                       ))}
@@ -456,10 +456,10 @@ export default function SituationRoomPage() {
                   </div>
 
                   {/* Responsive Table */}
-                  <div className="overflow-x-auto">
+                  <div className="overflow-auto max-h-[70vh]">
                     <table className="w-full border-collapse" style={{ minWidth: 400 }}>
-                      <thead>
-                        <tr className="border-b border-[var(--color-line-lt)]">
+                      <thead className="sticky top-0 z-10 shadow-[0_1px_0_var(--color-line-lt)]">
+                <tr className="">
                           {['Product', 'Status', 'Current Stock', 'Reorder Level', 'Order Qty'].map(h => (
                             <th key={h} className="px-4 py-2 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">{h}</th>
                           ))}
@@ -563,10 +563,10 @@ export default function SituationRoomPage() {
             ) : (
               <div>
                 {/* Responsive View */}
-                <div className="overflow-x-auto">
+                <div className="overflow-auto max-h-[70vh]">
                   <table className="w-full min-w-[700px] text-left border-collapse">
-                    <thead>
-                      <tr className="bg-[var(--color-canvas)] border-b border-[var(--color-line-lt)] text-[11px] uppercase tracking-wider text-[var(--color-muted)] font-bold">
+                    <thead className="sticky top-0 z-10 shadow-[0_1px_0_var(--color-line-lt)]">
+                <tr className="bg-[var(--color-canvas)]  text-[11px] uppercase tracking-wider text-[var(--color-muted)] font-bold">
                         <th className="p-3 pl-4">Product</th>
                         <th className="p-3">Category</th>
                         <th className="p-3">Current Stock</th>

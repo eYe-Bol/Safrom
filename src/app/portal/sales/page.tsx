@@ -1,9 +1,10 @@
 'use client';
 
 import { Topbar } from '@/components/Topbar';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useStore } from '@/context/StoreContext';
+import { fmt } from '@/utils/format';
 
 type InventoryItem = {
   id: string;
@@ -24,8 +25,6 @@ type SaleLog = {
   product_name: string;
 };
 
-const fmt = (n: number) => `KES ${Number(n).toLocaleString()}`;
-
 export default function SalesTrackerPage() {
   const { storeId, branchName } = useStore();
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -40,13 +39,15 @@ export default function SalesTrackerPage() {
   const [toast, setToast] = useState('');
   const [activeTab, setActiveTab] = useState<'pos' | 'log' | 'history'>('pos');
   const [loggedIds, setLoggedIds] = useState<Set<string>>(new Set());
-  
   const [cart, setCart] = useState<{ item: InventoryItem; qty: number }[]>([]);
   const [checkingOut, setCheckingOut] = useState(false);
+  // Pagination for sales history
+  const [historyPage, setHistoryPage] = useState(1);
+  const HISTORY_PAGE_SIZE = 50;
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     if (!storeId) return;
     setLoading(true);
     const supabase = createClient();
@@ -83,9 +84,9 @@ export default function SalesTrackerPage() {
       setLoggedIds(todayLoggedIds);
     }
     setLoading(false);
-  };
+  }, [storeId, branchName]);
 
-  useEffect(() => { fetchAll(); }, [storeId, branchName]);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const cats = ['All', ...Array.from(new Set(items.map(p => p.category || 'General')))];
   const filtered = items.filter(p =>
@@ -169,6 +170,36 @@ export default function SalesTrackerPage() {
     setCheckingOut(true);
     const supabase = createClient();
 
+    // Step 1: Verify stock is still available before processing
+    const stockChecks = await Promise.all(
+      cart.map(c =>
+        supabase
+          .from('inventory')
+          .select('id, stock')
+          .eq('id', c.item.id)
+          .single()
+      )
+    );
+
+    const stockError = stockChecks.find((r, i) => {
+      const current = (r.data as { id: string; stock: number } | null)?.stock ?? 0;
+      return current < cart[i].qty;
+    });
+
+    if (stockError) {
+      fire('⚠ Stock changed while cart was open. Please review and retry.');
+      fetchAll(); // Refresh to show latest stock
+      setCheckingOut(false);
+      return;
+    }
+
+    // Step 2: Deduct all stock
+    const deductions = cart.map(c =>
+      supabase.from('inventory').update({ stock: c.item.stock - c.qty }).eq('id', c.item.id)
+    );
+    await Promise.all(deductions);
+
+    // Step 3: Insert all sales in a single batch insert
     const salesData = cart.map(c => ({
       user_id: storeId,
       inventory_id: c.item.id,
@@ -177,14 +208,11 @@ export default function SalesTrackerPage() {
       branch_name: branchName || 'Main Branch',
     }));
 
-    for (const c of cart) {
-      await supabase.from('inventory').update({ stock: c.item.stock - c.qty }).eq('id', c.item.id);
-    }
-
     const { error } = await supabase.from('sales').insert(salesData);
 
     if (error) {
-      fire('⚠ Error processing checkout.');
+      fire('⚠ Sale recorded but stock deducted — contact admin if totals mismatch.');
+      console.error('Sales insert error:', error);
     } else {
       fire(`✓ Checkout successful! ${fmt(cartTotal)} collected.`);
       setCart([]);
@@ -200,7 +228,7 @@ export default function SalesTrackerPage() {
   const todayUnits = todayLogs.reduce((sum, s) => sum + s.units_sold, 0);
 
   return (
-    <div className="flex flex-col min-h-screen pb-10">
+    <div className="flex flex-col min-h-dvh pb-10 w-full">
       <Topbar title="Sales Tracker" sub="End-of-shift sales tracking and stock reconciliation" />
 
       {toast && (
@@ -346,10 +374,10 @@ export default function SalesTrackerPage() {
                 </select>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[70vh]">
                 <table className="w-full border-collapse" style={{ minWidth: 420 }}>
-                  <thead>
-                    <tr className="border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)]">
+                  <thead className="sticky top-0 z-10 shadow-[0_1px_0_var(--color-line-lt)]">
+                <tr className=" bg-[var(--color-canvas)]">
                       {['Product', 'Category', 'Sell Price', 'Stock', ''].map(h => (
                         <th key={h} className="px-4 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">{h}</th>
                       ))}
@@ -484,13 +512,15 @@ export default function SalesTrackerPage() {
           <div className="bg-white rounded-xl border border-[var(--color-line-lt)] overflow-hidden shadow-sm">
             <div className="p-3.5 border-b border-[var(--color-line-lt)] flex justify-between items-center flex-wrap gap-2">
               <span className="font-serif text-[15px] font-bold text-[var(--color-ink)]">Sales History</span>
-              <span className="text-[12px] text-[var(--color-muted)]">Last 100 transactions · timestamps auto-recorded</span>
+              <span className="text-[12px] text-[var(--color-muted)]">
+                {saleLogs.length} total transactions · timestamps auto-recorded
+              </span>
             </div>
             {/* Responsive Table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[70vh]">
               <table className="w-full border-collapse" style={{ minWidth: 480 }}>
-                <thead>
-                  <tr className="border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)]">
+                <thead className="sticky top-0 z-10 shadow-[0_1px_0_var(--color-line-lt)]">
+                <tr className=" bg-[var(--color-canvas)]">
                     {['Date & Time', 'Product', 'Units Sold', 'Revenue'].map(h => (
                       <th key={h} className="px-4 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">{h}</th>
                     ))}
@@ -501,7 +531,9 @@ export default function SalesTrackerPage() {
                     <tr><td colSpan={4} className="p-4 text-center text-[13px] text-[var(--color-muted)]">Loading…</td></tr>
                   ) : saleLogs.length === 0 ? (
                     <tr><td colSpan={4} className="p-4 text-center text-[13px] text-[var(--color-muted)]">No sales recorded yet.</td></tr>
-                  ) : saleLogs.map(s => (
+                  ) : saleLogs
+                      .slice((historyPage - 1) * HISTORY_PAGE_SIZE, historyPage * HISTORY_PAGE_SIZE)
+                      .map(s => (
                     <tr key={s.id} className="border-b border-[var(--color-line-lt)] last:border-0 hover:bg-[#fafafa] transition-colors">
                       <td className="px-4 py-2.5 text-[12px] text-[var(--color-muted)]">
                         <div>{new Date(s.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
@@ -515,6 +547,28 @@ export default function SalesTrackerPage() {
                 </tbody>
               </table>
             </div>
+            {/* Pagination Controls */}
+            {saleLogs.length > HISTORY_PAGE_SIZE && (
+              <div className="p-3 border-t border-[var(--color-line-lt)] flex items-center justify-between gap-2">
+                <button
+                  disabled={historyPage === 1}
+                  onClick={() => setHistoryPage(p => p - 1)}
+                  className="px-4 py-1.5 rounded-lg border border-[var(--color-line)] text-[12px] font-semibold text-[var(--color-slate)] bg-white hover:bg-[var(--color-canvas)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  ← Prev
+                </button>
+                <span className="text-[12px] text-[var(--color-muted)]">
+                  Page {historyPage} of {Math.ceil(saleLogs.length / HISTORY_PAGE_SIZE)}
+                </span>
+                <button
+                  disabled={historyPage >= Math.ceil(saleLogs.length / HISTORY_PAGE_SIZE)}
+                  onClick={() => setHistoryPage(p => p + 1)}
+                  className="px-4 py-1.5 rounded-lg border border-[var(--color-line)] text-[12px] font-semibold text-[var(--color-slate)] bg-white hover:bg-[var(--color-canvas)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  Next →
+                </button>
+              </div>
+            )}
           </div>
         )}
 

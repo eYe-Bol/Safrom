@@ -40,6 +40,15 @@
     background-color: var(--color-canvas);
     color: var(--color-ink);
     -webkit-font-smoothing: antialiased;
+    /* ── Mobile responsiveness ── */
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  html {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
   }
   a {
     text-decoration: none;

@@ -5,18 +5,43 @@ import { Topbar } from '@/components/Topbar';
 import { createClient } from '@/utils/supabase/client';
 import { useStore } from '@/context/StoreContext';
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type AuthUser = {
+  id: string;
+  email: string | undefined;
+};
+
+type UserData = {
+  id: string;
+  role: string | null;
+  store_name: string | null;
+  store_phone: string | null;
+  store_email: string | null;
+  subscription_plan: string | null;
+  subscription_status: string | null;
+  trial_end: string | null;
+  is_active: boolean | null;
+  scale: string | null;
+};
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function SettingsPage() {
-  const [user, setUser] = useState<any>(null);
-  const [userData, setUserData] = useState<any>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [editMode, setEditMode] = useState(false);
-  const [storeName, setStoreName] = useState('');
+  const [storeName, setStoreNameLocal] = useState('');
+  const [storePhone, setStorePhone] = useState('');
+  const [storeEmail, setStoreEmail] = useState('');
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [paymentCycle, setPaymentCycle] = useState<6 | 12>(6);
   const [checkingOutPlan, setCheckingOutPlan] = useState<string | null>(null);
-  const { role, branchName, setBranchName, branchProfiles } = useStore();
-  const storeId = userData?.id;
+  const [updatingScale, setUpdatingScale] = useState(false);
+  
+  const { role, branchName, setBranchName, branchProfiles, setStoreName: setContextStoreName, scale, setScale } = useStore();
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
@@ -32,11 +57,14 @@ export default function SettingsPage() {
       const supabase = createClient();
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (authUser) {
-        setUser(authUser);
+        setUser({ id: authUser.id, email: authUser.email });
         const { data } = await supabase.from('users').select('*').eq('id', authUser.id).single();
         if (data) {
-          setUserData(data);
-          setStoreName(data.store_name || '');
+          const typed = data as UserData;
+          setUserData(typed);
+          setStoreNameLocal(typed.store_name || '');
+          setStorePhone(typed.store_phone || '');
+          setStoreEmail(typed.store_email || '');
         }
       }
     };
@@ -44,25 +72,45 @@ export default function SettingsPage() {
   }, []);
 
   const saveProfile = async () => {
+    if (!user) return;
     setSaving(true);
     const supabase = createClient();
-    const { error } = await supabase.from('users').update({ 
+    const updates = {
       store_name: storeName,
-      store_phone: userData?.store_phone,
-      store_email: userData?.store_email
-    }).eq('id', user.id);
+      store_phone: storePhone,
+      store_email: storeEmail,
+    };
+    const { error } = await supabase.from('users').update(updates).eq('id', user.id);
     if (error) {
       fire(`Error: ${error.message}`);
     } else {
-      setUserData((p: any) => ({...p, store_name: storeName, store_phone: userData?.store_phone, store_email: userData?.store_email}));
+      // Update local state
+      setUserData(prev => prev ? { ...prev, ...updates } : prev);
+      // Update global context — no page reload needed
+      setContextStoreName(storeName);
       fire('✓ Business profile updated!');
-      window.location.reload(); // Force reload to update layout
+      setEditMode(false);
     }
     setSaving(false);
-    setEditMode(false);
+  };
+
+  const handleUpdateScale = async (newScale: string) => {
+    if (!user) return;
+    setUpdatingScale(true);
+    const supabase = createClient();
+    const { error } = await supabase.from('users').update({ scale: newScale }).eq('id', user.id);
+    if (error) {
+      fire(`Error: ${error.message}`);
+    } else {
+      setUserData(prev => prev ? { ...prev, scale: newScale } : prev);
+      setScale(newScale);
+      fire(newScale === 'multi' ? '🚀 Upgraded to Multi-Branch Mode!' : '✅ Switched to Single Store Mode');
+    }
+    setUpdatingScale(false);
   };
 
   const handleCheckout = async (plan: 'BASIC' | 'PRO') => {
+    const storeId = userData?.id;
     if (!storeId || !user?.email) {
       fire('User email or store ID missing');
       return;
@@ -79,30 +127,29 @@ export default function SettingsPage() {
           months: paymentCycle,
           amount,
           email: user.email,
-          name: userData?.store_name
-        })
+          name: userData?.store_name,
+        }),
       });
-      const data = await res.json();
+      const data = await res.json() as { url?: string; error?: string; details?: unknown };
       if (data.url) {
         window.location.href = data.url;
       } else {
         const errorMessage = data.details ? JSON.stringify(data.details) : data.error;
         fire('Checkout error: ' + errorMessage);
-        console.error('Intasend error details:', data);
         setCheckingOutPlan(null);
       }
-    } catch (err) {
+    } catch {
       fire('Failed to start checkout');
       setCheckingOutPlan(null);
     }
   };
 
   const trialDaysLeft = userData?.trial_end
-    ? Math.max(0, Math.ceil((new Date(userData.trial_end).getTime() - Date.now()) / (1000*60*60*24)))
+    ? Math.max(0, Math.ceil((new Date(userData.trial_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : null;
 
   return (
-    <div className="flex flex-col min-h-screen pb-10">
+    <div className="flex flex-col min-h-dvh pb-10 w-full">
       <Topbar title="Settings" sub="Business profile and account management" />
 
       {toast && (
@@ -119,19 +166,19 @@ export default function SettingsPage() {
             <div className="flex flex-col gap-3">
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Business / Store Name</label>
-                <input value={storeName} onChange={e => setStoreName(e.target.value)} className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none" />
+                <input value={storeName} onChange={e => setStoreNameLocal(e.target.value)} className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none" />
               </div>
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Store WhatsApp Number</label>
-                <input value={userData?.store_phone || ''} onChange={e => setUserData({...userData, store_phone: e.target.value})} placeholder="e.g. +254700000000" className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none" />
+                <input value={storePhone} onChange={e => setStorePhone(e.target.value)} placeholder="e.g. +254700000000" className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none" />
               </div>
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Store Email</label>
-                <input value={userData?.store_email || ''} onChange={e => setUserData({...userData, store_email: e.target.value})} placeholder="store@example.com" className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none" />
+                <input value={storeEmail} onChange={e => setStoreEmail(e.target.value)} placeholder="store@example.com" className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none" />
               </div>
               <div className="flex gap-2 mt-1">
-                <button onClick={() => setEditMode(false)} className="flex-1 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg font-semibold text-[13px] text-[var(--color-slate)]">Cancel</button>
-                <button onClick={saveProfile} disabled={saving} className="flex-1 py-2 bg-[var(--color-teal)] text-white rounded-lg font-bold text-[13px] disabled:opacity-50">{saving ? 'Saving…' : 'Save'}</button>
+                <button onClick={() => setEditMode(false)} className="flex-1 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg font-semibold text-[13px] text-[var(--color-slate)] cursor-pointer">Cancel</button>
+                <button onClick={saveProfile} disabled={saving} className="flex-1 py-2 bg-[var(--color-teal)] text-white rounded-lg font-bold text-[13px] disabled:opacity-50 cursor-pointer">{saving ? 'Saving…' : 'Save'}</button>
               </div>
             </div>
           ) : (
@@ -150,24 +197,52 @@ export default function SettingsPage() {
                   <span className="text-[13px] font-semibold text-[var(--color-ink)]">{v}</span>
                 </div>
               ))}
-              <button onClick={() => setEditMode(true)} className="mt-4 px-4 py-2 bg-[var(--color-teal)] text-white font-bold text-[13px] rounded-lg hover:opacity-90">
+              <button onClick={() => setEditMode(true)} className="mt-4 px-4 py-2 bg-[var(--color-teal)] text-white font-bold text-[13px] rounded-lg hover:opacity-90 cursor-pointer">
                 Edit Profile
               </button>
             </>
           )}
         </div>
 
-        {/* Active Branch Selector */}
+        {/* Business Scale Toggle (Owner only) */}
         {role !== 'employee' && (
+          <div className="bg-white rounded-xl p-5 border border-[var(--color-line-lt)]">
+            <h2 className="font-serif text-[16px] font-bold text-[var(--color-ink)] mb-4">Business Scale</h2>
+            <p className="text-[13px] text-[var(--color-slate)] mb-4 leading-relaxed">
+              Tailor the portal to your business size. Single store mode hides unnecessary branch management features.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => handleUpdateScale('single')}
+                disabled={updatingScale}
+                className={`flex-1 py-3 px-2 border-2 rounded-[10px] text-center transition-all disabled:opacity-50 ${scale === 'single' ? 'border-[var(--color-teal)] bg-[var(--color-teal-bg)] text-[var(--color-teal)] font-bold' : 'border-[var(--color-line-lt)] text-[var(--color-slate)] font-semibold hover:border-[var(--color-line)] cursor-pointer'}`}
+              >
+                <div className="text-[18px] mb-1">🏪</div>
+                <div className="text-[12px]">Single Store</div>
+              </button>
+              <button 
+                onClick={() => handleUpdateScale('multi')}
+                disabled={updatingScale}
+                className={`flex-1 py-3 px-2 border-2 rounded-[10px] text-center transition-all disabled:opacity-50 ${scale === 'multi' ? 'border-[var(--color-teal)] bg-[var(--color-teal-bg)] text-[var(--color-teal)] font-bold' : 'border-[var(--color-line-lt)] text-[var(--color-slate)] font-semibold hover:border-[var(--color-line)] cursor-pointer'}`}
+              >
+                <div className="text-[18px] mb-1">🏬</div>
+                <div className="text-[12px]">Multi Branch</div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Active Branch Selector */}
+        {role !== 'employee' && scale === 'multi' && (
           <div className="bg-white rounded-xl p-5 border border-[var(--color-line-lt)]">
             <h2 className="font-serif text-[16px] font-bold text-[var(--color-ink)] mb-4">Active Branch</h2>
             <p className="text-[13px] text-[var(--color-slate)] mb-4 leading-relaxed">
               Select which branch's data you want to view across the dashboard, sales, and reports.
             </p>
             <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Current Workspace</label>
-            <select 
-              value={branchName || 'Main Branch'} 
-              onChange={(e) => setBranchName(e.target.value)}
+            <select
+              value={branchName || 'Main Branch'}
+              onChange={e => setBranchName(e.target.value)}
               className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none bg-[var(--color-canvas)] text-[var(--color-ink)] font-semibold cursor-pointer"
             >
               <option value="Main Branch">{branchProfiles?.['Main Branch'] || 'Main Branch'}</option>
@@ -214,11 +289,10 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex flex-col gap-3 mb-5">
-              
               <div className="flex flex-col mb-2">
                 <label className="text-[12px] font-bold text-[var(--color-slate)] mb-1">Select Payment Cycle</label>
-                <select 
-                  value={paymentCycle} 
+                <select
+                  value={paymentCycle}
                   onChange={e => setPaymentCycle(parseInt(e.target.value) as 6 | 12)}
                   className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none"
                 >
@@ -246,7 +320,7 @@ export default function SettingsPage() {
                   <button
                     onClick={() => handleCheckout('BASIC')}
                     disabled={checkingOutPlan !== null}
-                    className="block w-full py-2.5 bg-[var(--color-teal)] rounded-xl font-bold text-[13px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50"
+                    className="block w-full py-2.5 bg-[var(--color-teal)] rounded-xl font-bold text-[13px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
                   >
                     {checkingOutPlan === 'BASIC' ? 'Loading...' : 'Proceed to Payment'}
                   </button>
@@ -278,7 +352,7 @@ export default function SettingsPage() {
                   <button
                     onClick={() => handleCheckout('PRO')}
                     disabled={checkingOutPlan !== null}
-                    className="block w-full py-2.5 bg-[var(--color-gold)] rounded-xl font-bold text-[13px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50"
+                    className="block w-full py-2.5 bg-[var(--color-gold)] rounded-xl font-bold text-[13px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
                   >
                     {checkingOutPlan === 'PRO' ? 'Loading...' : 'Proceed to Payment'}
                   </button>
@@ -295,7 +369,7 @@ export default function SettingsPage() {
               )}
             </div>
 
-            <button onClick={() => setShowUpgrade(false)} disabled={checkingOutPlan !== null} className="w-full py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[14px] text-[var(--color-slate)] hover:bg-gray-50 transition-colors disabled:opacity-50">
+            <button onClick={() => setShowUpgrade(false)} disabled={checkingOutPlan !== null} className="w-full py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[14px] text-[var(--color-slate)] hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-pointer">
               Maybe Later
             </button>
           </div>

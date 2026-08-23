@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Topbar } from '@/components/Topbar';
 import { createClient } from '@/utils/supabase/client';
 import { useStore } from '@/context/StoreContext';
+import { fmt } from '@/utils/format';
+import * as XLSX from 'xlsx';
 
 type Product = {
   id: string;
@@ -19,13 +21,39 @@ type Product = {
   branch_name?: string;
 };
 
-const fmt = (n: number) => `KES ${Number(n).toLocaleString()}`;
+
+type ProductForm = {
+  name: string;
+  category: string;
+  supplier: string;
+  unit: string;
+  sell_price: string;
+  cost_price: string;
+  reorder_level: string;
+  expiry_date: string;
+};
+
 const margin = (p: Product) =>
   p.sell_price > 0 && p.cost_price > 0
     ? Math.round(((p.sell_price - p.cost_price) / p.sell_price) * 100)
     : null;
 
-const BLANK = { name: '', category: '', supplier: '', unit: 'pcs', sell_price: '', cost_price: '', reorder_level: '', expiry_date: '' };
+const BLANK: ProductForm = { name: '', category: '', supplier: '', unit: 'pcs', sell_price: '', cost_price: '', reorder_level: '', expiry_date: '' };
+
+// ─── Import types ─────────────────────────────────────────────────────────────
+type ImportRow = {
+  name: string;
+  category: string;
+  supplier: string;
+  unit: string;
+  sell_price: number;
+  cost_price: number;
+  reorder_level: number;
+  stock: number;
+  expiry_date: string;
+  _valid: boolean;
+  _errors: string[];
+};
 
 export default function CataloguePage() {
   const { storeId, branchName } = useStore();
@@ -36,11 +64,19 @@ export default function CataloguePage() {
   const [catFilter, setCatFilter] = useState('All');
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<Product | null>(null);
-  const [form, setForm] = useState<any>(BLANK);
+  const [form, setForm] = useState<ProductForm>(BLANK);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; product: Product | null }>({ open: false, product: null });
 
-  const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+  // ── Import state ─────────────────────────────────────────────────────────
+  const [showImport, setShowImport] = useState(false);
+  const [importRows, setImportRows] = useState<ImportRow[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [importDone, setImportDone] = useState<{ added: number; skipped: number } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
   const loadData = async () => {
     if (!storeId) return;
@@ -65,8 +101,16 @@ export default function CataloguePage() {
 
   const openAdd = () => { setForm(BLANK); setEditItem(null); setShowAdd(true); };
   const openEdit = (p: Product) => {
-    setForm({ name: p.name, category: p.category, supplier: p.supplier, unit: p.unit,
-      sell_price: String(p.sell_price), cost_price: p.cost_price > 0 ? String(p.cost_price) : '', reorder_level: String(p.reorder_level), expiry_date: p.expiry_date || '' });
+    setForm({
+      name: p.name,
+      category: p.category,
+      supplier: p.supplier,
+      unit: p.unit,
+      sell_price: String(p.sell_price),
+      cost_price: p.cost_price > 0 ? String(p.cost_price) : '',
+      reorder_level: String(p.reorder_level),
+      expiry_date: p.expiry_date || '',
+    });
     setEditItem(p); setShowAdd(true);
   };
 
@@ -102,23 +146,135 @@ export default function CataloguePage() {
   };
 
   const del = async (p: Product) => {
-    if (!confirm(`Remove "${p.name}" from catalogue?`)) return;
+    setDeleteModal({ open: true, product: p });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.product) return;
     const supabase = createClient();
-    await supabase.from('inventory').delete().eq('id', p.id);
-    fire(`${p.name} removed`);
+    await supabase.from('inventory').delete().eq('id', deleteModal.product.id);
+    fire(`${deleteModal.product.name} removed`);
+    setDeleteModal({ open: false, product: null });
     loadData();
+  };
+
+  // ── Excel Import Helpers ────────────────────────────────────────────────
+
+  const downloadTemplate = () => {
+    const ws = XLSX.utils.aoa_to_sheet([
+      ['name', 'category', 'supplier', 'unit', 'sell_price', 'cost_price', 'reorder_level', 'stock', 'expiry_date'],
+      ['Tusker Lager 500ml', 'Beer', 'EABL', 'btl', 150, 110, 24, 48, ''],
+      ['Bread (White)', 'Bakery', 'Broadways', 'pcs', 60, 45, 10, 20, '2024-12-31'],
+    ]);
+    // Set column widths
+    ws['!cols'] = [20,14,16,8,12,12,15,8,14].map(w => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Catalogue');
+    XLSX.writeFile(wb, 'sfs_catalogue_template.xlsx');
+  };
+
+  const parseFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: 'array', cellDates: true });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
+
+        const rows: ImportRow[] = raw.map((r) => {
+          const errors: string[] = [];
+          const name = String(r['name'] || r['Name'] || r['PRODUCT'] || r['product'] || '').trim();
+          const sell_price = parseFloat(String(r['sell_price'] || r['Sell Price'] || r['SELL_PRICE'] || r['price'] || 0));
+          if (!name) errors.push('Name required');
+          if (!sell_price || isNaN(sell_price)) errors.push('Sell price required');
+          return {
+            name,
+            category: String(r['category'] || r['Category'] || 'General').trim(),
+            supplier: String(r['supplier'] || r['Supplier'] || 'N/A').trim(),
+            unit: String(r['unit'] || r['Unit'] || 'pcs').trim(),
+            sell_price: isNaN(sell_price) ? 0 : sell_price,
+            cost_price: parseFloat(String(r['cost_price'] || r['Cost Price'] || r['cost'] || 0)) || 0,
+            reorder_level: parseInt(String(r['reorder_level'] || r['Reorder'] || 0)) || 0,
+            stock: parseInt(String(r['stock'] || r['Stock'] || 0)) || 0,
+            expiry_date: String(r['expiry_date'] || r['Expiry'] || '').trim(),
+            _valid: errors.length === 0,
+            _errors: errors,
+          };
+        });
+        setImportRows(rows);
+        setImportDone(null);
+      } catch {
+        fire('❌ Could not read file. Please use the provided template.');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const runImport = async () => {
+    const valid = importRows.filter(r => r._valid);
+    if (!valid.length || !storeId) return;
+    setImporting(true);
+    const supabase = createClient();
+    const entries = valid.map(r => ({
+      user_id: storeId,
+      name: r.name,
+      category: r.category || 'General',
+      supplier: r.supplier || 'N/A',
+      unit: r.unit || 'pcs',
+      sell_price: r.sell_price,
+      cost_price: r.cost_price,
+      reorder_level: r.reorder_level,
+      stock: r.stock,
+      expiry_date: r.expiry_date || null,
+      branch_name: branchName || 'Main Branch',
+    }));
+    const { error } = await supabase.from('inventory').insert(entries);
+    setImporting(false);
+    if (error) {
+      fire(`❌ Import failed: ${error.message}`);
+    } else {
+      const skipped = importRows.filter(r => !r._valid).length;
+      setImportDone({ added: valid.length, skipped });
+      loadData();
+    }
+  };
+
+  const closeImport = () => {
+    setShowImport(false);
+    setImportRows([]);
+    setImportDone(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const marginColor = (m: number) => m >= 30 ? '#1A7A4A' : m >= 15 ? '#D97706' : '#C0392B';
   const marginBg = (m: number) => m >= 30 ? '#E8F5EE' : m >= 15 ? '#FFFBEB' : '#FDF0EE';
 
   return (
-    <div className="flex flex-col min-h-screen pb-10">
-      <Topbar title="Product Catalogue" sub="Manage products, prices, and reorder levels" />
+    <div className="flex flex-col min-h-dvh pb-10 w-full">
+      <Topbar title="Catalogue" sub="Manage your products, pricing, and stock" />
 
       {toast && (
         <div className="fixed top-4 right-4 z-[9999] bg-[var(--color-ink)] text-white px-4 py-3 rounded-xl text-[13px] font-semibold shadow-[0_8px_28px_rgba(0,0,0,0.22)] border-l-4 border-[var(--color-gold)]">
           {toast}
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal.open && deleteModal.product && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[var(--color-ink)]/40 backdrop-blur-sm" onClick={() => setDeleteModal({ open: false, product: null })}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-[380px] shadow-[0_24px_64px_rgba(0,0,0,0.2)]" onClick={e => e.stopPropagation()}>
+            <div className="text-[28px] mb-3 text-center">🗑️</div>
+            <h3 className="font-serif text-[17px] font-bold text-[var(--color-ink)] text-center mb-1">Remove Product?</h3>
+            <p className="text-[13px] text-[var(--color-muted)] text-center mb-5 leading-relaxed">
+              Remove <strong>&quot;{deleteModal.product.name}&quot;</strong> from the catalogue?<br />
+              This will also remove its sales history references.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteModal({ open: false, product: null })} className="flex-1 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[14px] text-[var(--color-slate)] cursor-pointer">Cancel</button>
+              <button onClick={confirmDelete} className="flex-1 py-2.5 bg-[var(--color-red)] text-white rounded-xl font-bold text-[14px] hover:opacity-90 cursor-pointer">Remove</button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -137,6 +293,10 @@ export default function CataloguePage() {
                 className="px-3 py-1.5 border-[1.5px] border-[var(--color-line)] rounded-lg text-[13px] outline-none bg-white">
                 {categories.map(c => <option key={c}>{c}</option>)}
               </select>
+              <button onClick={() => setShowImport(true)}
+                className="px-4 py-1.5 bg-[var(--color-gold)] text-white font-bold text-[13px] rounded-lg hover:opacity-90 whitespace-nowrap flex items-center gap-1.5">
+                📥 Import Excel
+              </button>
               <button onClick={openAdd}
                 className="px-4 py-1.5 bg-[var(--color-teal)] text-white font-bold text-[13px] rounded-lg hover:opacity-90 whitespace-nowrap">
                 + Add Product
@@ -145,12 +305,12 @@ export default function CataloguePage() {
           </div>
 
           {/* Responsive Table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[70vh]">
             <table className="w-full border-collapse" style={{ minWidth: 720 }}>
-              <thead>
-                <tr className="border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)]">
-                  {['Product', 'Category', 'Supplier', 'Sell Price', 'Cost Price', 'Margin', 'Stock', 'Actions'].map(h => (
-                    <th key={h} className="px-4 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em] whitespace-nowrap">{h}</th>
+              <thead className="sticky top-0 z-10 shadow-[0_1px_0_var(--color-line-lt)]">
+                <tr className=" bg-[var(--color-canvas)]">
+                  {['Product', 'Category', 'Supplier', 'Sell Price', 'Cost Price', 'Margin', 'Stock', 'Actions'].map((h, i) => (
+                    <th key={h} className={`px-4 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em] whitespace-nowrap ${i === 0 ? 'sticky left-0 z-20 bg-[var(--color-canvas)] shadow-[1px_0_0_var(--color-line-lt)]' : ''}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -168,8 +328,8 @@ export default function CataloguePage() {
                   const m = margin(p);
                   const isLow = p.stock < p.reorder_level;
                   return (
-                    <tr key={p.id} className="border-b border-[var(--color-line-lt)] last:border-0 hover:bg-[#fafafa] transition-colors">
-                      <td className="px-4 py-3">
+                    <tr key={p.id} className="border-b border-[var(--color-line-lt)] last:border-0 hover:bg-[#fafafa] transition-colors group">
+                      <td className="px-4 py-3 sticky left-0 z-10 bg-white shadow-[1px_0_0_var(--color-line-lt)] group-hover:bg-[#fafafa] transition-colors">
                         <div className="font-semibold text-[13px] text-[var(--color-ink)]">{p.name}</div>
                         <div className="text-[11px] text-[var(--color-muted)]">{p.unit}</div>
                       </td>
@@ -265,6 +425,128 @@ export default function CataloguePage() {
                 {saving ? 'Saving…' : editItem ? 'Save Changes' : 'Add Product'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* ─── Excel Import Modal ─────────────────────────────────────────── */}
+      {showImport && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[600] p-3" onClick={closeImport}>
+          <div className="bg-white rounded-[20px] w-full max-w-[720px] shadow-[0_32px_80px_rgba(0,0,0,0.25)] flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-5 border-b border-[var(--color-line-lt)] shrink-0">
+              <div>
+                <h2 className="font-serif text-[18px] font-bold text-[var(--color-ink)]">📥 Import Products from Excel</h2>
+                <p className="text-[12px] text-[var(--color-muted)] mt-0.5">Upload an .xlsx or .csv file to bulk-add products to your catalogue</p>
+              </div>
+              <button onClick={closeImport} className="w-8 h-8 rounded-full bg-[var(--color-canvas)] flex items-center justify-center text-[var(--color-slate)] hover:bg-[var(--color-line-lt)] text-[16px] font-bold cursor-pointer">✕</button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-5 flex flex-col gap-4">
+
+              {/* Step 1: Download Template */}
+              <div className="flex items-start gap-3 bg-[var(--color-teal-bg)] rounded-xl p-4 border border-[var(--color-teal)]/20">
+                <div className="text-[24px] shrink-0">1️⃣</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-[13px] text-[var(--color-ink)] mb-0.5">Download the template</div>
+                  <div className="text-[12px] text-[var(--color-slate)] mb-2 leading-relaxed">Fill in your products using our pre-formatted Excel template. Required columns: <strong>name</strong>, <strong>sell_price</strong>. All others are optional.</div>
+                  <button onClick={downloadTemplate} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--color-teal)] text-white font-bold text-[12px] rounded-lg hover:opacity-90 cursor-pointer">
+                    ⬇ Download Template (.xlsx)
+                  </button>
+                </div>
+              </div>
+
+              {/* Step 2: Upload File */}
+              <div className="flex items-start gap-3 bg-[var(--color-canvas)] rounded-xl p-4 border border-[var(--color-line-lt)]">
+                <div className="text-[24px] shrink-0">2️⃣</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-[13px] text-[var(--color-ink)] mb-0.5">Upload your filled file</div>
+                  <div className="text-[12px] text-[var(--color-slate)] mb-2">Supports .xlsx, .xls, and .csv files. First row must be column headers.</div>
+                  <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-[var(--color-line)] rounded-xl p-5 cursor-pointer hover:border-[var(--color-teal)] hover:bg-[var(--color-teal-bg)] transition-all">
+                    <div className="text-[32px]">📂</div>
+                    <div className="text-[13px] font-semibold text-[var(--color-slate)]">Click to browse or drag & drop</div>
+                    <div className="text-[11px] text-[var(--color-muted)]">.xlsx · .xls · .csv</div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      className="hidden"
+                      onChange={e => { if (e.target.files?.[0]) parseFile(e.target.files[0]); }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Step 3: Preview & Validate */}
+              {importRows.length > 0 && !importDone && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-semibold text-[13px] text-[var(--color-ink)]">
+                      3️⃣ Preview — <span className="text-[var(--color-emerald)]">{importRows.filter(r => r._valid).length} valid</span>
+                      {importRows.filter(r => !r._valid).length > 0 && (
+                        <span className="text-[var(--color-red)] ml-2">{importRows.filter(r => !r._valid).length} will be skipped</span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-[var(--color-muted)]">{importRows.length} rows detected</span>
+                  </div>
+                  <div className="overflow-auto max-h-[240px] border border-[var(--color-line-lt)] rounded-xl">
+                    <table className="w-full border-collapse text-[12px]" style={{ minWidth: 560 }}>
+                      <thead className="sticky top-0 z-10 bg-[var(--color-canvas)] shadow-[0_1px_0_var(--color-line-lt)]">
+                        <tr>
+                          {['', 'Name', 'Category', 'Unit', 'Sell Price', 'Cost Price', 'Stock', 'Issue'].map(h => (
+                            <th key={h} className="px-3 py-2 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-wider whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importRows.map((r, i) => (
+                          <tr key={i} className={`border-b border-[var(--color-line-lt)] last:border-0 ${r._valid ? 'bg-white' : 'bg-[var(--color-red-bg)]'}`}>
+                            <td className="px-3 py-2 text-center">{r._valid ? '✅' : '❌'}</td>
+                            <td className="px-3 py-2 font-semibold text-[var(--color-ink)] max-w-[140px] truncate">{r.name || <span className="italic text-[var(--color-muted)]">empty</span>}</td>
+                            <td className="px-3 py-2 text-[var(--color-slate)]">{r.category}</td>
+                            <td className="px-3 py-2 text-[var(--color-slate)]">{r.unit}</td>
+                            <td className="px-3 py-2 font-bold text-[var(--color-ink)]">{r.sell_price > 0 ? fmt(r.sell_price) : '—'}</td>
+                            <td className="px-3 py-2 text-[var(--color-slate)]">{r.cost_price > 0 ? fmt(r.cost_price) : '—'}</td>
+                            <td className="px-3 py-2 text-[var(--color-slate)]">{r.stock}</td>
+                            <td className="px-3 py-2 text-[var(--color-red)] text-[11px]">{r._errors.join(', ')}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Import Done Banner */}
+              {importDone && (
+                <div className="bg-[var(--color-emerald-bg)] border border-[var(--color-emerald)]/30 rounded-xl p-4 text-center">
+                  <div className="text-[28px] mb-1">🎉</div>
+                  <div className="font-serif text-[16px] font-bold text-[var(--color-emerald)]">{importDone.added} products imported successfully!</div>
+                  {importDone.skipped > 0 && (
+                    <div className="text-[12px] text-[var(--color-muted)] mt-1">{importDone.skipped} rows were skipped due to missing required fields.</div>
+                  )}
+                  <button onClick={closeImport} className="mt-3 px-5 py-2 bg-[var(--color-emerald)] text-white font-bold text-[13px] rounded-xl hover:opacity-90 cursor-pointer">
+                    Done ✓
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            {importRows.length > 0 && !importDone && (
+              <div className="flex gap-3 p-4 border-t border-[var(--color-line-lt)] shrink-0">
+                <button onClick={closeImport} className="flex-1 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[14px] text-[var(--color-slate)] cursor-pointer">
+                  Cancel
+                </button>
+                <button
+                  onClick={runImport}
+                  disabled={importing || importRows.filter(r => r._valid).length === 0}
+                  className="flex-1 py-2.5 bg-[var(--color-teal)] text-white rounded-xl font-bold text-[14px] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {importing ? '⏳ Importing…' : `Import ${importRows.filter(r => r._valid).length} Products`}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

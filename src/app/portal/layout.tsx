@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { SFSLogo } from '@/components/SFSLogo';
 import { StoreProvider, useStore } from '@/context/StoreContext';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const NAV_ITEMS = [
   { href: '/portal/dashboard',   label: 'Dashboard',                    icon: '▦',  ownerOnly: false },
@@ -15,7 +16,7 @@ const NAV_ITEMS = [
   { href: '/portal/expenses',    label: 'Expenses',                     icon: '💸', ownerOnly: false },
   { href: '/portal/reports',     label: 'Reports',                      icon: '📊', ownerOnly: false },
   { href: '/portal/sales',       label: 'Sales Tracker',                icon: '🧮', ownerOnly: false },
-  { href: '/portal/staff',       label: 'Staff & Branches',             icon: '👥', ownerOnly: true  },
+  { href: '/portal/staff',       label: 'Staff Manager',                icon: '👥', ownerOnly: true  },
   { href: '/portal/settings',    label: 'Settings',                     icon: '⚙️', ownerOnly: true  },
 ];
 
@@ -43,14 +44,14 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userName, setUserName] = useState<string>('');
   
-  const { storeName, role, isActive, storeId, loading, branchName, setBranchName, branchProfiles } = useStore();
+  const { storeName, role, isActive, storeId, loading, branchName, scale, branchProfiles } = useStore();
 
   useEffect(() => {
-    if (isActive === false) {
-      alert('Your account has been deactivated. Please contact your manager.');
-      handleSignOut();
+    // If account is deactivated, force them to the billing page instead of logging them out
+    if (isActive === false && !pathname.includes('/billing')) {
+      router.push('/portal/billing');
     }
-  }, [isActive]);
+  }, [isActive, pathname, router]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -77,7 +78,7 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
         <SFSLogo size={42} href="/portal/dashboard" />
         <div className="flex flex-col">
           <span className="font-serif text-[14px] font-bold text-[var(--color-ink)] leading-tight">
-            {branchProfiles?.[branchName || 'Main Branch'] || (branchName === 'Main Branch' ? storeName : branchName) || 'Sales From Scratch'}
+            {scale === 'single' ? storeName : (branchProfiles?.[branchName || 'Main Branch'] || (branchName === 'Main Branch' ? storeName : branchName) || 'Sales From Scratch')}
           </span>
           {role === 'employee' && (
             <span className="text-[10px] font-bold text-[var(--color-slate)] uppercase tracking-wider mt-0.5">Staff Account</span>
@@ -91,20 +92,23 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
           // Hide ownerOnly routes from staff
           if (role === 'employee' && item.ownerOnly) return null;
 
-          const isActive = pathname === item.href;
+          let displayLabel = item.label;
+          if (item.href === '/portal/staff' && scale === 'multi') displayLabel = 'Staff & Branches';
+
+          const isActiveNav = pathname === item.href;
           return (
             <Link
               key={item.href}
               href={item.href}
               onClick={() => setMobileOpen(false)}
               className={`flex items-center gap-2.5 px-3 py-2 rounded-[10px] text-[12px] font-semibold transition-all ${
-                isActive
+                isActiveNav
                   ? 'bg-[var(--color-teal)] text-white shadow-[0_4px_12px_rgba(10,92,107,0.25)]'
                   : 'text-[var(--color-slate)] hover:bg-[var(--color-teal-bg)] hover:text-[var(--color-teal)]'
               }`}
             >
               <span className="text-[14px] w-5 text-center shrink-0">{item.icon}</span>
-              <span className="truncate">{item.label}</span>
+              <span className="truncate">{displayLabel}</span>
             </Link>
           );
         })}
@@ -123,7 +127,7 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="flex min-h-screen bg-[var(--color-canvas)]">
+    <div className="flex min-h-dvh bg-[var(--color-canvas)]">
       {/* Desktop Sidebar */}
       <aside className="w-[230px] shrink-0 bg-white border-r border-[var(--color-line)] hidden md:block fixed top-0 left-0 h-full z-30">
         <SidebarContent />
@@ -152,7 +156,7 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
         </button>
         <SFSLogo size={32} href="/portal/dashboard" />
         <span className="font-serif text-[14px] font-bold text-[var(--color-ink)] truncate flex-1">
-          {branchProfiles?.[branchName || 'Main Branch'] || (branchName === 'Main Branch' ? storeName : branchName) || 'Sales From Scratch'}
+          {scale === 'single' ? storeName : (branchProfiles?.[branchName || 'Main Branch'] || (branchName === 'Main Branch' ? storeName : branchName) || 'Sales From Scratch')}
         </span>
         {/* Live clock on right - visible on all screens */}
         <div className="flex flex-col items-end shrink-0">
@@ -161,13 +165,13 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 md:ml-[230px] flex flex-col min-h-screen pt-14 md:pt-0">
+      <main className="flex-1 md:ml-[230px] flex flex-col min-h-dvh pt-14 md:pt-0">
         {loading ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-[var(--color-muted)] text-[14px]">
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-[var(--color-muted)] text-[14px] overflow-auto">
             Loading...
           </div>
         ) : !storeId ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-4">
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-4 overflow-auto">
             <div className="text-[48px]">⚠️</div>
             <h2 className="font-serif text-[24px] font-bold text-[var(--color-ink)]">Account Setup Incomplete</h2>
             <p className="text-[15px] text-[var(--color-muted)] max-w-lg">
@@ -177,7 +181,7 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
             </p>
           </div>
         ) : (
-          children
+          <ErrorBoundary>{children}</ErrorBoundary>
         )}
       </main>
     </div>

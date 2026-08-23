@@ -6,6 +6,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useStore } from '@/context/StoreContext';
+import { fmt, groupByDate, downloadCSV } from '@/utils/format';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type SaleRow = {
   id: string;
@@ -17,37 +20,9 @@ type SaleRow = {
 
 type ExpenseRow = { amount: number; category: string; date: string };
 
-function groupByDate(sales: SaleRow[], expenses: ExpenseRow[], mode: 'net_profit' | 'net_sales') {
-  const map: Record<string, { revenue: number; expenses: number; profit: number }> = {};
+type InventoryRow = { cost_price: number };
 
-  sales.forEach(r => {
-    const day = r.created_at.slice(0, 10);
-    if (!map[day]) map[day] = { revenue: 0, expenses: 0, profit: 0 };
-    const rev = Number(r.revenue);
-    map[day].revenue += rev;
-    if (mode === 'net_profit') {
-      map[day].profit += rev - (r.units_sold * (r.inventory?.cost_price || 0));
-    }
-  });
-
-  expenses.forEach(e => {
-    const day = e.date;
-    if (!map[day]) map[day] = { revenue: 0, expenses: 0, profit: 0 };
-    map[day].expenses += Number(e.amount);
-  });
-
-  Object.values(map).forEach(d => {
-    if (mode === 'net_profit') {
-      d.profit = d.profit - d.expenses;
-    } else {
-      d.profit = d.revenue - d.expenses;
-    }
-  });
-
-  return Object.entries(map).map(([day, data]) => ({ day, ...data })).sort((a, b) => a.day.localeCompare(b.day));
-}
-
-const fmt = (n: number) => `KES ${Number(n).toLocaleString()}`;
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 const defaultFrom = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 const defaultTo = new Date().toISOString().split('T')[0];
@@ -66,70 +41,100 @@ export default function ReportsPage() {
     if (!storeId) return;
     setLoading(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
 
     const toEnd = dateTo + 'T23:59:59';
-
     const curBranch = branchName || 'Main Branch';
+
     const [{ data: salesData }, { data: expData }, { data: inventory }] = await Promise.all([
-      supabase.from('sales').select('*, inventory(name, category, cost_price, sell_price)')
-        .eq('user_id', storeId!)
+      supabase
+        .from('sales')
+        .select('id, units_sold, revenue, created_at, inventory(name, category, cost_price, sell_price)')
+        .eq('user_id', storeId)
         .eq('branch_name', curBranch)
         .gte('created_at', dateFrom + 'T00:00:00')
         .lte('created_at', toEnd)
         .order('created_at', { ascending: false }),
-      supabase.from('expenses').select('amount, category, date')
-        .eq('user_id', storeId!)
+      supabase
+        .from('expenses')
+        .select('amount, category, date')
+        .eq('user_id', storeId)
         .eq('branch_name', curBranch)
         .gte('date', dateFrom)
         .lte('date', dateTo)
         .order('date', { ascending: false }),
-      supabase.from('inventory').select('cost_price').eq('user_id', storeId!).eq('branch_name', curBranch),
+      supabase
+        .from('inventory')
+        .select('cost_price')
+        .eq('user_id', storeId)
+        .eq('branch_name', curBranch),
     ]);
 
     if (salesData) setSales(salesData as unknown as SaleRow[]);
     if (expData) setExpenses(expData as ExpenseRow[]);
 
-    // Determine mode
-    const allHaveCost = inventory
-      ? inventory.length > 0 && inventory.every(i => Number(i.cost_price) > 0)
-      : false;
+    const invRows = inventory as InventoryRow[] | null;
+    const allHaveCost =
+      invRows && invRows.length > 0 && invRows.every(i => Number(i.cost_price) > 0);
     setProfitMode(allHaveCost ? 'net_profit' : 'net_sales');
 
     setLoading(false);
   }, [dateFrom, dateTo, storeId, branchName]);
 
-  useEffect(() => { fetchData(); }, [storeId, branchName]); // initial load with defaults
+  useEffect(() => { fetchData(); }, [storeId, branchName, fetchData]);
+
+  // ─── Derived Values ──────────────────────────────────────────────────────────
 
   const filteredSales = sales.filter(s => catF === 'All' || s.inventory?.category === catF);
-
   const totalRevenue = filteredSales.reduce((s, r) => s + Number(r.revenue), 0);
   const totalExpenses = catF === 'All' ? expenses.reduce((s, e) => s + Number(e.amount), 0) : 0;
   const totalCost = filteredSales.reduce((s, r) => s + r.units_sold * (r.inventory?.cost_price || 0), 0);
-  const netValue = profitMode === 'net_profit'
-    ? totalRevenue - totalCost - totalExpenses
-    : totalRevenue - totalExpenses;
+  const netValue =
+    profitMode === 'net_profit'
+      ? totalRevenue - totalCost - totalExpenses
+      : totalRevenue - totalExpenses;
   const unitsSold = filteredSales.reduce((s, r) => s + r.units_sold, 0);
   const modeLabel = profitMode === 'net_profit' ? 'Net Profit' : 'Net Sales';
 
   const lineData = groupByDate(filteredSales, catF === 'All' ? expenses : [], profitMode);
   const cats = ['All', ...Array.from(new Set(sales.map(s => s.inventory?.category || 'General')))];
 
-  // Product summary
+  // Product summary table
   const productMap: Record<string, { cat: string; units: number; revenue: number; cost: number; sell: number }> = {};
   filteredSales.forEach(r => {
     const name = r.inventory?.name || 'Unknown';
     if (!productMap[name]) {
-      productMap[name] = { cat: r.inventory?.category || 'General', units: 0, revenue: 0, cost: r.inventory?.cost_price || 0, sell: r.inventory?.sell_price || 0 };
+      productMap[name] = {
+        cat: r.inventory?.category || 'General',
+        units: 0,
+        revenue: 0,
+        cost: r.inventory?.cost_price || 0,
+        sell: r.inventory?.sell_price || 0,
+      };
     }
     productMap[name].revenue += Number(r.revenue);
     productMap[name].units += r.units_sold;
   });
   const topProducts = Object.entries(productMap).sort((a, b) => b[1].revenue - a[1].revenue);
 
+  // ─── CSV Export ──────────────────────────────────────────────────────────────
+
+  const handleExportSalesCSV = () => {
+    const rows = topProducts.map(([name, r]) => ({
+      Product: name,
+      Category: r.cat,
+      Units_Sold: r.units,
+      Sell_Price: r.sell,
+      Cost_Price: r.cost,
+      Revenue: r.revenue,
+      Margin_Pct: r.sell > 0 && r.cost > 0 ? Math.round(((r.sell - r.cost) / r.sell) * 100) : '',
+    }));
+    downloadCSV(rows, `sales_report_${dateFrom}_to_${dateTo}.csv`);
+  };
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
+
   return (
-    <div className="flex flex-col min-h-screen pb-10">
+    <div className="flex flex-col min-h-dvh pb-10 w-full">
       <Topbar title="Reports" sub="Analyse performance across any period" />
 
       <div className="p-3 sm:p-5 max-w-[1200px] mx-auto w-full flex flex-col gap-4 sm:gap-5">
@@ -141,16 +146,12 @@ export default function ReportsPage() {
             {cats.map(c => <option key={c}>{c}</option>)}
           </select>
           <input
-            type="date"
-            value={dateFrom}
-            onChange={e => setDateFrom(e.target.value)}
+            type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
             className="flex-1 min-w-[120px] px-3 py-2 border-[1.5px] border-[var(--color-line)] rounded-lg text-[13px] outline-none text-[var(--color-slate)] focus:border-[var(--color-teal)]"
           />
           <span className="text-[var(--color-muted)] hidden sm:inline">→</span>
           <input
-            type="date"
-            value={dateTo}
-            onChange={e => setDateTo(e.target.value)}
+            type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
             className="flex-1 min-w-[120px] px-3 py-2 border-[1.5px] border-[var(--color-line)] rounded-lg text-[13px] outline-none text-[var(--color-slate)] focus:border-[var(--color-teal)]"
           />
           <button
@@ -159,7 +160,11 @@ export default function ReportsPage() {
           >
             Apply
           </button>
-          <button className="px-3.5 py-2 bg-[var(--color-canvas)] text-[var(--color-slate)] border-[1.5px] border-[var(--color-line)] rounded-lg font-semibold text-[13px] cursor-pointer hover:bg-white ml-auto whitespace-nowrap">
+          <button
+            onClick={handleExportSalesCSV}
+            disabled={topProducts.length === 0}
+            className="px-3.5 py-2 bg-[var(--color-canvas)] text-[var(--color-slate)] border-[1.5px] border-[var(--color-line)] rounded-lg font-semibold text-[13px] cursor-pointer hover:bg-white ml-auto whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             ⬇ Export CSV
           </button>
         </div>
@@ -175,7 +180,12 @@ export default function ReportsPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard label="Total Revenue" value={fmt(totalRevenue)} sub="Gross sales" accent="var(--color-teal)" />
           <StatCard label="Total Expenses" value={fmt(totalExpenses)} sub="All costs in period" accent="var(--color-amber)" />
-          <StatCard label={modeLabel} value={fmt(netValue)} sub={`${totalRevenue > 0 ? Math.round((netValue / totalRevenue) * 100) : 0}% margin`} accent="var(--color-emerald)" />
+          <StatCard
+            label={modeLabel}
+            value={fmt(netValue)}
+            sub={`${totalRevenue > 0 ? Math.round((netValue / totalRevenue) * 100) : 0}% margin`}
+            accent="var(--color-emerald)"
+          />
           <StatCard label="Units Sold" value={unitsSold.toLocaleString()} sub="Products moved" accent="var(--color-slate)" />
         </div>
 
@@ -195,9 +205,9 @@ export default function ReportsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-line-lt)" vertical={false} />
                   <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--color-muted)' }} axisLine={false} tickLine={false} dy={10}
                     tickFormatter={v => new Date(v).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} />
-                  <YAxis tick={{ fontSize: 10, fill: 'var(--color-muted)' }} axisLine={false} tickLine={false} tickFormatter={v => `${v/1000}k`} />
+                  <YAxis tick={{ fontSize: 10, fill: 'var(--color-muted)' }} axisLine={false} tickLine={false} tickFormatter={v => `${Number(v) / 1000}k`} />
                   <Tooltip
-                    formatter={(val: any, name: any) => [fmt(Number(val)), name === 'profit' ? modeLabel : name.charAt(0).toUpperCase() + name.slice(1)]}
+                    formatter={(val, name) => [fmt(Number(val)), name === 'profit' ? modeLabel : String(name).charAt(0).toUpperCase() + String(name).slice(1)]}
                     labelFormatter={label => new Date(label as string).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
                     contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid var(--color-line)' }}
                     itemStyle={{ fontWeight: 600 }}
@@ -221,13 +231,12 @@ export default function ReportsPage() {
           <div className="p-3.5 border-b border-[var(--color-line-lt)]">
             <span className="font-serif text-[15px] font-bold text-[var(--color-ink)]">Sales by Product</span>
           </div>
-          {/* Responsive Table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[70vh]">
             <table className="w-full border-collapse" style={{ minWidth: 600 }}>
-              <thead>
-                <tr className="border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)]">
-                  {['Product', 'Category', 'Units', 'Sell Price', 'Cost', 'Revenue', 'Margin', 'Share'].map(h => (
-                    <th key={h} className="px-4 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em]">{h}</th>
+              <thead className="sticky top-0 z-10 shadow-[0_1px_0_var(--color-line-lt)]">
+                <tr className=" bg-[var(--color-canvas)]">
+                  {['Product', 'Category', 'Units', 'Sell Price', 'Cost', 'Revenue', 'Margin', 'Share'].map((h, i) => (
+                    <th key={h} className={`px-4 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em] whitespace-nowrap ${i === 0 ? 'sticky left-0 z-20 bg-[var(--color-canvas)] shadow-[1px_0_0_var(--color-line-lt)]' : ''}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -240,8 +249,10 @@ export default function ReportsPage() {
                   const m = r.sell > 0 && r.cost > 0 ? Math.round(((r.sell - r.cost) / r.sell) * 100) : null;
                   const share = totalRevenue > 0 ? (r.revenue / totalRevenue) * 100 : 0;
                   return (
-                    <tr key={name} className="border-b border-[var(--color-line-lt)] last:border-0 hover:bg-[#fafafa] transition-colors">
-                      <td className="px-4 py-2.5 font-semibold text-[13px] text-[var(--color-ink)]">{name}</td>
+                    <tr key={name} className="border-b border-[var(--color-line-lt)] last:border-0 hover:bg-[#fafafa] transition-colors group">
+                      <td className="px-4 py-3 sticky left-0 z-10 bg-white shadow-[1px_0_0_var(--color-line-lt)] group-hover:bg-[#fafafa] transition-colors">
+                        <div className="font-semibold text-[13px] text-[var(--color-ink)]">{name}</div>
+                      </td>
                       <td className="px-4 py-2.5">
                         <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-1 rounded-full">{r.cat}</span>
                       </td>

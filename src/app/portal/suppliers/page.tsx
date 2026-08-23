@@ -85,7 +85,7 @@ export default function SuppliersPage() {
   const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
   return (
-    <div className="flex flex-col min-h-screen pb-10">
+    <div className="flex flex-col min-h-dvh pb-10 w-full">
       <Topbar title="Suppliers" sub="Manage your vendors, terms, and contact details" />
 
       {toast && (
@@ -117,12 +117,12 @@ export default function SuppliersPage() {
           </div>
 
           {/* Responsive Table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[70vh]">
             <table className="w-full border-collapse" style={{ minWidth: 700 }}>
-              <thead>
-                <tr className="border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)]">
-                  {['Supplier', 'Category', 'Contact Person', 'WhatsApp', 'Email', 'Payment Terms', 'Rating', 'Actions'].map(h => (
-                    <th key={h} className="px-4 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em] whitespace-nowrap">{h}</th>
+              <thead className="sticky top-0 z-10 shadow-[0_1px_0_var(--color-line-lt)]">
+                <tr className=" bg-[var(--color-canvas)]">
+                  {['Supplier', 'Category', 'Contact Person', 'WhatsApp', 'Email', 'Payment Terms', 'Rating', 'Actions'].map((h, i) => (
+                    <th key={h} className={`px-4 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em] whitespace-nowrap ${i === 0 ? 'sticky left-0 z-20 bg-[var(--color-canvas)] shadow-[1px_0_0_var(--color-line-lt)]' : ''}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -138,8 +138,8 @@ export default function SuppliersPage() {
                     </td>
                   </tr>
                 ) : filtered.map(s => (
-                  <tr key={s.id} className="border-b border-[var(--color-line-lt)] last:border-0 hover:bg-[#fafafa] transition-colors">
-                    <td className="px-4 py-3">
+                  <tr key={s.id} className="border-b border-[var(--color-line-lt)] last:border-0 hover:bg-[#fafafa] transition-colors group">
+                    <td className="px-4 py-3 sticky left-0 z-10 bg-white shadow-[1px_0_0_var(--color-line-lt)] group-hover:bg-[#fafafa] transition-colors">
                       <div className="font-semibold text-[13px] text-[var(--color-ink)]">{s.name}</div>
                       {s.products && <div className="text-[11px] text-[var(--color-muted)] mt-0.5 truncate max-w-[140px]">{s.products}</div>}
                     </td>
