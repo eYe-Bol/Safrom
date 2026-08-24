@@ -16,21 +16,17 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   // Filters
-  const [datePreset, setDatePreset] = useState<'today' | 'yesterday' | 'week' | 'month' | 'custom'>('today');
+  const [datePreset, setDatePreset] = useState<'today' | 'week' | 'month' | 'custom'>('today');
   const [dateFrom, setDateFrom] = useState(() => new Date().toISOString().split('T')[0]);
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
   const [catF, setCatF] = useState('All');
 
-  const applyPreset = (preset: 'today' | 'yesterday' | 'week' | 'month' | 'custom') => {
+  const applyPreset = (preset: 'today' | 'week' | 'month' | 'custom') => {
     setDatePreset(preset);
     const todayStr = new Date().toISOString().split('T')[0];
     if (preset === 'today') {
       setDateFrom(todayStr);
       setDateTo(todayStr);
-    } else if (preset === 'yesterday') {
-      const y = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      setDateFrom(y);
-      setDateTo(y);
     } else if (preset === 'week') {
       const w = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       setDateFrom(w);
@@ -134,7 +130,6 @@ export default function DashboardPage() {
             <span className="text-[12px] font-bold text-[var(--color-slate)] uppercase tracking-wider mr-1">Timeframe:</span>
             {[
               { id: 'today', label: "Today" },
-              { id: 'yesterday', label: 'Yesterday' },
               { id: 'week', label: 'Last 7 Days' },
               { id: 'month', label: 'Last 30 Days' },
               { id: 'custom', label: 'Custom' },
