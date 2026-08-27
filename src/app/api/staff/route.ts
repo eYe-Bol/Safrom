@@ -1,17 +1,26 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 
-const supabaseAdmin = createClient(
+const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 export async function POST(req: Request) {
   try {
+    const supabase = await createClient();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+
     const { owner_id, email, password, full_name, branch_name, staff_role } = await req.json();
 
     if (!owner_id || !email || !password || !full_name || !branch_name) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // Security check: Caller must be authenticated and match owner_id
+    if (!authUser || authUser.id !== owner_id) {
+      return NextResponse.json({ error: 'Unauthorized: Active owner session required' }, { status: 401 });
     }
 
     // 1. Check Owner Subscription & Quotas
@@ -111,10 +120,17 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
+    const supabase = await createClient();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+
     const { staff_id, owner_id } = await req.json();
 
     if (!staff_id || !owner_id) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    }
+
+    if (!authUser || authUser.id !== owner_id) {
+      return NextResponse.json({ error: 'Unauthorized: Active owner session required' }, { status: 401 });
     }
 
     // Verify ownership
@@ -145,10 +161,17 @@ export async function DELETE(req: Request) {
 
 export async function PUT(req: Request) {
   try {
+    const supabase = await createClient();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+
     const { staff_id, owner_id, full_name, branch_name, staff_role, password } = await req.json();
 
     if (!staff_id || !owner_id) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    }
+
+    if (!authUser || authUser.id !== owner_id) {
+      return NextResponse.json({ error: 'Unauthorized: Active owner session required' }, { status: 401 });
     }
 
     // Verify ownership
