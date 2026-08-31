@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Topbar } from '@/components/Topbar';
 import { createClient } from '@/utils/supabase/client';
 import { useStore } from '@/context/StoreContext';
@@ -20,9 +20,12 @@ type UserData = {
   store_email: string | null;
   subscription_plan: string | null;
   subscription_status: string | null;
+  subscription_end_date: string | null;
   trial_end: string | null;
   is_active: boolean | null;
   scale: string | null;
+  created_at: string;
+  owner_id?: string | null;
 };
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -61,6 +64,25 @@ export default function SettingsPage() {
         const { data } = await supabase.from('users').select('*').eq('id', authUser.id).single();
         if (data) {
           const typed = data as UserData;
+          
+          // If staff account, fetch owner subscription info
+          if (typed.role === 'employee' && typed.owner_id) {
+            const { data: ownerData } = await supabase
+              .from('users')
+              .select('subscription_plan, subscription_status, subscription_end_date, created_at, scale, store_name')
+              .eq('id', typed.owner_id)
+              .single();
+
+            if (ownerData) {
+              typed.subscription_plan = ownerData.subscription_plan;
+              typed.subscription_status = ownerData.subscription_status;
+              typed.subscription_end_date = ownerData.subscription_end_date;
+              typed.created_at = ownerData.created_at;
+              typed.scale = ownerData.scale;
+              typed.store_name = ownerData.store_name || typed.store_name;
+            }
+          }
+
           setUserData(typed);
           setStoreNameLocal(typed.store_name || '');
           setStorePhone(typed.store_phone || '');
@@ -162,9 +184,109 @@ export default function SettingsPage() {
     }
   };
 
-  const trialDaysLeft = userData?.trial_end
-    ? Math.max(0, Math.ceil((new Date(userData.trial_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-    : null;
+  const subInfo = useMemo(() => {
+    if (!userData) {
+      return {
+        status: 'loading',
+        statusBadge: 'Loading…',
+        badgeColor: 'bg-gray-100 text-gray-700',
+        plan: '—',
+        daysRemaining: '—',
+        endDate: '—',
+      };
+    }
+
+    const isExempt = 
+      userData.role === 'admin' ||
+      userData.subscription_plan === 'exempt' ||
+      userData.subscription_plan === 'lifetime' ||
+      userData.subscription_plan === 'admin' ||
+      userData.subscription_status === 'exempt';
+
+    if (isExempt) {
+      return {
+        status: 'exempt',
+        statusBadge: 'Exempt / VIP',
+        badgeColor: 'bg-amber-100 text-amber-900 border border-amber-300',
+        plan: userData.role === 'admin' ? 'Super Admin (Unrestricted)' : 'Lifetime VIP (Complimentary)',
+        daysRemaining: 'Permanent Access',
+        endDate: 'Lifetime Access (No Expiry)',
+      };
+    }
+
+    const now = new Date();
+
+    // 1. Paid Subscription
+    if (userData.subscription_end_date) {
+      const end = new Date(userData.subscription_end_date);
+      const diff = end.getTime() - now.getTime();
+      const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+      const formattedDate = end.toLocaleDateString('en-KE', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
+
+      const isStarter = userData.subscription_plan === 'starter' || userData.subscription_plan === '999' || userData.subscription_plan === 'basic';
+      const planName = isStarter ? 'Starter Plan (Single Store)' : 'Growth Plan (Multi Branch)';
+
+      if (days > 0) {
+        return {
+          status: 'active',
+          statusBadge: 'Active (Paid)',
+          badgeColor: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+          plan: planName,
+          daysRemaining: `${days} day${days !== 1 ? 's' : ''} remaining`,
+          endDate: formattedDate,
+        };
+      } else {
+        return {
+          status: 'expired',
+          statusBadge: 'Expired',
+          badgeColor: 'bg-red-100 text-red-800 border border-red-200',
+          plan: planName,
+          daysRemaining: '0 days (Expired)',
+          endDate: `Expired on ${formattedDate}`,
+        };
+      }
+    }
+
+    // 2. 7-Day Free Trial
+    let trialEndDate = userData.created_at ? new Date(userData.created_at) : (userData.trial_end ? new Date(userData.trial_end) : new Date());
+    if (userData.created_at) {
+      trialEndDate = new Date(new Date(userData.created_at).getTime() + 7 * 24 * 60 * 60 * 1000);
+    }
+
+    const trialDiff = trialEndDate.getTime() - now.getTime();
+    const trialDays = Math.ceil(trialDiff / (1000 * 60 * 60 * 24));
+    const formattedTrialDate = trialEndDate.toLocaleDateString('en-KE', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+
+    if (trialDays > 0) {
+      return {
+        status: 'trial',
+        statusBadge: 'Trial Active',
+        badgeColor: 'bg-blue-100 text-blue-800 border border-blue-200',
+        plan: '7-Day Free Trial',
+        daysRemaining: `${trialDays} day${trialDays !== 1 ? 's' : ''} remaining`,
+        endDate: formattedTrialDate,
+      };
+    }
+
+    return {
+      status: 'expired',
+      statusBadge: 'Trial Expired',
+      badgeColor: 'bg-red-100 text-red-800 border border-red-200',
+      plan: '7-Day Free Trial',
+      daysRemaining: '0 days (Trial Ended)',
+      endDate: `Ended on ${formattedTrialDate}`,
+    };
+  }, [userData]);
 
   return (
     <div className="flex flex-col min-h-dvh pb-10 w-full">
@@ -206,13 +328,27 @@ export default function SettingsPage() {
                 ['Store WhatsApp', userData?.store_phone || 'Not set'],
                 ['Store Email', userData?.store_email || 'Not set'],
                 ['Login Email', user?.email || '—'],
-                ['Role', userData?.role || '—'],
-                ['Status', userData?.subscription_status || 'trial'],
-                ...(trialDaysLeft !== null ? [['Trial Days Left', `${trialDaysLeft} days`]] : []),
+                ['Role', userData?.role ? (userData.role === 'admin' ? '👑 Super Admin' : userData.role === 'employee' ? 'Staff Account' : 'Store Owner') : '—'],
+                ['Current Plan', subInfo.plan],
+                ['Status', (
+                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold ${subInfo.badgeColor}`}>
+                    {subInfo.statusBadge}
+                  </span>
+                )],
+                ['Days Remaining', (
+                  <span className={`font-semibold ${subInfo.status === 'expired' ? 'text-red-600 font-bold' : subInfo.status === 'exempt' ? 'text-amber-700 font-bold' : 'text-[var(--color-ink)]'}`}>
+                    {subInfo.daysRemaining}
+                  </span>
+                )],
+                ['End Date', (
+                  <span className="font-semibold text-[var(--color-ink)]">
+                    {subInfo.endDate}
+                  </span>
+                )],
               ].map(([l, v]) => (
-                <div key={l} className="flex justify-between py-2.5 border-b border-[var(--color-line-lt)]">
-                  <span className="text-[13px] text-[var(--color-muted)]">{l}</span>
-                  <span className="text-[13px] font-semibold text-[var(--color-ink)]">{v}</span>
+                <div key={l as string} className="flex justify-between items-center py-2.5 border-b border-[var(--color-line-lt)]">
+                  <span className="text-[13px] text-[var(--color-muted)]">{l as string}</span>
+                  <span className="text-[13px] font-semibold text-[var(--color-ink)]">{v as React.ReactNode}</span>
                 </div>
               ))}
               <button onClick={() => setEditMode(true)} className="mt-4 px-4 py-2 bg-[var(--color-teal)] text-white font-bold text-[13px] rounded-lg hover:opacity-90 cursor-pointer">
