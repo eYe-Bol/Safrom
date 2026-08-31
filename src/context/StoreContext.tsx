@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type Role = 'owner' | 'employee';
+export type Role = 'admin' | 'owner' | 'employee';
 
 export type StoreContextType = {
   storeId: string | null;
@@ -35,6 +35,7 @@ type UserProfile = {
   store_name: string | null;
   created_at: string;
   subscription_plan: string | null;
+  subscription_status: string | null;
   subscription_end_date: string | null;
   is_active: boolean | null;
   owner_id: string | null;
@@ -45,6 +46,7 @@ type OwnerProfile = {
   store_name: string | null;
   created_at: string;
   subscription_plan: string | null;
+  subscription_status: string | null;
   subscription_end_date: string | null;
   scale: string | null;
 };
@@ -135,11 +137,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         let isActive = typedProfile.is_active !== false;
         let scale = typedProfile.scale || 'single';
 
-        if (typedProfile.role === 'employee' && typedProfile.owner_id) {
+        const isExempt = 
+          typedProfile.role === 'admin' || 
+          subscriptionPlan === 'exempt' || 
+          subscriptionPlan === 'lifetime' || 
+          subscriptionPlan === 'admin' ||
+          typedProfile.subscription_status === 'exempt';
+
+        if (isExempt) {
+          isActive = true;
+          isTrial = false;
+        } else if (typedProfile.role === 'employee' && typedProfile.owner_id) {
           storeId = typedProfile.owner_id;
           const { data: ownerProfile } = await supabase
             .from('users')
-            .select('store_name, created_at, subscription_plan, subscription_end_date, scale')
+            .select('store_name, created_at, subscription_plan, subscription_status, subscription_end_date, scale')
             .eq('id', typedProfile.owner_id)
             .single();
 
@@ -151,13 +163,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             if (subscriptionPlan === 'basic' || subscriptionPlan === '999' || subscriptionPlan === 'starter') {
               scale = 'single';
             }
-            const trialEnd = new Date(owner.created_at);
-            trialEnd.setDate(trialEnd.getDate() + 7);
-            isTrial = trialEnd > new Date();
-            if (!isTrial && owner.subscription_end_date) {
-              isActive = new Date(owner.subscription_end_date) >= new Date();
-            } else if (!isTrial && !owner.subscription_plan) {
-              isActive = false;
+            const ownerExempt = 
+              owner.subscription_plan === 'exempt' || 
+              owner.subscription_plan === 'lifetime' || 
+              owner.subscription_plan === 'admin' ||
+              owner.subscription_status === 'exempt';
+
+            if (ownerExempt) {
+              isActive = true;
+              isTrial = false;
+            } else {
+              const trialEnd = new Date(owner.created_at);
+              trialEnd.setDate(trialEnd.getDate() + 7);
+              isTrial = trialEnd > new Date();
+              if (!isTrial && owner.subscription_end_date) {
+                isActive = new Date(owner.subscription_end_date) >= new Date();
+              } else if (!isTrial && !owner.subscription_plan) {
+                isActive = false;
+              }
             }
           }
         } else {
@@ -180,7 +203,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
         setState({
           storeId,
-          role: typedProfile.role || 'owner',
+          role: (typedProfile.role as Role) || 'owner',
           branchName: typedProfile.branch_name || 'Main Branch',
           storeName: finalStoreName || 'My Store',
           loading: false,
