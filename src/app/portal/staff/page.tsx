@@ -20,6 +20,7 @@ type BranchProfile = {
   branch_phone: string;
   branch_email: string;
   branch_address: string;
+  business_type?: string;
 };
 
 type BranchConfig = {
@@ -33,6 +34,18 @@ const BRANCH_CONFIGS: BranchConfig[] = [
   { key: 'Main Branch', icon: '🏪', maxSlots: 2, requiresPlan: '999' },
   { key: 'Branch 2',    icon: '🏬', maxSlots: 1, requiresPlan: '1499' },
   { key: 'Branch 3',    icon: '🏢', maxSlots: 1, requiresPlan: '1499' },
+];
+
+const BUSINESS_TYPES = [
+  { id: 'pub', label: '🍺 Pub / Bar / Lounge' },
+  { id: 'chemist', label: '💊 Chemist / Pharmacy' },
+  { id: 'cosmetics', label: '💄 Cosmetics & Beauty' },
+  { id: 'retail', label: '🛒 Retail / Supermarket / Minimart' },
+  { id: 'restaurant', label: '🍽️ Restaurant / Fast Food' },
+  { id: 'salon', label: '✂️ Salon / Barbershop' },
+  { id: 'hardware', label: '🔨 Hardware / Agrovet' },
+  { id: 'liquor', label: '🍾 Wines & Spirits' },
+  { id: 'other', label: '📦 General Business / Other' },
 ];
 
 const STAFF_ROLES = [
@@ -53,6 +66,7 @@ const BLANK_PROFILE: BranchProfile = {
   branch_phone: '',
   branch_email: '',
   branch_address: '',
+  business_type: 'retail',
 };
 
 export default function StaffPage() {
@@ -213,6 +227,7 @@ export default function StaffPage() {
       branch_phone: branchForm.branch_phone,
       branch_email: branchForm.branch_email,
       branch_address: branchForm.branch_address,
+      business_type: branchForm.business_type || 'retail',
     };
 
     const { error } = await supabase
@@ -326,9 +341,14 @@ export default function StaffPage() {
                   </div>
                   <div>
                     <h2 className="font-serif text-[15px] font-bold text-[var(--color-ink)]">{displayName}</h2>
-                    {displayName !== branch.key && (
-                      <div className="text-[10px] text-[var(--color-muted)] font-medium">{branch.key}</div>
-                    )}
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      {displayName !== branch.key && (
+                        <span className="text-[10px] text-[var(--color-muted)] font-medium">{branch.key} ·</span>
+                      )}
+                      <span className="text-[10px] font-bold text-[var(--color-teal)] bg-[var(--color-teal-bg)] px-1.5 py-0.2 rounded">
+                        {BUSINESS_TYPES.find(b => b.id === (profile?.business_type || 'retail'))?.label || '🛒 Retail'}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 {hasAccess && (
@@ -514,6 +534,19 @@ export default function StaffPage() {
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Branch Email</label>
                 <input type="email" value={branchForm.branch_email} onChange={e => setBranchForm({...branchForm, branch_email: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="branch@example.com" />
+              </div>
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Branch Business Type</label>
+                <select
+                  value={branchForm.business_type || 'retail'}
+                  onChange={e => setBranchForm({...branchForm, business_type: e.target.value})}
+                  className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)] cursor-pointer font-medium text-[var(--color-ink)]"
+                >
+                  {BUSINESS_TYPES.map(b => (
+                    <option key={b.id} value={b.id}>{b.label}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-[var(--color-muted)] mt-1">Defines the specific category & purpose of this branch (e.g. Chemist, Pub, Cosmetics).</p>
               </div>
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Branch Address</label>

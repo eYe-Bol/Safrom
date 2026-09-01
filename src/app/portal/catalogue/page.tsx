@@ -19,8 +19,10 @@ type Product = {
   stock: number;
   expiry_date?: string | null;
   branch_name?: string;
+  pending_sell_price?: number | null;
+  pending_price_staff?: string | null;
+  pending_price_at?: string | null;
 };
-
 
 type ProductForm = {
   name: string;
@@ -56,7 +58,7 @@ type ImportRow = {
 };
 
 export default function CataloguePage() {
-  const { storeId, branchName } = useStore();
+  const { storeId, branchName, role, scale } = useStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [supplierNames, setSupplierNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,6 +70,18 @@ export default function CataloguePage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; product: Product | null }>({ open: false, product: null });
+
+  // ── Sync Catalogue State ─────────────────────────────────────────────────
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncSource, setSyncSource] = useState('Main Branch');
+  const [syncTarget, setSyncTarget] = useState(branchName || 'Branch 2');
+  const [syncing, setSyncing] = useState(false);
+  const [branchBizTypes, setBranchBizTypes] = useState<Record<string, string>>({});
+
+  // ── Price Approvals State ────────────────────────────────────────────────
+  const [pendingApprovals, setPendingApprovals] = useState<Product[]>([]);
+  const [showApprovalsModal, setShowApprovalsModal] = useState(false);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   // ── Import state ─────────────────────────────────────────────────────────
   const [showImport, setShowImport] = useState(false);
@@ -82,12 +96,25 @@ export default function CataloguePage() {
     if (!storeId) return;
     const supabase = createClient();
     const curBranch = branchName || 'Main Branch';
-    const [{ data: prods }, { data: sups }] = await Promise.all([
+
+    // 1. Fetch current branch inventory & suppliers
+    const [{ data: prods }, { data: sups }, { data: branchData }, { data: allPending }] = await Promise.all([
       supabase.from('inventory').select('*').eq('user_id', storeId).eq('branch_name', curBranch).order('name'),
       supabase.from('suppliers').select('name').eq('user_id', storeId).eq('branch_name', curBranch),
+      supabase.from('branch_profiles').select('branch_name, business_type').eq('owner_id', storeId),
+      supabase.from('inventory').select('*').eq('user_id', storeId).not('pending_sell_price', 'is', null),
     ]);
+
     if (prods) setProducts(prods);
     if (sups) setSupplierNames(sups.map((s: any) => s.name));
+    if (allPending) setPendingApprovals(allPending);
+
+    const bMap: Record<string, string> = { 'Main Branch': 'retail', 'Branch 2': 'retail', 'Branch 3': 'retail' };
+    (branchData || []).forEach((b: any) => {
+      bMap[b.branch_name] = b.business_type || 'retail';
+    });
+    setBranchBizTypes(bMap);
+
     setLoading(false);
   };
 
@@ -120,29 +147,159 @@ export default function CataloguePage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || !storeId) return;
-    const entry = {
-      user_id: storeId!,
-      name: form.name,
-      category: form.category || 'General',
-      supplier: form.supplier || 'N/A',
-      unit: form.unit || 'pcs',
-      sell_price: parseFloat(form.sell_price),
-      cost_price: form.cost_price ? parseFloat(form.cost_price) : 0,
-      reorder_level: parseInt(form.reorder_level) || 0,
-      expiry_date: form.expiry_date || null,
-      branch_name: branchName || 'Main Branch',
-    };
+
+    const curBranch = branchName || 'Main Branch';
+    const isEmployee = role === 'employee';
+
     if (editItem) {
-      // Don't update branch_name on edit to avoid moving it
-      const { branch_name, ...updateEntry } = entry;
-      await supabase.from('inventory').update(updateEntry).eq('id', editItem.id);
-      fire(`✓ ${form.name} updated`);
+      if (isEmployee) {
+        const newSellPrice = parseFloat(form.sell_price);
+        
+        // Check if branches are diversified vs homogeneous
+        // If different business types, staff does not need authorization
+        const uniqueTypes = new Set(Object.values(branchBizTypes));
+        const isDiversified = uniqueTypes.size > 1;
+
+        if (isDiversified) {
+          // Direct update without approval
+          await supabase.from('inventory').update({ sell_price: newSellPrice }).eq('id', editItem.id);
+          fire(`✓ Selling price updated to ${fmt(newSellPrice)}!`);
+        } else {
+          // Requires Owner Approval
+          await supabase.from('inventory').update({
+            pending_sell_price: newSellPrice,
+            pending_price_staff: user.email || 'Staff',
+            pending_price_at: new Date().toISOString(),
+          }).eq('id', editItem.id);
+          fire(`✓ Price change submitted for Owner Approval (${fmt(newSellPrice)})`);
+        }
+      } else {
+        // Owner update
+        const updateEntry = {
+          name: form.name,
+          category: form.category || 'General',
+          supplier: form.supplier || 'N/A',
+          unit: form.unit || 'pcs',
+          sell_price: parseFloat(form.sell_price),
+          cost_price: form.cost_price ? parseFloat(form.cost_price) : 0,
+          reorder_level: parseInt(form.reorder_level) || 0,
+          expiry_date: form.expiry_date || null,
+        };
+        await supabase.from('inventory').update(updateEntry).eq('id', editItem.id);
+        fire(`✓ ${form.name} updated`);
+      }
     } else {
-      await supabase.from('inventory').insert([{ ...entry, stock: 0 }]);
+      // Add new product
+      const entry = {
+        user_id: storeId!,
+        name: form.name,
+        category: form.category || 'General',
+        supplier: form.supplier || 'N/A',
+        unit: form.unit || 'pcs',
+        sell_price: parseFloat(form.sell_price),
+        cost_price: form.cost_price ? parseFloat(form.cost_price) : 0,
+        reorder_level: parseInt(form.reorder_level) || 0,
+        expiry_date: form.expiry_date || null,
+        branch_name: curBranch,
+        stock: 0,
+      };
+      await supabase.from('inventory').insert([entry]);
       fire(`✓ ${form.name} added to catalogue`);
     }
+
     setShowAdd(false); setEditItem(null); setSaving(false);
     loadData();
+  };
+
+  const handleApprovePrice = async (p: Product) => {
+    if (!p.pending_sell_price) return;
+    setApprovingId(p.id);
+    const supabase = createClient();
+    await supabase.from('inventory').update({
+      sell_price: p.pending_sell_price,
+      pending_sell_price: null,
+      pending_price_staff: null,
+      pending_price_at: null,
+    }).eq('id', p.id);
+
+    fire(`✓ Approved new price for ${p.name}: ${fmt(p.pending_sell_price)}`);
+    setApprovingId(null);
+    loadData();
+  };
+
+  const handleRejectPrice = async (p: Product) => {
+    setApprovingId(p.id);
+    const supabase = createClient();
+    await supabase.from('inventory').update({
+      pending_sell_price: null,
+      pending_price_staff: null,
+      pending_price_at: null,
+    }).eq('id', p.id);
+
+    fire(`Price change rejected for ${p.name}`);
+    setApprovingId(null);
+    loadData();
+  };
+
+  const handleSyncCatalogue = async () => {
+    if (syncSource === syncTarget || !storeId) {
+      fire('Please choose different source and target branches.');
+      return;
+    }
+    setSyncing(true);
+    const supabase = createClient();
+
+    try {
+      // 1. Fetch source products
+      const { data: srcProds } = await supabase
+        .from('inventory')
+        .select('*')
+        .eq('user_id', storeId)
+        .eq('branch_name', syncSource);
+
+      // 2. Fetch existing target products to avoid duplicates
+      const { data: targetProds } = await supabase
+        .from('inventory')
+        .select('name')
+        .eq('user_id', storeId)
+        .eq('branch_name', syncTarget);
+
+      const targetNames = new Set((targetProds || []).map((p: any) => p.name.toLowerCase().trim()));
+      const toClone = (srcProds || []).filter((p: any) => !targetNames.has(p.name.toLowerCase().trim()));
+
+      if (toClone.length === 0) {
+        fire(`All products from ${syncSource} already exist in ${syncTarget}.`);
+        setSyncing(false);
+        setShowSyncModal(false);
+        return;
+      }
+
+      const cloneEntries = toClone.map((p: any) => ({
+        user_id: storeId,
+        name: p.name,
+        category: p.category || 'General',
+        supplier: p.supplier || 'N/A',
+        unit: p.unit || 'pcs',
+        sell_price: p.sell_price,
+        cost_price: p.cost_price,
+        reorder_level: p.reorder_level,
+        stock: 0,
+        expiry_date: p.expiry_date || null,
+        branch_name: syncTarget,
+      }));
+
+      const { error } = await supabase.from('inventory').insert(cloneEntries);
+      if (error) {
+        fire(`Sync failed: ${error.message}`);
+      } else {
+        fire(`✓ Successfully copied ${cloneEntries.length} products to ${syncTarget}!`);
+        setShowSyncModal(false);
+        loadData();
+      }
+    } catch {
+      fire('Failed to sync catalogue');
+    }
+    setSyncing(false);
   };
 
   const del = async (p: Product) => {
@@ -260,6 +417,31 @@ export default function CataloguePage() {
         </div>
       )}
 
+      {/* ─── Pending Price Approvals Banner (Owner Only) ─── */}
+      {role !== 'employee' && pendingApprovals.length > 0 && (
+        <div className="mx-3 sm:mx-5 max-w-[1200px] mb-[-4px]">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <span className="text-[20px]">🔔</span>
+              <div>
+                <div className="text-[13px] font-bold text-amber-900">
+                  {pendingApprovals.length} Price Change {pendingApprovals.length === 1 ? 'Request' : 'Requests'} Pending Approval
+                </div>
+                <div className="text-[11px] text-amber-700">
+                  Staff proposed new branch selling prices. Review and approve to apply them.
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowApprovalsModal(true)}
+              className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[12px] rounded-lg cursor-pointer shadow-sm transition-colors shrink-0"
+            >
+              Review Requests ({pendingApprovals.length})
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {deleteModal.open && deleteModal.product && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[var(--color-ink)]/40 backdrop-blur-sm" onClick={() => setDeleteModal({ open: false, product: null })}>
@@ -278,12 +460,139 @@ export default function CataloguePage() {
         </div>
       )}
 
+      {/* ─── Price Approvals Modal (Owner Only) ─── */}
+      {showApprovalsModal && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[var(--color-ink)]/40 backdrop-blur-sm" onClick={() => setShowApprovalsModal(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-[620px] shadow-[0_24px_64px_rgba(0,0,0,0.2)] max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-[var(--color-line-lt)]">
+              <div>
+                <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)]">🔔 Staff Price Change Requests</h3>
+                <p className="text-[12px] text-[var(--color-muted)] mt-0.5">Review selling prices submitted by your branch staff</p>
+              </div>
+              <button onClick={() => setShowApprovalsModal(false)} className="text-[20px] text-[var(--color-muted)] hover:text-[var(--color-ink)]">&times;</button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 divide-y divide-[var(--color-line-lt)] pr-1">
+              {pendingApprovals.length === 0 ? (
+                <div className="py-8 text-center text-[13px] text-[var(--color-muted)]">No pending price change requests.</div>
+              ) : (
+                pendingApprovals.map(p => (
+                  <div key={p.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-[14px] text-[var(--color-ink)]">{p.name}</div>
+                      <div className="text-[11px] text-[var(--color-muted)] mt-0.5">
+                        Branch: <strong className="text-[var(--color-teal)]">{p.branch_name || 'Main Branch'}</strong> · Proposed by: {p.pending_price_staff || 'Staff'}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-[13px]">
+                        <span className="text-[var(--color-muted)] line-through">Current: {fmt(p.sell_price)}</span>
+                        <span className="text-[var(--color-teal)] font-bold text-[14px]">➔ Proposed: {fmt(p.pending_sell_price || 0)}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={() => handleRejectPrice(p)}
+                        disabled={approvingId === p.id}
+                        className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[12px] rounded-lg transition-colors cursor-pointer"
+                      >
+                        Reject
+                      </button>
+                      <button
+                        onClick={() => handleApprovePrice(p)}
+                        disabled={approvingId === p.id}
+                        className="px-4 py-1.5 bg-[var(--color-teal)] hover:bg-[#104347] text-white font-bold text-[12px] rounded-lg transition-colors cursor-pointer"
+                      >
+                        {approvingId === p.id ? 'Saving…' : '✓ Approve'}
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-[var(--color-line-lt)] flex justify-end">
+              <button onClick={() => setShowApprovalsModal(false)} className="px-4 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[13px] text-[var(--color-slate)] cursor-pointer">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Sync Catalogue Modal (Owner Multi-Branch) ─── */}
+      {showSyncModal && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[var(--color-ink)]/40 backdrop-blur-sm" onClick={() => setShowSyncModal(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-[480px] shadow-[0_24px_64px_rgba(0,0,0,0.2)]" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-[var(--color-line-lt)]">
+              <div>
+                <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)]">🔗 Copy / Sync Branch Catalogue</h3>
+                <p className="text-[12px] text-[var(--color-muted)] mt-0.5">Duplicate product catalogue to avoid manual double entry</p>
+              </div>
+              <button onClick={() => setShowSyncModal(false)} className="text-[20px] text-[var(--color-muted)] hover:text-[var(--color-ink)]">&times;</button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Source Branch (Copy From)</label>
+                <select
+                  value={syncSource}
+                  onChange={e => setSyncSource(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]"
+                >
+                  {['Main Branch', 'Branch 2', 'Branch 3'].map(b => (
+                    <option key={b} value={b}>{b} ({branchBizTypes[b] || 'retail'})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Target Branch (Copy Into)</label>
+                <select
+                  value={syncTarget}
+                  onChange={e => setSyncTarget(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]"
+                >
+                  {['Main Branch', 'Branch 2', 'Branch 3'].filter(b => b !== syncSource).map(b => (
+                    <option key={b} value={b}>{b} ({branchBizTypes[b] || 'retail'})</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Diversified vs Homogeneous Warning / Notice */}
+              {branchBizTypes[syncSource] === branchBizTypes[syncTarget] ? (
+                <div className="p-3 bg-[var(--color-teal-bg)] border border-[var(--color-teal)]/20 rounded-xl text-[12px] text-[var(--color-teal)] font-semibold">
+                  ✓ Both branches share the same business type ({branchBizTypes[syncSource] || 'retail'}). Products, categories, and wholesale pricing will be copied without duplicates.
+                </div>
+              ) : (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[12px] text-amber-800">
+                  ⚠️ <strong>Notice:</strong> {syncSource} is configured as <strong>{branchBizTypes[syncSource]}</strong> while {syncTarget} is configured as <strong>{branchBizTypes[syncTarget]}</strong>. It is generally recommended to keep catalogues separate for diversified store types (e.g. Chemist vs Pub).
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setShowSyncModal(false)} className="flex-1 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[13px] text-[var(--color-slate)] cursor-pointer">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSyncCatalogue}
+                  disabled={syncing}
+                  className="flex-1 py-2.5 bg-[var(--color-teal)] hover:bg-[#104347] text-white font-bold text-[13px] rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  {syncing ? 'Copying…' : 'Confirm & Sync'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="p-3 sm:p-5 max-w-[1200px] mx-auto w-full flex flex-col gap-4">
         <div className="bg-white rounded-xl border border-[var(--color-line-lt)] overflow-hidden shadow-sm">
           {/* Toolbar */}
           <div className="p-3.5 border-b border-[var(--color-line-lt)] flex flex-col sm:flex-row justify-between sm:items-center gap-3">
             <div className="flex items-center gap-2">
-              <span className="font-serif text-[15px] font-bold text-[var(--color-ink)]">All Products</span>
+              <span className="font-serif text-[15px] font-bold text-[var(--color-ink)]">
+                {branchName ? `${branchName} Products` : 'All Products'}
+              </span>
               <span className="text-[12px] bg-[var(--color-canvas)] text-[var(--color-slate)] font-bold px-2 py-0.5 rounded-full border border-[var(--color-line)]">
                 {filtered.length} of {products.length}
               </span>
@@ -305,20 +614,33 @@ export default function CataloguePage() {
                   {categories.map(c => <option key={c}>{c}</option>)}
                 </select>
               </div>
-              <div className="flex gap-2 w-full sm:w-auto">
-                <button
-                  onClick={() => setShowImport(true)}
-                  className="flex-1 sm:flex-initial px-3.5 py-2 bg-[var(--color-gold)] text-white font-bold text-[12px] rounded-lg hover:opacity-90 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
-                >
-                  📥 Import Excel
-                </button>
-                <button
-                  onClick={openAdd}
-                  className="flex-1 sm:flex-initial px-3.5 py-2 bg-[var(--color-teal)] text-white font-bold text-[12px] rounded-lg hover:opacity-90 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
-                >
-                  + Add Product
-                </button>
-              </div>
+              
+              {/* Owner Actions */}
+              {role !== 'employee' && (
+                <div className="flex gap-2 w-full sm:w-auto">
+                  {scale === 'multi' && (
+                    <button
+                      onClick={() => setShowSyncModal(true)}
+                      className="flex-1 sm:flex-initial px-3 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] text-[var(--color-slate)] font-bold text-[12px] rounded-lg hover:bg-gray-100 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                      title="Sync or copy catalogue between branches"
+                    >
+                      🔗 Sync Catalogue
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowImport(true)}
+                    className="flex-1 sm:flex-initial px-3.5 py-2 bg-[var(--color-gold)] text-white font-bold text-[12px] rounded-lg hover:opacity-90 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    📥 Import Excel
+                  </button>
+                  <button
+                    onClick={openAdd}
+                    className="flex-1 sm:flex-initial px-3.5 py-2 bg-[var(--color-teal)] text-white font-bold text-[12px] rounded-lg hover:opacity-90 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    + Add Product
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -330,11 +652,15 @@ export default function CataloguePage() {
               <div className="p-8 text-center">
                 <div className="text-[36px] mb-2">📦</div>
                 <div className="text-[14px] font-semibold text-[var(--color-ink)] mb-1">No products found</div>
-                <div className="text-[12px] text-[var(--color-muted)]">Click "+ Add Product" or "Import Excel" to start.</div>
+                <div className="text-[12px] text-[var(--color-muted)]">
+                  {role === 'employee' ? 'No products listed for this branch.' : 'Click "+ Add Product" or "Import Excel" to start.'}
+                </div>
               </div>
             ) : filtered.map(p => {
               const m = margin(p);
               const isLow = p.stock < p.reorder_level;
+              const hasPendingPrice = p.pending_sell_price !== null && p.pending_sell_price !== undefined;
+
               return (
                 <div key={p.id} className="p-3.5 flex flex-col gap-2.5 bg-white hover:bg-[var(--color-canvas)] transition-colors">
                   {/* Top Row: Name & Category */}
@@ -347,6 +673,13 @@ export default function CataloguePage() {
                       {p.category || 'General'}
                     </span>
                   </div>
+
+                  {/* Pending Price Flag */}
+                  {hasPendingPrice && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-[11px] text-amber-800 font-medium">
+                      ⏳ Pending Price: <strong>{fmt(p.pending_sell_price || 0)}</strong> (Current: {fmt(p.sell_price)})
+                    </div>
+                  )}
 
                   {/* Middle Row: Numbers Grid */}
                   <div className="grid grid-cols-3 gap-2 bg-[var(--color-canvas)] p-2.5 rounded-lg border border-[var(--color-line-lt)] text-center">
@@ -379,14 +712,16 @@ export default function CataloguePage() {
                       onClick={() => openEdit(p)}
                       className="flex-1 py-1.5 bg-[var(--color-teal-bg)] text-[var(--color-teal)] font-bold text-[12px] rounded-lg text-center hover:opacity-80 cursor-pointer"
                     >
-                      ✏️ Edit
+                      {role === 'employee' ? '🏷️ Edit Selling Price' : '✏️ Edit'}
                     </button>
-                    <button
-                      onClick={() => del(p)}
-                      className="flex-1 py-1.5 bg-[var(--color-red-bg)] text-[var(--color-red)] font-bold text-[12px] rounded-lg text-center hover:opacity-80 cursor-pointer"
-                    >
-                      🗑️ Delete
-                    </button>
+                    {role !== 'employee' && (
+                      <button
+                        onClick={() => del(p)}
+                        className="flex-1 py-1.5 bg-[var(--color-red-bg)] text-[var(--color-red)] font-bold text-[12px] rounded-lg text-center hover:opacity-80 cursor-pointer"
+                      >
+                        🗑️ Delete
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -410,12 +745,16 @@ export default function CataloguePage() {
                   <tr>
                     <td colSpan={8} className="p-8 text-center">
                       <div className="text-[14px] font-semibold text-[var(--color-ink)] mb-1">No products found</div>
-                      <div className="text-[12px] text-[var(--color-muted)]">Click "+ Add Product" to start building your catalogue.</div>
+                      <div className="text-[12px] text-[var(--color-muted)]">
+                        {role === 'employee' ? 'No products listed for this branch.' : 'Click "+ Add Product" to start building your catalogue.'}
+                      </div>
                     </td>
                   </tr>
                 ) : filtered.map(p => {
                   const m = margin(p);
                   const isLow = p.stock < p.reorder_level;
+                  const hasPendingPrice = p.pending_sell_price !== null && p.pending_sell_price !== undefined;
+
                   return (
                     <tr key={p.id} className="border-b border-[var(--color-line-lt)] last:border-0 hover:bg-[#fafafa] transition-colors group">
                       <td className="px-4 py-3 sticky left-0 z-10 bg-white shadow-[1px_0_0_var(--color-line-lt)] group-hover:bg-[#fafafa] transition-colors">
@@ -426,7 +765,12 @@ export default function CataloguePage() {
                         <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-1 rounded-full">{p.category || 'General'}</span>
                       </td>
                       <td className="px-4 py-3 text-[12px] text-[var(--color-muted)]">{p.supplier || '—'}</td>
-                      <td className="px-4 py-3 font-bold text-[13px] text-[var(--color-ink)]">{fmt(p.sell_price)}</td>
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-[13px] text-[var(--color-ink)]">{fmt(p.sell_price)}</div>
+                        {hasPendingPrice && (
+                          <div className="text-[10px] text-amber-600 font-semibold">⏳ Req: {fmt(p.pending_sell_price || 0)}</div>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-[12px] text-[var(--color-slate)]">
                         {p.cost_price > 0 ? fmt(p.cost_price) : <span className="text-[var(--color-muted)] italic text-[11px]">Not set</span>}
                       </td>
@@ -445,8 +789,12 @@ export default function CataloguePage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1.5">
-                          <button onClick={() => openEdit(p)} className="text-[11px] font-bold text-[var(--color-teal)] bg-[var(--color-teal-bg)] border-none rounded px-3 py-1.5 cursor-pointer hover:opacity-80">Edit</button>
-                          <button onClick={() => del(p)} className="text-[11px] font-bold text-[var(--color-red)] bg-[var(--color-red-bg)] border-none rounded px-3 py-1.5 cursor-pointer hover:opacity-80">Del</button>
+                          <button onClick={() => openEdit(p)} className="text-[11px] font-bold text-[var(--color-teal)] bg-[var(--color-teal-bg)] border-none rounded px-3 py-1.5 cursor-pointer hover:opacity-80">
+                            {role === 'employee' ? 'Edit Price' : 'Edit'}
+                          </button>
+                          {role !== 'employee' && (
+                            <button onClick={() => del(p)} className="text-[11px] font-bold text-[var(--color-red)] bg-[var(--color-red-bg)] border-none rounded px-3 py-1.5 cursor-pointer hover:opacity-80">Del</button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -462,46 +810,76 @@ export default function CataloguePage() {
       {showAdd && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[500] p-4" onClick={() => setShowAdd(false)}>
           <div className="bg-white rounded-[18px] p-6 w-full max-w-[480px] shadow-[0_24px_64px_rgba(0,0,0,0.2)] max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h2 className="font-serif text-[18px] font-bold text-[var(--color-ink)] mb-5">{editItem ? 'Edit Product' : 'Add New Product'}</h2>
+            <h2 className="font-serif text-[18px] font-bold text-[var(--color-ink)] mb-2">
+              {editItem ? (role === 'employee' ? 'Update Branch Selling Price' : 'Edit Product') : 'Add New Product'}
+            </h2>
+            {role === 'employee' && editItem && (
+              <p className="text-[12px] text-[var(--color-muted)] mb-4">
+                Enter your branch selling price below.
+              </p>
+            )}
+            
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Product Name *</label>
-                <input value={form.name} onChange={e => setForm((p: any) => ({...p, name: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" />
+                <input
+                  disabled={role === 'employee' && !!editItem}
+                  value={form.name}
+                  onChange={e => setForm((p: any) => ({...p, name: e.target.value}))}
+                  className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)] disabled:bg-gray-100 disabled:text-gray-500"
+                />
               </div>
-              <div>
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Category</label>
-                <input value={form.category} onChange={e => setForm((p: any) => ({...p, category: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="e.g. Beer, Grocery…" />
-              </div>
-              <div>
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Supplier</label>
-                <input value={form.supplier} list="sup-list" onChange={e => setForm((p: any) => ({...p, supplier: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="Select supplier" />
-                <datalist id="sup-list">{supplierNames.map(s => <option key={s} value={s} />)}</datalist>
-              </div>
-              <div>
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Unit</label>
-                <select value={form.unit} onChange={e => setForm((p: any) => ({...p, unit: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none bg-white">
-                  {['pcs','btl','tub','kg','litres','pack','box'].map(u => <option key={u}>{u}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Reorder Qty</label>
-                <input type="number" value={form.reorder_level} onChange={e => setForm((p: any) => ({...p, reorder_level: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" />
-              </div>
-              <div>
+
+              {role !== 'employee' && (
+                <>
+                  <div>
+                    <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Category</label>
+                    <input value={form.category} onChange={e => setForm((p: any) => ({...p, category: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="e.g. Beer, Grocery…" />
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Supplier</label>
+                    <input value={form.supplier} list="sup-list" onChange={e => setForm((p: any) => ({...p, supplier: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="Select supplier" />
+                    <datalist id="sup-list">{supplierNames.map(s => <option key={s} value={s} />)}</datalist>
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Unit</label>
+                    <select value={form.unit} onChange={e => setForm((p: any) => ({...p, unit: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none bg-white">
+                      {['pcs','btl','tub','kg','litres','pack','box'].map(u => <option key={u}>{u}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Reorder Qty</label>
+                    <input type="number" value={form.reorder_level} onChange={e => setForm((p: any) => ({...p, reorder_level: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" />
+                  </div>
+                </>
+              )}
+
+              <div className={role === 'employee' && editItem ? 'col-span-2' : ''}>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Selling Price (KES) *</label>
-                <input type="number" value={form.sell_price} onChange={e => setForm((p: any) => ({...p, sell_price: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" />
+                <input
+                  type="number"
+                  value={form.sell_price}
+                  onChange={e => setForm((p: any) => ({...p, sell_price: e.target.value}))}
+                  className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] font-bold text-[var(--color-ink)] outline-none focus:ring-2 focus:ring-[var(--color-teal)]/20"
+                />
               </div>
-              <div>
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Expiry Date (Optional)</label>
-                <input type="date" value={form.expiry_date} onChange={e => setForm((p: any) => ({...p, expiry_date: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" />
-              </div>
-              <div className="col-span-1">
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">
-                  Cost Price (KES) <span className="text-[var(--color-muted)] font-normal">— optional</span>
-                </label>
-                <input type="number" value={form.cost_price} onChange={e => setForm((p: any) => ({...p, cost_price: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="Leave blank if unknown" />
-              </div>
-              {form.sell_price && form.cost_price && (
+
+              {role !== 'employee' && (
+                <>
+                  <div>
+                    <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Expiry Date (Optional)</label>
+                    <input type="date" value={form.expiry_date} onChange={e => setForm((p: any) => ({...p, expiry_date: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" />
+                  </div>
+                  <div className="col-span-1">
+                    <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">
+                      Cost Price (KES) <span className="text-[var(--color-muted)] font-normal">— optional</span>
+                    </label>
+                    <input type="number" value={form.cost_price} onChange={e => setForm((p: any) => ({...p, cost_price: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="Leave blank if unknown" />
+                  </div>
+                </>
+              )}
+
+              {form.sell_price && form.cost_price && role !== 'employee' && (
                 <div className="col-span-2 bg-[var(--color-teal-bg)] rounded-xl px-3 py-2.5 text-[12px] text-[var(--color-teal)] font-semibold">
                   Margin: {fmt(parseFloat(form.sell_price) - parseFloat(form.cost_price))} per unit
                   ({parseFloat(form.sell_price) > 0 ? Math.round(((parseFloat(form.sell_price) - parseFloat(form.cost_price)) / parseFloat(form.sell_price)) * 100) : 0}%)
@@ -511,7 +889,7 @@ export default function CataloguePage() {
             <div className="flex gap-2.5 mt-5">
               <button onClick={() => setShowAdd(false)} className="flex-1 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[14px] cursor-pointer text-[var(--color-slate)]">Cancel</button>
               <button onClick={save} disabled={saving || !form.name || !form.sell_price} className="flex-1 py-2.5 bg-[var(--color-teal)] text-white rounded-xl font-bold text-[14px] cursor-pointer disabled:opacity-50">
-                {saving ? 'Saving…' : editItem ? 'Save Changes' : 'Add Product'}
+                {saving ? 'Saving…' : editItem ? (role === 'employee' ? 'Submit Price Update' : 'Save Changes') : 'Add Product'}
               </button>
             </div>
           </div>

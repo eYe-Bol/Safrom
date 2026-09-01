@@ -18,6 +18,7 @@ type UserData = {
   store_name: string | null;
   store_phone: string | null;
   store_email: string | null;
+  business_type: string | null;
   subscription_plan: string | null;
   subscription_status: string | null;
   subscription_end_date: string | null;
@@ -28,6 +29,18 @@ type UserData = {
   owner_id?: string | null;
 };
 
+const BUSINESS_TYPES = [
+  { id: 'pub', label: '🍺 Pub / Bar / Lounge' },
+  { id: 'chemist', label: '💊 Chemist / Pharmacy' },
+  { id: 'cosmetics', label: '💄 Cosmetics & Beauty' },
+  { id: 'retail', label: '🛒 Retail / Supermarket / Minimart' },
+  { id: 'restaurant', label: '🍽️ Restaurant / Fast Food' },
+  { id: 'salon', label: '✂️ Salon / Barbershop' },
+  { id: 'hardware', label: '🔨 Hardware / Agrovet' },
+  { id: 'liquor', label: '🍾 Wines & Spirits' },
+  { id: 'other', label: '📦 General Business / Other' },
+];
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -37,6 +50,7 @@ export default function SettingsPage() {
   const [storeName, setStoreNameLocal] = useState('');
   const [storePhone, setStorePhone] = useState('');
   const [storeEmail, setStoreEmail] = useState('');
+  const [businessType, setBusinessType] = useState('retail');
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -69,7 +83,7 @@ export default function SettingsPage() {
           if (typed.role === 'employee' && typed.owner_id) {
             const { data: ownerData } = await supabase
               .from('users')
-              .select('subscription_plan, subscription_status, subscription_end_date, created_at, scale, store_name')
+              .select('subscription_plan, subscription_status, subscription_end_date, created_at, scale, store_name, business_type')
               .eq('id', typed.owner_id)
               .single();
 
@@ -80,6 +94,7 @@ export default function SettingsPage() {
               typed.created_at = ownerData.created_at;
               typed.scale = ownerData.scale;
               typed.store_name = ownerData.store_name || typed.store_name;
+              typed.business_type = ownerData.business_type || typed.business_type;
             }
           }
 
@@ -87,6 +102,7 @@ export default function SettingsPage() {
           setStoreNameLocal(typed.store_name || '');
           setStorePhone(typed.store_phone || '');
           setStoreEmail(typed.store_email || '');
+          setBusinessType(typed.business_type || 'retail');
         }
       }
     };
@@ -101,14 +117,13 @@ export default function SettingsPage() {
       store_name: storeName,
       store_phone: storePhone,
       store_email: storeEmail,
+      business_type: businessType,
     };
     const { error } = await supabase.from('users').update(updates).eq('id', user.id);
     if (error) {
       fire(`Error: ${error.message}`);
     } else {
-      // Update local state
       setUserData(prev => prev ? { ...prev, ...updates } : prev);
-      // Update global context — no page reload needed
       setContextStoreName(storeName);
       fire('✓ Business profile updated!');
       setEditMode(false);
@@ -309,6 +324,18 @@ export default function SettingsPage() {
                 <input value={storeName} onChange={e => setStoreNameLocal(e.target.value)} className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none" />
               </div>
               <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Business Type / Category</label>
+                <select
+                  value={businessType}
+                  onChange={e => setBusinessType(e.target.value)}
+                  className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none bg-white font-medium text-[var(--color-ink)] cursor-pointer"
+                >
+                  {BUSINESS_TYPES.map(b => (
+                    <option key={b.id} value={b.id}>{b.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Store WhatsApp Number</label>
                 <input value={storePhone} onChange={e => setStorePhone(e.target.value)} placeholder="e.g. +254700000000" className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none" />
               </div>
@@ -325,6 +352,11 @@ export default function SettingsPage() {
             <>
               {[
                 ['Business Name', userData?.store_name || 'Not set'],
+                ['Business Type', (
+                  <span className="font-semibold text-[var(--color-teal)]">
+                    {BUSINESS_TYPES.find(b => b.id === (userData?.business_type || 'retail'))?.label || '🛒 Retail / Supermarket'}
+                  </span>
+                )],
                 ['Store WhatsApp', userData?.store_phone || 'Not set'],
                 ['Store Email', userData?.store_email || 'Not set'],
                 ['Login Email', user?.email || '—'],

@@ -7,13 +7,11 @@ import { SFSBadge } from '@/components/SFSBadge';
 import { createClient } from '@/utils/supabase/client';
 
 export default function RegisterPage() {
-  const [form, setForm] = useState({ name: '', email: '', password: '', type: 'retail', scale: 'single' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', scale: 'single' });
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-
-  const BIZ = ["pub", "chemist", "retail", "salon", "restaurant", "distributor", "other"];
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +25,6 @@ export default function RegisterPage() {
       options: {
         data: {
           full_name: form.name,
-          business_type: form.type,
           scale: form.scale,
         }
       }
@@ -81,16 +78,9 @@ export default function RegisterPage() {
               <input type="email" value={form.email} onChange={e=>setForm({...form, email: e.target.value})} required className="w-full py-[9px] px-[12px] border-[1.5px] border-[var(--color-line)] rounded-[8px] text-[13px] outline-none text-[var(--color-ink)] focus:border-[var(--color-teal)]" />
             </div>
 
-            <div className="mb-[12px]">
+            <div className="mb-[18px]">
               <label className="text-[12px] font-bold text-[var(--color-slate)] block mb-1">Password</label>
               <input type="password" value={form.password} onChange={e=>setForm({...form, password: e.target.value})} required minLength={6} className="w-full py-[9px] px-[12px] border-[1.5px] border-[var(--color-line)] rounded-[8px] text-[13px] outline-none text-[var(--color-ink)] focus:border-[var(--color-teal)]" />
-            </div>
-
-            <div className="mb-[18px]">
-              <label className="text-[12px] font-bold text-[var(--color-slate)] block mb-1">Business Type</label>
-              <select value={form.type} onChange={e=>setForm({...form, type: e.target.value})} className="w-full py-[9px] px-[12px] border-[1.5px] border-[var(--color-line)] rounded-[8px] text-[13px] text-[var(--color-ink)] bg-white outline-none focus:border-[var(--color-teal)]">
-                {BIZ.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
-              </select>
             </div>
 
             <div className="mb-[24px]">
