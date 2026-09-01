@@ -109,39 +109,75 @@ export default function SettingsPage() {
     load();
   }, []);
 
+  const openEditMode = () => {
+    if (scale === 'multi') {
+      setStoreNameLocal(activeBranchDisplayName);
+      setBusinessType(activeBranchType);
+    } else {
+      setStoreNameLocal(storeName || userData?.store_name || '');
+      setBusinessType(businessType || userData?.business_type || 'retail_store');
+    }
+    setEditMode(true);
+  };
+
   const saveProfile = async () => {
     if (!user) return;
     setSaving(true);
     const supabase = createClient();
-    const updates = {
-      store_name: storeName,
-      store_phone: storePhone,
-      store_email: storeEmail,
-      business_type: businessType,
-    };
     
-    // 1. Update users table
-    const { error } = await supabase.from('users').update(updates).eq('id', user.id);
-    
-    // 2. Also keep branch_profiles for Main Branch in sync
-    await supabase.from('branch_profiles').upsert({
-      owner_id: user.id,
-      branch_name: 'Main Branch',
-      branch_display_name: storeName,
-      branch_phone: storePhone,
-      branch_email: storeEmail,
-      business_type: businessType,
-    }, { onConflict: 'owner_id,branch_name' });
+    if (scale === 'single' || activeBranchKey === 'Main Branch') {
+      const updates = {
+        store_name: storeName,
+        store_phone: storePhone,
+        store_email: storeEmail,
+        business_type: businessType,
+      };
+      
+      // 1. Update users table
+      const { error } = await supabase.from('users').update(updates).eq('id', user.id);
+      
+      // 2. Also keep branch_profiles for Main Branch in sync
+      await supabase.from('branch_profiles').upsert({
+        owner_id: user.id,
+        branch_name: 'Main Branch',
+        branch_display_name: storeName,
+        branch_phone: storePhone,
+        branch_email: storeEmail,
+        business_type: businessType,
+      }, { onConflict: 'owner_id,branch_name' });
 
-    if (error) {
-      fire(`Error: ${error.message}`);
+      if (error) {
+        fire(`Error: ${error.message}`);
+      } else {
+        setUserData(prev => prev ? { ...prev, ...updates } : prev);
+        setContextStoreName(storeName);
+        setContextBusinessType(businessType);
+        await refreshBranchProfiles();
+        fire('✓ Business profile updated and synchronized!');
+        setEditMode(false);
+      }
     } else {
-      setUserData(prev => prev ? { ...prev, ...updates } : prev);
-      setContextStoreName(storeName);
-      setContextBusinessType(businessType);
-      await refreshBranchProfiles();
-      fire('✓ Business profile updated and synchronized!');
-      setEditMode(false);
+      // Multi-branch: update specific active branch profile (e.g. Branch 2, Branch 3)
+      const payload = {
+        owner_id: user.id,
+        branch_name: activeBranchKey,
+        branch_display_name: storeName,
+        business_type: businessType,
+        branch_phone: storePhone,
+        branch_email: storeEmail,
+      };
+
+      const { error } = await supabase
+        .from('branch_profiles')
+        .upsert(payload, { onConflict: 'owner_id,branch_name' });
+
+      if (error) {
+        fire(`Error: ${error.message}`);
+      } else {
+        await refreshBranchProfiles();
+        fire(`✓ ${activeBranchKey} (${storeName}) profile updated!`);
+        setEditMode(false);
+      }
     }
     setSaving(false);
   };
@@ -335,11 +371,15 @@ export default function SettingsPage() {
           {editMode ? (
             <div className="flex flex-col gap-3">
               <div>
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Business / Store Name</label>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">
+                  {scale === 'multi' ? `Branch Name (${activeBranchKey})` : 'Business / Store Name'}
+                </label>
                 <ProperCaseInput value={storeName} onChange={setStoreNameLocal} className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none" />
               </div>
               <div>
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Business Type / Category</label>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">
+                  {scale === 'multi' ? `Branch Category (${activeBranchKey})` : 'Business Type / Category'}
+                </label>
                 <select
                   value={businessType}
                   onChange={e => setBusinessType(e.target.value)}
@@ -366,22 +406,28 @@ export default function SettingsPage() {
           ) : (
             <>
               {[
-                ['Business Name', userData?.store_name || 'Not set'],
                 ...(scale === 'multi' ? [
-                  ['Active Branch (Top of Portal)', (
+                  ['Active Store Name', (
+                    <span className="font-bold text-[var(--color-ink)]">
+                      {activeBranchDisplayName}
+                    </span>
+                  )],
+                  ['Active Branch Workspace', (
                     <span className="font-bold text-[var(--color-teal)] bg-[var(--color-teal-bg)] px-2.5 py-0.5 rounded-md border border-[var(--color-teal)]/20">
-                      📍 {activeBranchDisplayName}
+                      📍 {activeBranchKey}
                     </span>
                   )],
                   ['Active Branch Category', (
-                    <span className="font-semibold text-[var(--color-ink)]">
+                    <span className="font-semibold text-[var(--color-teal)]">
                       {getBusinessTypeLabel(activeBranchType)}
                     </span>
                   )],
+                  ['Main Registered Business', userData?.store_name || storeName || 'Not set'],
                 ] : [
+                  ['Business Name', storeName || userData?.store_name || 'Not set'],
                   ['Business Type', (
                     <span className="font-semibold text-[var(--color-teal)]">
-                      {getBusinessTypeLabel(userData?.business_type || 'retail_store')}
+                      {getBusinessTypeLabel(businessType || userData?.business_type || 'retail_store')}
                     </span>
                   )],
                 ]),
@@ -411,7 +457,7 @@ export default function SettingsPage() {
                   <span className="text-[13px] font-semibold text-[var(--color-ink)]">{v as React.ReactNode}</span>
                 </div>
               ))}
-              <button onClick={() => setEditMode(true)} className="mt-4 px-4 py-2 bg-[var(--color-teal)] text-white font-bold text-[13px] rounded-lg hover:opacity-90 cursor-pointer">
+              <button onClick={openEditMode} className="mt-4 px-4 py-2 bg-[var(--color-teal)] text-white font-bold text-[13px] rounded-lg hover:opacity-90 cursor-pointer">
                 Edit Profile
               </button>
             </>
