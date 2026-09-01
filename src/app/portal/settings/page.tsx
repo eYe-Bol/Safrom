@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Topbar } from '@/components/Topbar';
 import { createClient } from '@/utils/supabase/client';
 import { useStore } from '@/context/StoreContext';
+import ProperCaseInput from '@/components/ProperCaseInput';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -347,7 +348,7 @@ export default function SettingsPage() {
             <div className="flex flex-col gap-3">
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Business / Store Name</label>
-                <input value={storeName} onChange={e => setStoreNameLocal(e.target.value)} className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none" />
+                <ProperCaseInput value={storeName} onChange={setStoreNameLocal} className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none" />
               </div>
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Business Type / Category</label>
@@ -367,7 +368,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Store Email</label>
-                <input value={storeEmail} onChange={e => setStoreEmail(e.target.value)} placeholder="store@example.com" className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none" />
+                <input type="email" value={storeEmail} onChange={e => setStoreEmail(e.target.value)} placeholder="store@example.com" className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none" />
               </div>
               <div className="flex gap-2 mt-1">
                 <button onClick={() => setEditMode(false)} className="flex-1 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg font-semibold text-[13px] text-[var(--color-slate)] cursor-pointer">Cancel</button>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/Topbar';
 import { createClient } from '@/utils/supabase/client';
 import { useStore } from '@/context/StoreContext';
+import ProperCaseInput from '@/components/ProperCaseInput';
 
 type Supplier = {
   id: string;
@@ -273,11 +274,11 @@ export default function SuppliersPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Supplier Name *</label>
-                <input value={form.name} onChange={e => setForm((p: any) => ({...p, name: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" />
+                <ProperCaseInput value={form.name} onChange={v => setForm((p: any) => ({...p, name: v}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" />
               </div>
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Contact Person</label>
-                <input value={form.contact_person} onChange={e => setForm((p: any) => ({...p, contact_person: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" />
+                <ProperCaseInput value={form.contact_person} onChange={v => setForm((p: any) => ({...p, contact_person: v}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" />
               </div>
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Email Address</label>
@@ -289,11 +290,11 @@ export default function SuppliersPage() {
               </div>
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Payment Terms</label>
-                <input value={form.terms} onChange={e => setForm((p: any) => ({...p, terms: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="e.g. Cash, 30 Days" />
+                <ProperCaseInput mode="sentence" value={form.terms} onChange={v => setForm((p: any) => ({...p, terms: v}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="e.g. Cash, 30 Days" />
               </div>
               <div className="col-span-2">
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Products Supplied (comma-separated)</label>
-                <input value={form.products} onChange={e => setForm((p: any) => ({...p, products: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="Beer, Soda, Water" />
+                <ProperCaseInput value={form.products} onChange={v => setForm((p: any) => ({...p, products: v}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="Beer, Soda, Water" />
               </div>
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Category</label>

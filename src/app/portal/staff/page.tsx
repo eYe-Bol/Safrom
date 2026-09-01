@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useStore } from '@/context/StoreContext';
 import { Topbar } from '@/components/Topbar';
+import ProperCaseInput from '@/components/ProperCaseInput';
 
 type StaffMember = {
   id: string;
@@ -453,7 +454,7 @@ export default function StaffPage() {
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Full Name</label>
-                <input required value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="John Doe" />
+                <ProperCaseInput required value={form.full_name} onChange={v => setForm({...form, full_name: v})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="John Doe" />
               </div>
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Job Role / Position</label>
@@ -502,7 +503,7 @@ export default function StaffPage() {
             <form onSubmit={handleUpdate} className="space-y-4">
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Full Name</label>
-                <input required value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" />
+                <ProperCaseInput required value={form.full_name} onChange={v => setForm({...form, full_name: v})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" />
               </div>
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Job Role / Position</label>
@@ -538,7 +539,7 @@ export default function StaffPage() {
             <form onSubmit={handleSaveBranchProfile} className="space-y-4">
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Display Name</label>
-                <input value={branchForm.branch_display_name} onChange={e => setBranchForm({...branchForm, branch_display_name: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder={branchModal.branch === 'Main Branch' ? storeName || 'Main Branch' : branchModal.branch} />
+                <ProperCaseInput value={branchForm.branch_display_name} onChange={v => setBranchForm({...branchForm, branch_display_name: v})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder={branchModal.branch === 'Main Branch' ? storeName || 'Main Branch' : branchModal.branch} />
                 {branchModal.branch === 'Main Branch' && (
                   <p className="text-[11px] text-[var(--color-muted)] mt-1">Defaults to your store name. Change here to show a custom label.</p>
                 )}

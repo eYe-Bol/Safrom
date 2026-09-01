@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useStore } from '@/context/StoreContext';
 import { fmt, downloadCSV } from '@/utils/format';
+import ProperCaseInput from '@/components/ProperCaseInput';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -284,8 +285,11 @@ export default function ExpensesPage() {
             </div>
             <div>
               <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Notes</label>
-              <input
-                type="text" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Optional notes..."
+              <ProperCaseInput
+                mode="sentence"
+                value={form.description}
+                onChange={v => setForm({ ...form, description: v })}
+                placeholder="Optional notes..."
                 className="w-full px-3 py-2 border-[1.5px] border-[var(--color-line)] rounded-lg text-[13px] outline-none text-[var(--color-ink)] focus:border-[var(--color-teal)]"
               />
             </div>

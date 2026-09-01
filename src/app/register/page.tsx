@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { SFSBadge } from '@/components/SFSBadge';
 import { createClient } from '@/utils/supabase/client';
+import ProperCaseInput from '@/components/ProperCaseInput';
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '', scale: 'single' });
@@ -70,7 +71,7 @@ export default function RegisterPage() {
             
             <div className="mb-[12px]">
               <label className="text-[12px] font-bold text-[var(--color-slate)] block mb-1">Full Name</label>
-              <input type="text" value={form.name} onChange={e=>setForm({...form, name: e.target.value})} required className="w-full py-[9px] px-[12px] border-[1.5px] border-[var(--color-line)] rounded-[8px] text-[13px] outline-none text-[var(--color-ink)] focus:border-[var(--color-teal)]" />
+              <ProperCaseInput value={form.name} onChange={v => setForm({...form, name: v})} required className="w-full py-[9px] px-[12px] border-[1.5px] border-[var(--color-line)] rounded-[8px] text-[13px] outline-none text-[var(--color-ink)] focus:border-[var(--color-teal)]" />
             </div>
 
             <div className="mb-[12px]">

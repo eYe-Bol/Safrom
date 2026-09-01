@@ -5,6 +5,7 @@ import { Topbar } from '@/components/Topbar';
 import { createClient } from '@/utils/supabase/client';
 import { useStore } from '@/context/StoreContext';
 import { fmt } from '@/utils/format';
+import ProperCaseInput from '@/components/ProperCaseInput';
 import * as XLSX from 'xlsx';
 
 type Product = {
@@ -822,10 +823,10 @@ export default function CataloguePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Product Name *</label>
-                <input
+                <ProperCaseInput
                   disabled={role === 'employee' && !!editItem}
                   value={form.name}
-                  onChange={e => setForm((p: any) => ({...p, name: e.target.value}))}
+                  onChange={v => setForm((p: any) => ({...p, name: v}))}
                   className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)] disabled:bg-gray-100 disabled:text-gray-500"
                 />
               </div>
@@ -834,11 +835,11 @@ export default function CataloguePage() {
                 <>
                   <div>
                     <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Category</label>
-                    <input value={form.category} onChange={e => setForm((p: any) => ({...p, category: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="e.g. Beer, Grocery…" />
+                    <ProperCaseInput value={form.category} onChange={v => setForm((p: any) => ({...p, category: v}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="e.g. Beer, Grocery…" />
                   </div>
                   <div>
                     <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Supplier</label>
-                    <input value={form.supplier} list="sup-list" onChange={e => setForm((p: any) => ({...p, supplier: e.target.value}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="Select supplier" />
+                    <ProperCaseInput value={form.supplier} list="sup-list" onChange={v => setForm((p: any) => ({...p, supplier: v}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="Select supplier" />
                     <datalist id="sup-list">{supplierNames.map(s => <option key={s} value={s} />)}</datalist>
                   </div>
                   <div>
