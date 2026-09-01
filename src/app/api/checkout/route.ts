@@ -10,8 +10,7 @@ export async function POST(req: Request) {
 
     const INTASEND_PUBLISHABLE_KEY = process.env.INTASEND_PUBLISHABLE_KEY;
     const INTASEND_SECRET_KEY = process.env.INTASEND_SECRET_KEY;
-    // Replace with local testing URL when in development
-    const HOST = process.env.NEXT_PUBLIC_BASE_URL || 'https://safrom.vercel.app'; 
+    const HOST = process.env.NEXT_PUBLIC_BASE_URL || 'https://safrombusiness.co.ke'; 
 
     if (!INTASEND_PUBLISHABLE_KEY || !INTASEND_SECRET_KEY) {
       return NextResponse.json({ error: 'Intasend keys not configured on server' }, { status: 500 });

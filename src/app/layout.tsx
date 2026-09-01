@@ -20,12 +20,13 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://safrombusiness.co.ke"),
   title: "Safrom | Business Portal",
   description: "Sales From Scratch: Manage your store's inventory, track daily sales, and oversee team operations effortlessly.",
   openGraph: {
     title: "Safrom | Business Portal",
     description: "Manage your store's inventory, track daily sales, and oversee team operations effortlessly.",
-    url: "https://safrom.vercel.app",
+    url: "https://safrombusiness.co.ke",
     siteName: "Safrom",
     images: [
       {
