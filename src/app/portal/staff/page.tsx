@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import { useStore } from '@/context/StoreContext';
 import { Topbar } from '@/components/Topbar';
 import ProperCaseInput from '@/components/ProperCaseInput';
+import { BUSINESS_TYPES, getBusinessTypeLabel } from '@/utils/businessTypes';
 
 type StaffMember = {
   id: string;
@@ -37,34 +38,6 @@ const BRANCH_CONFIGS: BranchConfig[] = [
   { key: 'Branch 3',    icon: '🏢', maxSlots: 1, requiresPlan: '1499' },
 ];
 
-const BUSINESS_TYPES = [
-  { id: 'pub', label: '🍺 Pub' },
-  { id: 'bar', label: '🍸 Bar' },
-  { id: 'lounge', label: '🛋️ Lounge' },
-  { id: 'chemist', label: '💊 Chemist' },
-  { id: 'pharmacy', label: '⚕️ Pharmacy' },
-  { id: 'cosmetics', label: '💄 Cosmetics' },
-  { id: 'beauty_shop', label: '💅 Beauty Shop' },
-  { id: 'retail_store', label: '🏪 Retail Store' },
-  { id: 'supermarket', label: '🛒 Supermarket' },
-  { id: 'minimart', label: '🏬 Minimart' },
-  { id: 'restaurant', label: '🍽️ Restaurant' },
-  { id: 'fast_food', label: '🍔 Fast Food' },
-  { id: 'eatery', label: '🍲 Eatery / Cafe' },
-  { id: 'salon', label: '✂️ Salon' },
-  { id: 'barbershop', label: '💈 Barbershop' },
-  { id: 'hardware', label: '🔨 Hardware' },
-  { id: 'agrovet', label: '🌾 Agrovet' },
-  { id: 'wines_and_spirits', label: '🍾 Wines & Spirits' },
-  { id: 'liquor_store', label: '🥃 Liquor Store' },
-  { id: 'boutique', label: '👗 Boutique / Clothing' },
-  { id: 'butchery', label: '🥩 Butchery' },
-  { id: 'bakery', label: '🍞 Bakery' },
-  { id: 'electronics', label: '📱 Electronics Shop' },
-  { id: 'general_store', label: '📦 General Store' },
-  { id: 'other', label: '🏷️ Other' },
-];
-
 const STAFF_ROLES = [
   'Sales Staff',
   'Cashier',
@@ -83,11 +56,11 @@ const BLANK_PROFILE: BranchProfile = {
   branch_phone: '',
   branch_email: '',
   branch_address: '',
-  business_type: 'retail',
+  business_type: 'retail_store',
 };
 
 export default function StaffPage() {
-  const { storeId, isTrial, subscriptionPlan, storeName, refreshBranchProfiles, scale } = useStore();
+  const { storeId, isTrial, subscriptionPlan, storeName, businessType, setStoreName, setBusinessType, refreshBranchProfiles, scale } = useStore();
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [branchProfiles, setBranchProfiles] = useState<Record<string, BranchProfile>>({});
   const [loading, setLoading] = useState(true);
@@ -132,6 +105,18 @@ export default function StaffPage() {
     (data as BranchProfile[] | null || []).forEach(bp => {
       map[bp.branch_name] = bp;
     });
+
+    // Ensure Main Branch always defaults to current storeName and businessType
+    if (!map['Main Branch'] || scale === 'single') {
+      map['Main Branch'] = {
+        branch_name: 'Main Branch',
+        branch_display_name: storeName || 'Main Branch',
+        branch_phone: map['Main Branch']?.branch_phone || '',
+        branch_email: map['Main Branch']?.branch_email || '',
+        branch_address: map['Main Branch']?.branch_address || '',
+        business_type: businessType || map['Main Branch']?.business_type || 'retail_store',
+      };
+    }
     setBranchProfiles(map);
   };
 
@@ -140,7 +125,7 @@ export default function StaffPage() {
       fetchStaff();
       fetchBranchProfiles();
     }
-  }, [storeId]);
+  }, [storeId, storeName, businessType]);
 
   const openModal = (branch: string) => {
     setForm({ full_name: '', email: '', password: '', staff_role: 'Sales Staff' });
@@ -162,6 +147,7 @@ export default function StaffPage() {
       ...BLANK_PROFILE,
       branch_name: branch,
       branch_display_name: branch === 'Main Branch' ? (storeName || branch) : branch,
+      business_type: branch === 'Main Branch' ? (businessType || 'retail_store') : 'retail_store',
     });
     setBranchModal({ open: true, branch });
   };
@@ -244,25 +230,38 @@ export default function StaffPage() {
       branch_phone: branchForm.branch_phone,
       branch_email: branchForm.branch_email,
       branch_address: branchForm.branch_address,
-      business_type: branchForm.business_type || 'retail',
+      business_type: branchForm.business_type || 'retail_store',
     };
 
+    // 1. Save to branch_profiles
     const { error } = await supabase
       .from('branch_profiles')
       .upsert(payload, { onConflict: 'owner_id,branch_name' });
 
-    setSavingBranch(false);
-
     if (error) {
       fire(`Error: ${error.message}`);
-    } else {
-      // Update local state
-      setBranchProfiles(prev => ({ ...prev, [branchModal.branch]: { ...branchForm, branch_name: branchModal.branch } }));
-      // Refresh global context so topbar name updates instantly
-      await refreshBranchProfiles();
-      fire(`✅ ${branchModal.branch} profile saved!`);
-      setBranchModal({ open: false, branch: '' });
+      setSavingBranch(false);
+      return;
     }
+
+    // 2. If Main Branch, also synchronize users table
+    if (branchModal.branch === 'Main Branch') {
+      await supabase.from('users').update({
+        store_name: payload.branch_display_name,
+        store_phone: payload.branch_phone,
+        store_email: payload.branch_email,
+        business_type: payload.business_type,
+      }).eq('id', storeId);
+      setStoreName(payload.branch_display_name);
+      setBusinessType(payload.business_type);
+    }
+
+    // Update local state
+    setBranchProfiles(prev => ({ ...prev, [branchModal.branch]: { ...branchForm, branch_name: branchModal.branch, business_type: payload.business_type } }));
+    await refreshBranchProfiles();
+    setSavingBranch(false);
+    fire(`✅ ${branchModal.branch} profile saved and synchronized!`);
+    setBranchModal({ open: false, branch: '' });
   };
 
   const openDeleteModal = (member: StaffMember) => {
@@ -341,6 +340,7 @@ export default function StaffPage() {
           const hasAccess = scale === 'single' ? true : (branch.requiresPlan === '999' ? canAccess999 : canAccess1499);
           const profile = branchProfiles[branch.key];
           const displayName = profile?.branch_display_name || (branch.key === 'Main Branch' ? storeName : branch.key) || branch.key;
+          const branchBizType = profile?.business_type || (branch.key === 'Main Branch' ? (businessType || 'retail_store') : 'retail_store');
 
           return (
             <div key={branch.key} className={`bg-white rounded-xl p-5 border ${hasAccess ? 'border-[var(--color-teal)]/30' : 'border-[var(--color-line-lt)] opacity-60'} flex flex-col relative`}>
@@ -363,7 +363,7 @@ export default function StaffPage() {
                         <span className="text-[10px] text-[var(--color-muted)] font-medium">{branch.key} ·</span>
                       )}
                       <span className="text-[10px] font-bold text-[var(--color-teal)] bg-[var(--color-teal-bg)] px-1.5 py-0.2 rounded">
-                        {BUSINESS_TYPES.find(b => b.id === (profile?.business_type || 'retail'))?.label || '🛒 Retail'}
+                        {getBusinessTypeLabel(branchBizType)}
                       </span>
                     </div>
                   </div>
@@ -555,7 +555,7 @@ export default function StaffPage() {
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Branch Business Type</label>
                 <select
-                  value={branchForm.business_type || 'retail'}
+                  value={branchForm.business_type || 'retail_store'}
                   onChange={e => setBranchForm({...branchForm, business_type: e.target.value})}
                   className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)] cursor-pointer font-medium text-[var(--color-ink)]"
                 >

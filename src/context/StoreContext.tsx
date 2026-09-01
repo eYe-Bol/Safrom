@@ -14,6 +14,8 @@ export type StoreContextType = {
   setBranchName: (name: string) => void;
   storeName: string | null;
   setStoreName: (name: string) => void;
+  businessType: string | null;
+  setBusinessType: (type: string) => void;
   loading: boolean;
   isTrial: boolean;
   subscriptionPlan: string | null;
@@ -25,7 +27,7 @@ export type StoreContextType = {
   refreshBranchProfiles: () => Promise<void>;
 };
 
-type StoreState = Omit<StoreContextType, 'setBranchName' | 'setStoreName' | 'refreshBranchProfiles' | 'setScale'>;
+type StoreState = Omit<StoreContextType, 'setBranchName' | 'setStoreName' | 'setBusinessType' | 'refreshBranchProfiles' | 'setScale'>;
 
 // ─── User profile shape from DB ───────────────────────────────────────────────
 
@@ -69,6 +71,8 @@ const StoreContext = createContext<StoreContextType>({
   setBranchName: () => {},
   storeName: null,
   setStoreName: () => {},
+  businessType: null,
+  setBusinessType: () => {},
   loading: true,
   isTrial: false,
   subscriptionPlan: null,
@@ -88,6 +92,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     role: null,
     branchName: null,
     storeName: null,
+    businessType: null,
     loading: true,
     isTrial: false,
     subscriptionPlan: null,
@@ -142,6 +147,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const typedProfile = profile as UserProfile;
         let storeId = typedProfile.id;
         let finalStoreName = typedProfile.store_name;
+        let finalBusinessType = typedProfile.business_type || 'retail_store';
         let isTrial = false;
         let subscriptionPlan = typedProfile.subscription_plan;
         let isActive = typedProfile.is_active !== false;
@@ -161,13 +167,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           storeId = typedProfile.owner_id;
           const { data: ownerProfile } = await supabase
             .from('users')
-            .select('store_name, created_at, subscription_plan, subscription_status, subscription_end_date, scale')
+            .select('store_name, business_type, created_at, subscription_plan, subscription_status, subscription_end_date, scale')
             .eq('id', typedProfile.owner_id)
             .single();
 
           const owner = ownerProfile as OwnerProfile | null;
           if (owner) {
             finalStoreName = owner.store_name;
+            finalBusinessType = owner.business_type || finalBusinessType;
             subscriptionPlan = owner.subscription_plan;
             scale = owner.scale || 'single';
             if (subscriptionPlan === 'basic' || subscriptionPlan === '999' || subscriptionPlan === 'starter') {
@@ -211,11 +218,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
         const { nameMap, typeMap } = await fetchBranchProfiles(storeId);
 
+        // Always ensure Main Branch has default values if not explicitly set in branch_profiles
+        if (!nameMap['Main Branch'] || scale === 'single') {
+          nameMap['Main Branch'] = finalStoreName || 'My Store';
+        }
+        if (!typeMap['Main Branch'] || scale === 'single') {
+          typeMap['Main Branch'] = finalBusinessType || 'retail_store';
+        }
+
         setState({
           storeId,
           role: (typedProfile.role as Role) || 'owner',
           branchName: typedProfile.branch_name || 'Main Branch',
           storeName: finalStoreName || 'My Store',
+          businessType: finalBusinessType || 'retail_store',
           loading: false,
           isTrial,
           subscriptionPlan,
@@ -238,7 +254,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setStoreName = useCallback((name: string) => {
-    setState(s => ({ ...s, storeName: name }));
+    setState(s => ({
+      ...s,
+      storeName: name,
+      branchProfiles: {
+        ...s.branchProfiles,
+        'Main Branch': s.scale === 'single' ? name : (s.branchProfiles['Main Branch'] || name),
+      },
+    }));
+  }, []);
+
+  const setBusinessType = useCallback((type: string) => {
+    setState(s => ({
+      ...s,
+      businessType: type,
+      branchBusinessTypes: {
+        ...s.branchBusinessTypes,
+        'Main Branch': s.scale === 'single' ? type : (s.branchBusinessTypes['Main Branch'] || type),
+      },
+    }));
   }, []);
 
   const setScale = useCallback((scale: string) => {
@@ -248,11 +282,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const refreshBranchProfiles = useCallback(async () => {
     if (!state.storeId) return;
     const { nameMap, typeMap } = await fetchBranchProfiles(state.storeId);
+    if (!nameMap['Main Branch'] || state.scale === 'single') {
+      nameMap['Main Branch'] = state.storeName || 'My Store';
+    }
+    if (!typeMap['Main Branch'] || state.scale === 'single') {
+      typeMap['Main Branch'] = state.businessType || 'retail_store';
+    }
     setState(s => ({ ...s, branchProfiles: nameMap, branchBusinessTypes: typeMap }));
-  }, [state.storeId, fetchBranchProfiles]);
+  }, [state.storeId, state.scale, state.storeName, state.businessType, fetchBranchProfiles]);
 
   return (
-    <StoreContext.Provider value={{ ...state, setBranchName, setStoreName, setScale, refreshBranchProfiles }}>
+    <StoreContext.Provider value={{ ...state, setBranchName, setStoreName, setBusinessType, setScale, refreshBranchProfiles }}>
       {children}
     </StoreContext.Provider>
   );
@@ -261,3 +301,4 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 export function useStore() {
   return useContext(StoreContext);
 }
+

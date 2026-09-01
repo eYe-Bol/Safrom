@@ -6,6 +6,7 @@ import { Topbar } from '@/components/Topbar';
 import { createClient } from '@/utils/supabase/client';
 import { useStore } from '@/context/StoreContext';
 import ProperCaseInput from '@/components/ProperCaseInput';
+import { BUSINESS_TYPES, getBusinessTypeLabel } from '@/utils/businessTypes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,34 +32,6 @@ type UserData = {
   owner_id?: string | null;
 };
 
-const BUSINESS_TYPES = [
-  { id: 'pub', label: '🍺 Pub' },
-  { id: 'bar', label: '🍸 Bar' },
-  { id: 'lounge', label: '🛋️ Lounge' },
-  { id: 'chemist', label: '💊 Chemist' },
-  { id: 'pharmacy', label: '⚕️ Pharmacy' },
-  { id: 'cosmetics', label: '💄 Cosmetics' },
-  { id: 'beauty_shop', label: '💅 Beauty Shop' },
-  { id: 'retail_store', label: '🏪 Retail Store' },
-  { id: 'supermarket', label: '🛒 Supermarket' },
-  { id: 'minimart', label: '🏬 Minimart' },
-  { id: 'restaurant', label: '🍽️ Restaurant' },
-  { id: 'fast_food', label: '🍔 Fast Food' },
-  { id: 'eatery', label: '🍲 Eatery / Cafe' },
-  { id: 'salon', label: '✂️ Salon' },
-  { id: 'barbershop', label: '💈 Barbershop' },
-  { id: 'hardware', label: '🔨 Hardware' },
-  { id: 'agrovet', label: '🌾 Agrovet' },
-  { id: 'wines_and_spirits', label: '🍾 Wines & Spirits' },
-  { id: 'liquor_store', label: '🥃 Liquor Store' },
-  { id: 'boutique', label: '👗 Boutique / Clothing' },
-  { id: 'butchery', label: '🥩 Butchery' },
-  { id: 'bakery', label: '🍞 Bakery' },
-  { id: 'electronics', label: '📱 Electronics Shop' },
-  { id: 'general_store', label: '📦 General Store' },
-  { id: 'other', label: '🏷️ Other' },
-];
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -68,7 +41,7 @@ export default function SettingsPage() {
   const [storeName, setStoreNameLocal] = useState('');
   const [storePhone, setStorePhone] = useState('');
   const [storeEmail, setStoreEmail] = useState('');
-  const [businessType, setBusinessType] = useState('retail');
+  const [businessType, setBusinessType] = useState('retail_store');
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -76,7 +49,7 @@ export default function SettingsPage() {
   const [checkingOutPlan, setCheckingOutPlan] = useState<string | null>(null);
   const [updatingScale, setUpdatingScale] = useState(false);
   
-  const { role, branchName, setBranchName, branchProfiles, branchBusinessTypes, setStoreName: setContextStoreName, scale, setScale } = useStore();
+  const { role, branchName, setBranchName, branchProfiles, branchBusinessTypes, setStoreName: setContextStoreName, setBusinessType: setContextBusinessType, refreshBranchProfiles, scale, setScale } = useStore();
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
@@ -129,7 +102,7 @@ export default function SettingsPage() {
           setStoreNameLocal(typed.store_name || '');
           setStorePhone(typed.store_phone || '');
           setStoreEmail(typed.store_email || '');
-          setBusinessType(typed.business_type || 'retail');
+          setBusinessType(typed.business_type || 'retail_store');
         }
       }
     };
@@ -146,13 +119,28 @@ export default function SettingsPage() {
       store_email: storeEmail,
       business_type: businessType,
     };
+    
+    // 1. Update users table
     const { error } = await supabase.from('users').update(updates).eq('id', user.id);
+    
+    // 2. Also keep branch_profiles for Main Branch in sync
+    await supabase.from('branch_profiles').upsert({
+      owner_id: user.id,
+      branch_name: 'Main Branch',
+      branch_display_name: storeName,
+      branch_phone: storePhone,
+      branch_email: storeEmail,
+      business_type: businessType,
+    }, { onConflict: 'owner_id,branch_name' });
+
     if (error) {
       fire(`Error: ${error.message}`);
     } else {
       setUserData(prev => prev ? { ...prev, ...updates } : prev);
       setContextStoreName(storeName);
-      fire('✓ Business profile updated!');
+      setContextBusinessType(businessType);
+      await refreshBranchProfiles();
+      fire('✓ Business profile updated and synchronized!');
       setEditMode(false);
     }
     setSaving(false);
@@ -387,13 +375,13 @@ export default function SettingsPage() {
                   )],
                   ['Active Branch Category', (
                     <span className="font-semibold text-[var(--color-ink)]">
-                      {BUSINESS_TYPES.find(b => b.id === activeBranchType)?.label || activeBranchType}
+                      {getBusinessTypeLabel(activeBranchType)}
                     </span>
                   )],
                 ] : [
                   ['Business Type', (
                     <span className="font-semibold text-[var(--color-teal)]">
-                      {BUSINESS_TYPES.find(b => b.id === (userData?.business_type || 'retail_store'))?.label || '🏪 Retail Store'}
+                      {getBusinessTypeLabel(userData?.business_type || 'retail_store')}
                     </span>
                   )],
                 ]),
@@ -524,7 +512,7 @@ export default function SettingsPage() {
                     </div>
                     <div className="mt-3 pt-2 border-t border-[var(--color-line-lt)] flex items-center justify-between">
                       <span className="text-[11px] font-bold text-[var(--color-slate)]">
-                        {BUSINESS_TYPES.find(b => b.id === bType)?.label || bType}
+                        {getBusinessTypeLabel(bType)}
                       </span>
                     </div>
                   </div>
