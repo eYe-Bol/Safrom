@@ -5,7 +5,7 @@
 
 /**
  * Words that should remain lowercase in the middle of a title
- * (conjunctions, prepositions, articles) — unless they are the first word.
+ * (conjunctions, prepositions, articles) ï¿½ unless they are the first word.
  */
 const LOWERCASE_WORDS = new Set([
   'a', 'an', 'the',
@@ -37,7 +37,7 @@ export function toProperCase(str: string): string {
 }
 
 /**
- * Capitalise only the first letter of the string — for descriptions/notes.
+ * Capitalise only the first letter of the string ï¿½ for descriptions/notes.
  */
 export function toSentenceCase(str: string): string {
   if (!str || !str.trim()) return str;

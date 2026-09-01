@@ -1,4 +1,4 @@
-﻿import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 
