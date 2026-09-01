@@ -616,7 +616,7 @@ export default function CataloguePage() {
                 </select>
               </div>
               
-              {/* Owner Actions */}
+              {/* Owner Actions: Sync + Import Excel */}
               {role !== 'employee' && (
                 <div className="flex gap-2 w-full sm:w-auto">
                   {scale === 'multi' && (
@@ -634,14 +634,16 @@ export default function CataloguePage() {
                   >
                     📥 Import Excel
                   </button>
-                  <button
-                    onClick={openAdd}
-                    className="flex-1 sm:flex-initial px-3.5 py-2 bg-[var(--color-teal)] text-white font-bold text-[12px] rounded-lg hover:opacity-90 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
-                  >
-                    + Add Product
-                  </button>
                 </div>
               )}
+
+              {/* Add Product — available to all roles */}
+              <button
+                onClick={openAdd}
+                className="flex-1 sm:flex-initial px-3.5 py-2 bg-[var(--color-teal)] text-white font-bold text-[12px] rounded-lg hover:opacity-90 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                + Add Product
+              </button>
             </div>
           </div>
 
@@ -654,7 +656,7 @@ export default function CataloguePage() {
                 <div className="text-[36px] mb-2">📦</div>
                 <div className="text-[14px] font-semibold text-[var(--color-ink)] mb-1">No products found</div>
                 <div className="text-[12px] text-[var(--color-muted)]">
-                  {role === 'employee' ? 'No products listed for this branch.' : 'Click "+ Add Product" or "Import Excel" to start.'}
+                  {role === 'employee' ? 'No products in this branch yet. Tap "+ Add Product" to add one.' : 'Click "+ Add Product" or "Import Excel" to start.'}
                 </div>
               </div>
             ) : filtered.map(p => {
@@ -747,7 +749,7 @@ export default function CataloguePage() {
                     <td colSpan={8} className="p-8 text-center">
                       <div className="text-[14px] font-semibold text-[var(--color-ink)] mb-1">No products found</div>
                       <div className="text-[12px] text-[var(--color-muted)]">
-                        {role === 'employee' ? 'No products listed for this branch.' : 'Click "+ Add Product" to start building your catalogue.'}
+                        {role === 'employee' ? 'No products in this branch yet. Click "+ Add Product" to add one.' : 'Click "+ Add Product" to start building your catalogue.'}
                       </div>
                     </td>
                   </tr>
@@ -831,7 +833,8 @@ export default function CataloguePage() {
                 />
               </div>
 
-              {role !== 'employee' && (
+              {/* Category, Supplier, Unit, Reorder — shown to owners always; shown to employees when adding new product */}
+              {(role !== 'employee' || !editItem) && (
                 <>
                   <div>
                     <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Category</label>
