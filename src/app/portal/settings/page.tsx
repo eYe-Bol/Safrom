@@ -183,7 +183,7 @@ export default function SettingsPage() {
   };
 
   const isStarterPaid = userData?.subscription_plan === '999' || userData?.subscription_plan === 'basic' || userData?.subscription_plan === 'starter';
-  const isGrowthPaid = userData?.subscription_plan === '1499' || userData?.subscription_plan === 'pro' || userData?.subscription_plan === 'growth';
+  const isGrowthPaid = userData?.subscription_plan === '1999' || userData?.subscription_plan === '1499' || userData?.subscription_plan === 'pro' || userData?.subscription_plan === 'growth';
 
   const [modalScale, setModalScale] = useState<'single' | 'multi'>('single');
 
@@ -223,7 +223,7 @@ export default function SettingsPage() {
     }
     setCheckingOutPlan(plan);
     try {
-      const amount = plan === 'BASIC' ? 999 * paymentCycle : 1499 * paymentCycle;
+      const amount = plan === 'BASIC' ? 999 * paymentCycle : 1999 * paymentCycle;
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -577,7 +577,7 @@ export default function SettingsPage() {
               </h2>
               <p className="text-[13px] text-[var(--color-slate)] mt-0.5">
                 {userData?.subscription_plan ? (
-                  <>Active plan: <strong className="text-[var(--color-teal)]">{userData.subscription_plan === 'pro' || userData.subscription_plan === '1499' ? 'Growth Plan (Multi-Branch)' : 'Starter Plan (Single Store)'}</strong></>
+                  <>Active plan: <strong className="text-[var(--color-teal)]">{userData.subscription_plan === 'pro' || userData.subscription_plan === '1999' || userData.subscription_plan === '1499' || userData.subscription_plan === 'growth' ? 'Growth Plan (Multi-Branch)' : 'Starter Plan (Single Store)'}</strong></>
                 ) : (
                   <>Current status: <strong className="text-[var(--color-gold)]">7-Day Free Trial</strong></>
                 )}
@@ -678,8 +678,8 @@ export default function SettingsPage() {
                       <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)] mt-1">Growth Plan</h3>
                     </div>
                     <div className="text-right">
-                      <div className="font-serif text-[20px] font-bold text-[var(--color-gold)]">KES {(1499 * paymentCycle).toLocaleString()}</div>
-                      <div className="text-[11px] text-[var(--color-muted)]">KES 1,499 / month</div>
+                      <div className="font-serif text-[20px] font-bold text-[var(--color-gold)]">KES {(1999 * paymentCycle).toLocaleString()}</div>
+                      <div className="text-[11px] text-[var(--color-muted)]">KES 1,999 / month</div>
                     </div>
                   </div>
                   <ul className="text-[13px] text-[var(--color-slate)] space-y-2 mb-4">
@@ -694,7 +694,7 @@ export default function SettingsPage() {
                     disabled={checkingOutPlan !== null}
                     className="block w-full py-3 bg-[var(--color-gold)] rounded-xl font-bold text-[14px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer shadow-md"
                   >
-                    {checkingOutPlan === 'PRO' ? 'Processing Checkout...' : `Proceed to Pay KES ${(1499 * paymentCycle).toLocaleString()}`}
+                    {checkingOutPlan === 'PRO' ? 'Processing Checkout...' : `Proceed to Pay KES ${(1999 * paymentCycle).toLocaleString()}`}
                   </button>
 
                   <div className="text-center mt-3">

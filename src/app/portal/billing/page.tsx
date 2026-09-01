@@ -40,7 +40,7 @@ export default function BillingPage() {
   const userScale = userData?.scale || 'single';
   const isMulti = userScale === 'multi';
   const plan = isMulti ? 'PRO' : 'BASIC';
-  const monthlyRate = isMulti ? 1499 : 999;
+  const monthlyRate = isMulti ? 1999 : 999;
   const planLabel = isMulti ? 'Growth Plan' : 'Starter Plan';
   const planScale = isMulti ? 'Multi Branch' : 'Single Store';
   const planEmoji = isMulti ? '🏢' : '🏪';

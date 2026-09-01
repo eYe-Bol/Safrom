@@ -29,13 +29,13 @@ type BranchConfig = {
   key: string;
   icon: string;
   maxSlots: number;
-  requiresPlan: '999' | '1499';
+  requiresPlan: '999' | '1999' | '1499';
 };
 
 const BRANCH_CONFIGS: BranchConfig[] = [
   { key: 'Main Branch', icon: '🏪', maxSlots: 2, requiresPlan: '999' },
-  { key: 'Branch 2',    icon: '🏬', maxSlots: 1, requiresPlan: '1499' },
-  { key: 'Branch 3',    icon: '🏢', maxSlots: 1, requiresPlan: '1499' },
+  { key: 'Branch 2',    icon: '🏬', maxSlots: 1, requiresPlan: '1999' },
+  { key: 'Branch 3',    icon: '🏢', maxSlots: 1, requiresPlan: '1999' },
 ];
 
 const STAFF_ROLES = [
@@ -78,8 +78,8 @@ export default function StaffPage() {
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
-  const canAccess999 = isTrial || subscriptionPlan === '999' || subscriptionPlan === '1499';
-  const canAccess1499 = isTrial || subscriptionPlan === '1499';
+  const canAccess999 = isTrial || subscriptionPlan === '999' || subscriptionPlan === '1999' || subscriptionPlan === '1499' || subscriptionPlan === 'pro' || subscriptionPlan === 'growth';
+  const canAccess1999 = isTrial || subscriptionPlan === '1999' || subscriptionPlan === '1499' || subscriptionPlan === 'pro' || subscriptionPlan === 'growth';
 
   const fetchStaff = async () => {
     if (!storeId) return;
@@ -337,7 +337,7 @@ export default function StaffPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {BRANCH_CONFIGS.filter(b => scale === 'multi' || b.key === 'Main Branch').map(branch => {
           const branchStaff = staff.filter(s => s.branch_name === branch.key);
-          const hasAccess = scale === 'single' ? true : (branch.requiresPlan === '999' ? canAccess999 : canAccess1499);
+          const hasAccess = scale === 'single' ? true : (branch.requiresPlan === '999' ? canAccess999 : canAccess1999);
           const profile = branchProfiles[branch.key];
           const displayName = profile?.branch_display_name || (branch.key === 'Main Branch' ? storeName : branch.key) || branch.key;
           const branchBizType = profile?.business_type || (branch.key === 'Main Branch' ? (businessType || 'retail_store') : 'retail_store');

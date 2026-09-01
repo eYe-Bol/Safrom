@@ -45,12 +45,12 @@ export async function POST(req: Request) {
     let maxBranch2 = 0;
     let maxBranch3 = 0;
 
-    if (plan === '1499' || isTrial) {
+    if (plan === '1999' || plan === '1499' || plan === 'pro' || plan === 'growth' || isTrial) {
       maxTotal = 4;
       maxMain = 2;
       maxBranch2 = 1;
       maxBranch3 = 1;
-    } else if (plan === '999') {
+    } else if (plan === '999' || plan === 'basic' || plan === 'starter') {
       maxTotal = 1;
       maxMain = 1;
     } else {
