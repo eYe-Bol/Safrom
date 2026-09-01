@@ -16,7 +16,7 @@ type UserData = {
 export default function BillingPage() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
-  const [paymentCycle, setPaymentCycle] = useState<6 | 12>(12);
+  const [paymentCycle] = useState<12>(12);
   const [checkingOut, setCheckingOut] = useState(false);
   const [toast, setToast] = useState('');
   const [loading, setLoading] = useState(true);
@@ -146,16 +146,12 @@ export default function BillingPage() {
         <div className="p-6 flex flex-col gap-5">
           <div>
             <label className="block text-[12px] font-bold text-[var(--color-slate)] uppercase tracking-wider mb-2">
-              Select Payment Cycle
+              Payment Cycle
             </label>
-            <select
-              value={paymentCycle}
-              onChange={e => setPaymentCycle(Number(e.target.value) as 6 | 12)}
-              className="w-full px-4 py-2.5 border-[1.5px] border-[var(--color-line)] rounded-xl text-[14px] font-medium text-[var(--color-ink)] outline-none focus:border-[var(--color-teal)] bg-white cursor-pointer"
-            >
-              <option value={6}>6 Months</option>
-              <option value={12}>12 Months (Full annual coverage)</option>
-            </select>
+            <div className="w-full px-4 py-2.5 border-[1.5px] border-[var(--color-teal)] rounded-xl text-[14px] font-semibold text-[var(--color-teal)] bg-[var(--color-teal-bg)] flex items-center justify-between">
+              <span>12 Months — Annual Plan</span>
+              <span className="text-[11px] bg-[var(--color-teal)] text-white px-2 py-0.5 rounded-full font-bold">Best Value</span>
+            </div>
           </div>
 
           <div className="border-[2px] border-[var(--color-teal)] rounded-xl p-4 flex flex-col gap-3">

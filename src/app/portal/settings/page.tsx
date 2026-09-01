@@ -45,7 +45,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const [paymentCycle, setPaymentCycle] = useState<6 | 12>(6);
+  const [paymentCycle] = useState<12>(12);
   const [checkingOutPlan, setCheckingOutPlan] = useState<string | null>(null);
   const [updatingScale, setUpdatingScale] = useState(false);
   
@@ -618,15 +618,11 @@ export default function SettingsPage() {
 
             <div className="flex flex-col gap-4 mb-5">
               <div className="flex flex-col">
-                <label className="text-[12px] font-bold text-[var(--color-slate)] mb-1">Select Payment Cycle</label>
-                <select
-                  value={paymentCycle}
-                  onChange={e => setPaymentCycle(parseInt(e.target.value) as 6 | 12)}
-                  className="w-full px-3 py-2.5 border border-[var(--color-teal)] rounded-xl text-[14px] outline-none bg-white font-semibold text-[var(--color-ink)] cursor-pointer"
-                >
-                  <option value={6}>6 Months (Save time with semi-annual billing)</option>
-                  <option value={12}>12 Months (Full annual coverage)</option>
-                </select>
+                <label className="text-[12px] font-bold text-[var(--color-slate)] mb-1">Payment Cycle</label>
+                <div className="w-full px-3 py-2.5 border border-[var(--color-teal)] rounded-xl text-[14px] font-semibold text-[var(--color-teal)] bg-[var(--color-teal-bg)] flex items-center justify-between">
+                  <span>12 Months — Annual Plan</span>
+                  <span className="text-[11px] bg-[var(--color-teal)] text-white px-2 py-0.5 rounded-full font-bold">Best Value</span>
+                </div>
               </div>
 
               {/* ─── SINGLE STORE: STARTER PLAN CARD ONLY ─── */}
