@@ -21,6 +21,7 @@ export type StoreContextType = {
   scale: string;
   setScale: (scale: string) => void;
   branchProfiles: Record<string, string>;
+  branchBusinessTypes: Record<string, string>;
   refreshBranchProfiles: () => Promise<void>;
 };
 
@@ -33,6 +34,7 @@ type UserProfile = {
   role: Role | null;
   branch_name: string | null;
   store_name: string | null;
+  business_type: string | null;
   created_at: string;
   subscription_plan: string | null;
   subscription_status: string | null;
@@ -44,6 +46,7 @@ type UserProfile = {
 
 type OwnerProfile = {
   store_name: string | null;
+  business_type: string | null;
   created_at: string;
   subscription_plan: string | null;
   subscription_status: string | null;
@@ -54,6 +57,7 @@ type OwnerProfile = {
 type BranchProfileRow = {
   branch_name: string;
   branch_display_name: string | null;
+  business_type: string | null;
 };
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -72,6 +76,7 @@ const StoreContext = createContext<StoreContextType>({
   scale: 'single',
   setScale: () => {},
   branchProfiles: {},
+  branchBusinessTypes: {},
   refreshBranchProfiles: async () => {},
 });
 
@@ -89,22 +94,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     isActive: true,
     scale: 'single',
     branchProfiles: {},
+    branchBusinessTypes: {},
   });
 
   const fetchBranchProfiles = useCallback(async (storeId: string) => {
     const supabase = createClient();
     const { data } = await supabase
       .from('branch_profiles')
-      .select('branch_name, branch_display_name')
+      .select('branch_name, branch_display_name, business_type')
       .eq('owner_id', storeId);
 
-    const map: Record<string, string> = {};
+    const nameMap: Record<string, string> = {};
+    const typeMap: Record<string, string> = {};
     (data as BranchProfileRow[] | null)?.forEach(bp => {
       if (bp.branch_display_name) {
-        map[bp.branch_name] = bp.branch_display_name;
+        nameMap[bp.branch_name] = bp.branch_display_name;
+      }
+      if (bp.business_type) {
+        typeMap[bp.branch_name] = bp.business_type;
       }
     });
-    return map;
+    return { nameMap, typeMap };
   }, []);
 
   useEffect(() => {
@@ -199,7 +209,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        const branchProfilesMap = await fetchBranchProfiles(storeId);
+        const { nameMap, typeMap } = await fetchBranchProfiles(storeId);
 
         setState({
           storeId,
@@ -211,7 +221,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           subscriptionPlan,
           isActive,
           scale,
-          branchProfiles: branchProfilesMap,
+          branchProfiles: nameMap,
+          branchBusinessTypes: typeMap,
         });
       } catch (err) {
         console.error('Store fetch error:', err);
@@ -236,8 +247,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const refreshBranchProfiles = useCallback(async () => {
     if (!state.storeId) return;
-    const updated = await fetchBranchProfiles(state.storeId);
-    setState(s => ({ ...s, branchProfiles: updated }));
+    const { nameMap, typeMap } = await fetchBranchProfiles(state.storeId);
+    setState(s => ({ ...s, branchProfiles: nameMap, branchBusinessTypes: typeMap }));
   }, [state.storeId, fetchBranchProfiles]);
 
   return (

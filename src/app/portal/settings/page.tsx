@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { Topbar } from '@/components/Topbar';
 import { createClient } from '@/utils/supabase/client';
 import { useStore } from '@/context/StoreContext';
@@ -30,15 +31,31 @@ type UserData = {
 };
 
 const BUSINESS_TYPES = [
-  { id: 'pub', label: '🍺 Pub / Bar / Lounge' },
-  { id: 'chemist', label: '💊 Chemist / Pharmacy' },
-  { id: 'cosmetics', label: '💄 Cosmetics & Beauty' },
-  { id: 'retail', label: '🛒 Retail / Supermarket / Minimart' },
-  { id: 'restaurant', label: '🍽️ Restaurant / Fast Food' },
-  { id: 'salon', label: '✂️ Salon / Barbershop' },
-  { id: 'hardware', label: '🔨 Hardware / Agrovet' },
-  { id: 'liquor', label: '🍾 Wines & Spirits' },
-  { id: 'other', label: '📦 General Business / Other' },
+  { id: 'pub', label: '🍺 Pub' },
+  { id: 'bar', label: '🍸 Bar' },
+  { id: 'lounge', label: '🛋️ Lounge' },
+  { id: 'chemist', label: '💊 Chemist' },
+  { id: 'pharmacy', label: '⚕️ Pharmacy' },
+  { id: 'cosmetics', label: '💄 Cosmetics' },
+  { id: 'beauty_shop', label: '💅 Beauty Shop' },
+  { id: 'retail_store', label: '🏪 Retail Store' },
+  { id: 'supermarket', label: '🛒 Supermarket' },
+  { id: 'minimart', label: '🏬 Minimart' },
+  { id: 'restaurant', label: '🍽️ Restaurant' },
+  { id: 'fast_food', label: '🍔 Fast Food' },
+  { id: 'eatery', label: '🍲 Eatery / Cafe' },
+  { id: 'salon', label: '✂️ Salon' },
+  { id: 'barbershop', label: '💈 Barbershop' },
+  { id: 'hardware', label: '🔨 Hardware' },
+  { id: 'agrovet', label: '🌾 Agrovet' },
+  { id: 'wines_and_spirits', label: '🍾 Wines & Spirits' },
+  { id: 'liquor_store', label: '🥃 Liquor Store' },
+  { id: 'boutique', label: '👗 Boutique / Clothing' },
+  { id: 'butchery', label: '🥩 Butchery' },
+  { id: 'bakery', label: '🍞 Bakery' },
+  { id: 'electronics', label: '📱 Electronics Shop' },
+  { id: 'general_store', label: '📦 General Store' },
+  { id: 'other', label: '🏷️ Other' },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -58,9 +75,18 @@ export default function SettingsPage() {
   const [checkingOutPlan, setCheckingOutPlan] = useState<string | null>(null);
   const [updatingScale, setUpdatingScale] = useState(false);
   
-  const { role, branchName, setBranchName, branchProfiles, setStoreName: setContextStoreName, scale, setScale } = useStore();
+  const { role, branchName, setBranchName, branchProfiles, branchBusinessTypes, setStoreName: setContextStoreName, scale, setScale } = useStore();
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+
+  const activeBranchKey = branchName || 'Main Branch';
+  const activeBranchDisplayName = scale === 'single'
+    ? (userData?.store_name || 'My Store')
+    : (branchProfiles?.[activeBranchKey] || (activeBranchKey === 'Main Branch' ? (userData?.store_name || 'Main Branch') : activeBranchKey) || 'Main Branch');
+
+  const activeBranchType = scale === 'single'
+    ? (userData?.business_type || 'retail_store')
+    : (branchBusinessTypes?.[activeBranchKey] || userData?.business_type || 'retail_store');
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.location.search.includes('payment=success')) {
@@ -352,11 +378,24 @@ export default function SettingsPage() {
             <>
               {[
                 ['Business Name', userData?.store_name || 'Not set'],
-                ['Business Type', (
-                  <span className="font-semibold text-[var(--color-teal)]">
-                    {BUSINESS_TYPES.find(b => b.id === (userData?.business_type || 'retail'))?.label || '🛒 Retail / Supermarket'}
-                  </span>
-                )],
+                ...(scale === 'multi' ? [
+                  ['Active Branch (Top of Portal)', (
+                    <span className="font-bold text-[var(--color-teal)] bg-[var(--color-teal-bg)] px-2.5 py-0.5 rounded-md border border-[var(--color-teal)]/20">
+                      📍 {activeBranchDisplayName}
+                    </span>
+                  )],
+                  ['Active Branch Category', (
+                    <span className="font-semibold text-[var(--color-ink)]">
+                      {BUSINESS_TYPES.find(b => b.id === activeBranchType)?.label || activeBranchType}
+                    </span>
+                  )],
+                ] : [
+                  ['Business Type', (
+                    <span className="font-semibold text-[var(--color-teal)]">
+                      {BUSINESS_TYPES.find(b => b.id === (userData?.business_type || 'retail_store'))?.label || '🏪 Retail Store'}
+                    </span>
+                  )],
+                ]),
                 ['Store WhatsApp', userData?.store_phone || 'Not set'],
                 ['Store Email', userData?.store_email || 'Not set'],
                 ['Login Email', user?.email || '—'],
@@ -442,6 +481,55 @@ export default function SettingsPage() {
               <option value="Branch 2">{branchProfiles?.['Branch 2'] || 'Branch 2'}</option>
               <option value="Branch 3">{branchProfiles?.['Branch 3'] || 'Branch 3'}</option>
             </select>
+          </div>
+        )}
+
+        {/* All Branch Profiles & Categories Card (Multi-Branch only) */}
+        {role !== 'employee' && scale === 'multi' && (
+          <div className="md:col-span-2 bg-white rounded-xl p-5 border border-[var(--color-line-lt)]">
+            <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+              <div>
+                <h2 className="font-serif text-[16px] font-bold text-[var(--color-ink)]">🏬 Branch Profiles & Dedicated Categories</h2>
+                <p className="text-[12px] text-[var(--color-muted)] mt-0.5">
+                  These names and categories match what appears at the top of your portal and across branch reports.
+                </p>
+              </div>
+              <Link
+                href="/portal/staff"
+                className="text-[12px] font-bold text-[var(--color-teal)] bg-[var(--color-teal-bg)] border border-[var(--color-teal)]/20 px-3 py-1.5 rounded-lg hover:opacity-80 transition-opacity"
+              >
+                ✏️ Customize in Staff & Branches ➔
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {['Main Branch', 'Branch 2', 'Branch 3'].map(bKey => {
+                const bName = branchProfiles?.[bKey] || (bKey === 'Main Branch' ? (userData?.store_name || 'Main Branch') : bKey);
+                const bType = branchBusinessTypes?.[bKey] || (bKey === 'Main Branch' ? (userData?.business_type || 'retail_store') : 'retail_store');
+                const isActiveBranch = (branchName || 'Main Branch') === bKey;
+
+                return (
+                  <div key={bKey} className={`p-3.5 rounded-xl border ${isActiveBranch ? 'border-[var(--color-teal)] bg-[var(--color-teal-bg)]/20 shadow-sm' : 'border-[var(--color-line-lt)] bg-[var(--color-canvas)]'} flex flex-col justify-between`}>
+                    <div>
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-wider">{bKey}</span>
+                        {isActiveBranch && (
+                          <span className="text-[9px] font-bold text-white bg-[var(--color-teal)] px-1.5 py-0.2 rounded-full">ACTIVE</span>
+                        )}
+                      </div>
+                      <div className="font-serif text-[14px] font-bold text-[var(--color-ink)] truncate">
+                        {bName}
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-[var(--color-line-lt)] flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-[var(--color-slate)]">
+                        {BUSINESS_TYPES.find(b => b.id === bType)?.label || bType}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
