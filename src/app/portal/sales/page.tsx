@@ -193,10 +193,11 @@ export default function SalesTrackerPage() {
       return;
     }
 
-    // Step 2: Deduct all stock
-    const deductions = cart.map(c =>
-      supabase.from('inventory').update({ stock: c.item.stock - c.qty }).eq('id', c.item.id)
-    );
+    // Step 2: Deduct all stock based on verified live stock
+    const deductions = cart.map((c, i) => {
+      const liveStock = (stockChecks[i].data as { id: string; stock: number } | null)?.stock ?? c.item.stock;
+      return supabase.from('inventory').update({ stock: Math.max(0, liveStock - c.qty) }).eq('id', c.item.id);
+    });
     await Promise.all(deductions);
 
     // Step 3: Insert all sales in a single batch insert

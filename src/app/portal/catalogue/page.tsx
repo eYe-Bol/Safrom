@@ -868,7 +868,7 @@ export default function CataloguePage() {
                 />
               </div>
 
-              {role !== 'employee' && (
+              {(role !== 'employee' || !editItem) && (
                 <>
                   <div>
                     <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Expiry Date (Optional)</label>
