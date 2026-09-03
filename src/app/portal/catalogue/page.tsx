@@ -72,6 +72,9 @@ export default function CataloguePage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; product: Product | null }>({ open: false, product: null });
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+  const [deletingBulk, setDeletingBulk] = useState(false);
 
   // ── Sync Catalogue State ─────────────────────────────────────────────────
   const [showSyncModal, setShowSyncModal] = useState(false);
@@ -345,6 +348,44 @@ export default function CataloguePage() {
     loadData();
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length && filtered.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(p => p.id)));
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
+  const confirmBulkDelete = async () => {
+    if (selectedIds.size === 0 || !storeId) return;
+    setDeletingBulk(true);
+    const supabase = createClient();
+    const ids = Array.from(selectedIds);
+    const { error } = await supabase.from('inventory').delete().in('id', ids);
+    setDeletingBulk(false);
+    if (!error) {
+      fire(`✓ Successfully removed ${ids.length} ${ids.length === 1 ? 'product' : 'products'} from catalogue`);
+      setSelectedIds(new Set());
+      setBulkDeleteModal(false);
+      loadData();
+    } else {
+      fire(`❌ Delete failed: ${error.message}`);
+    }
+  };
+
   // ── Excel Import Helpers ────────────────────────────────────────────────
 
   const downloadTemplate = () => {
@@ -501,6 +542,38 @@ export default function CataloguePage() {
             <div className="flex gap-3">
               <button onClick={() => setDeleteModal({ open: false, product: null })} className="flex-1 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[14px] text-[var(--color-slate)] cursor-pointer">Cancel</button>
               <button onClick={confirmDelete} className="flex-1 py-2.5 bg-[var(--color-red)] text-white rounded-xl font-bold text-[14px] hover:opacity-90 cursor-pointer">Remove</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      {bulkDeleteModal && selectedIds.size > 0 && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[var(--color-ink)]/40 backdrop-blur-sm" onClick={() => setBulkDeleteModal(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-[400px] shadow-[0_24px_64px_rgba(0,0,0,0.2)]" onClick={e => e.stopPropagation()}>
+            <div className="text-[32px] mb-3 text-center">🗑️</div>
+            <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)] text-center mb-1">
+              Delete {selectedIds.size} {selectedIds.size === 1 ? 'Product' : 'Products'}?
+            </h3>
+            <p className="text-[13px] text-[var(--color-muted)] text-center mb-5 leading-relaxed">
+              Are you sure you want to permanently remove <strong>{selectedIds.size} selected {selectedIds.size === 1 ? 'product' : 'products'}</strong> from the catalogue?<br />
+              This will also remove their sales history references.
+            </p>
+            <div className="flex gap-3">
+              <button
+                disabled={deletingBulk}
+                onClick={() => setBulkDeleteModal(false)}
+                className="flex-1 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[14px] text-[var(--color-slate)] cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={deletingBulk}
+                onClick={confirmBulkDelete}
+                className="flex-1 py-2.5 bg-[var(--color-red)] text-white rounded-xl font-bold text-[14px] hover:opacity-90 cursor-pointer disabled:opacity-50"
+              >
+                {deletingBulk ? 'Deleting…' : `Delete (${selectedIds.size})`}
+              </button>
             </div>
           </div>
         </div>
@@ -692,6 +765,40 @@ export default function CataloguePage() {
             </div>
           </div>
 
+          {/* ─── BULK SELECTION ACTION BAR ─── */}
+          {selectedIds.size > 0 && role !== 'employee' && (
+            <div className="bg-[var(--color-ink)] text-white px-4 py-3 flex items-center justify-between flex-wrap gap-3 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <span className="text-[13px] font-bold text-[var(--color-gold)]">
+                  ✓ {selectedIds.size} of {filtered.length} selected
+                </span>
+                <button
+                  type="button"
+                  onClick={toggleSelectAll}
+                  className="text-[12px] font-semibold text-white/80 hover:text-white underline cursor-pointer"
+                >
+                  {selectedIds.size === filtered.length ? 'Deselect All' : `Select All (${filtered.length})`}
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-[12px] rounded-lg cursor-pointer transition-colors"
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBulkDeleteModal(true)}
+                  className="px-3.5 py-1.5 bg-[var(--color-red)] hover:bg-red-700 text-white font-bold text-[12px] rounded-lg cursor-pointer transition-colors shadow-sm flex items-center gap-1.5"
+                >
+                  🗑️ Delete Selected ({selectedIds.size})
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* ─── MOBILE CARD VIEW (< md) ─── */}
           <div className="block md:hidden divide-y divide-[var(--color-line-lt)] max-h-[70vh] overflow-y-auto">
             {loading ? (
@@ -708,14 +815,26 @@ export default function CataloguePage() {
               const m = margin(p);
               const isLow = p.stock < p.reorder_level;
               const hasPendingPrice = p.pending_sell_price !== null && p.pending_sell_price !== undefined;
+              const isChecked = selectedIds.has(p.id);
 
               return (
-                <div key={p.id} className="p-3.5 flex flex-col gap-2.5 bg-white hover:bg-[var(--color-canvas)] transition-colors">
-                  {/* Top Row: Name & Category */}
+                <div key={p.id} className={`p-3.5 flex flex-col gap-2.5 transition-colors ${isChecked ? 'bg-[var(--color-teal-bg)]/40 border-l-4 border-[var(--color-teal)]' : 'bg-white hover:bg-[var(--color-canvas)]'}`}>
+                  {/* Top Row: Checkbox, Name & Category */}
                   <div className="flex justify-between items-start gap-2">
-                    <div>
-                      <div className="font-semibold text-[14px] text-[var(--color-ink)] leading-snug">{p.name}</div>
-                      <div className="text-[11px] text-[var(--color-muted)] mt-0.5">Unit: {p.unit} · Supplier: {p.supplier || 'N/A'}</div>
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      {role !== 'employee' && (
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleSelect(p.id)}
+                          className="w-4 h-4 mt-0.5 rounded text-[var(--color-teal)] cursor-pointer accent-[var(--color-teal)] shrink-0"
+                          aria-label={`Select ${p.name}`}
+                        />
+                      )}
+                      <div className="min-w-0">
+                        <div className="font-semibold text-[14px] text-[var(--color-ink)] leading-snug truncate">{p.name}</div>
+                        <div className="text-[11px] text-[var(--color-muted)] mt-0.5">Unit: {p.unit} · Supplier: {p.supplier || 'N/A'}</div>
+                      </div>
                     </div>
                     <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-canvas)] text-[var(--color-slate)] px-2 py-0.5 rounded-full border border-[var(--color-line)] shrink-0">
                       {p.category || 'General'}
@@ -778,20 +897,31 @@ export default function CataloguePage() {
 
           {/* ─── DESKTOP DATA TABLE (md+) ─── */}
           <div className="hidden md:block overflow-auto max-h-[70vh]">
-            <table className="w-full border-collapse" style={{ minWidth: 720 }}>
+            <table className="w-full border-collapse" style={{ minWidth: 760 }}>
               <thead className="sticky top-0 z-10 shadow-[0_1px_0_var(--color-line-lt)]">
                 <tr className="bg-[var(--color-canvas)]">
-                  {['Product', 'Category', 'Supplier', 'Sell Price', 'Cost Price', 'Margin', 'Stock', 'Actions'].map((h, i) => (
-                    <th key={h} className={`px-4 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em] whitespace-nowrap ${i === 0 ? 'sticky left-0 z-20 bg-[var(--color-canvas)] shadow-[1px_0_0_var(--color-line-lt)]' : ''}`}>{h}</th>
+                  {role !== 'employee' && (
+                    <th className="px-3 py-2.5 w-10 text-center sticky left-0 z-20 bg-[var(--color-canvas)] shadow-[1px_0_0_var(--color-line-lt)]">
+                      <input
+                        type="checkbox"
+                        checked={filtered.length > 0 && filtered.every(p => selectedIds.has(p.id))}
+                        onChange={toggleSelectAll}
+                        className="w-4 h-4 rounded text-[var(--color-teal)] cursor-pointer accent-[var(--color-teal)]"
+                        title={selectedIds.size === filtered.length && filtered.length > 0 ? 'Deselect All' : 'Select All'}
+                      />
+                    </th>
+                  )}
+                  {['Product', 'Category', 'Supplier', 'Sell Price', 'Cost Price', 'Margin', 'Stock', 'Actions'].map((h) => (
+                    <th key={h} className="px-4 py-2.5 text-left text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-[0.07em] whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={8} className="p-4 text-center text-[13px] text-[var(--color-muted)]">Loading…</td></tr>
+                  <tr><td colSpan={role !== 'employee' ? 9 : 8} className="p-4 text-center text-[13px] text-[var(--color-muted)]">Loading…</td></tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center">
+                    <td colSpan={role !== 'employee' ? 9 : 8} className="p-8 text-center">
                       <div className="text-[14px] font-semibold text-[var(--color-ink)] mb-1">No products found</div>
                       <div className="text-[12px] text-[var(--color-muted)]">
                         {role === 'employee' ? 'No products in this branch yet. Click "+ Add Product" to add one.' : 'Click "+ Add Product" to start building your catalogue.'}
@@ -802,10 +932,22 @@ export default function CataloguePage() {
                   const m = margin(p);
                   const isLow = p.stock < p.reorder_level;
                   const hasPendingPrice = p.pending_sell_price !== null && p.pending_sell_price !== undefined;
+                  const isChecked = selectedIds.has(p.id);
 
                   return (
-                    <tr key={p.id} className="border-b border-[var(--color-line-lt)] last:border-0 hover:bg-[#fafafa] transition-colors group">
-                      <td className="px-4 py-3 sticky left-0 z-10 bg-white shadow-[1px_0_0_var(--color-line-lt)] group-hover:bg-[#fafafa] transition-colors">
+                    <tr key={p.id} className={`border-b border-[var(--color-line-lt)] last:border-0 hover:bg-[#fafafa] transition-colors group ${isChecked ? 'bg-[var(--color-teal-bg)]/30' : ''}`}>
+                      {role !== 'employee' && (
+                        <td className="px-3 py-3 text-center sticky left-0 z-10 bg-white group-hover:bg-[#fafafa] shadow-[1px_0_0_var(--color-line-lt)]">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleSelect(p.id)}
+                            className="w-4 h-4 rounded text-[var(--color-teal)] cursor-pointer accent-[var(--color-teal)]"
+                            aria-label={`Select ${p.name}`}
+                          />
+                        </td>
+                      )}
+                      <td className="px-4 py-3">
                         <div className="font-semibold text-[13px] text-[var(--color-ink)]">{p.name}</div>
                         <div className="text-[11px] text-[var(--color-muted)]">{p.unit}</div>
                       </td>
