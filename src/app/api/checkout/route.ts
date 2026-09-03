@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
-    const { storeId, plan, months, amount, email, name } = await req.json();
+    const { storeId, plan, months, amount, email, name, outlets, isAddon } = await req.json();
 
     if (!storeId || !plan || !months || !amount || !email) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -23,7 +23,9 @@ export async function POST(req: Request) {
       false // test mode = false
     );
 
-    const apiRef = `${storeId}_${plan}_${months}_${Date.now()}`;
+    const outletCount = parseInt(String(outlets || 1), 10) || 1;
+    const actionType = isAddon ? 'ADDON' : 'RENEW';
+    const apiRef = `${storeId}_${plan}_${months}_${outletCount}_${actionType}_${Date.now()}`;
 
     const collection = intasend.collection();
     const response = await collection.charge({

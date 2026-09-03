@@ -7,6 +7,7 @@ import { createClient } from '@/utils/supabase/client';
 import { useStore } from '@/context/StoreContext';
 import ProperCaseInput from '@/components/ProperCaseInput';
 import { BUSINESS_TYPES, getBusinessTypeLabel } from '@/utils/businessTypes';
+import { calculateAnnualPrice, getMonthlyEquivalent, PRICING, PlanCategory } from '@/utils/pricing';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -183,12 +184,14 @@ export default function SettingsPage() {
   };
 
   const isStarterPaid = userData?.subscription_plan === '999' || userData?.subscription_plan === 'basic' || userData?.subscription_plan === 'starter';
-  const isGrowthPaid = userData?.subscription_plan === '1999' || userData?.subscription_plan === '1499' || userData?.subscription_plan === 'pro' || userData?.subscription_plan === 'growth';
+  const isGrowthPaid = userData?.subscription_plan === '1999' || userData?.subscription_plan === '1499' || userData?.subscription_plan === 'pro' || userData?.subscription_plan === 'growth' || userData?.subscription_plan?.includes('branch') || userData?.subscription_plan?.includes('store');
 
-  const [modalScale, setModalScale] = useState<'single' | 'multi'>('single');
+  const [modalTier, setModalTier] = useState<PlanCategory>('single');
+  const [branchOutlets, setBranchOutlets] = useState<number>(2);
+  const [storeOutlets, setStoreOutlets] = useState<number>(2);
 
-  const openUpgradeModal = (targetScale?: 'single' | 'multi') => {
-    setModalScale(targetScale || (scale === 'multi' ? 'multi' : 'single'));
+  const openUpgradeModal = (targetCategory?: PlanCategory) => {
+    setModalTier(targetCategory || (scale === 'multi' ? 'branch' : 'single'));
     setShowUpgrade(true);
   };
 
@@ -197,8 +200,8 @@ export default function SettingsPage() {
 
     // If user has paid for a single store plan and tries to switch to multi-branch, require Growth Plan upgrade
     if (newScale === 'multi' && isStarterPaid) {
-      fire('Multi-Branch features require the Growth Plan. Please upgrade to unlock.');
-      openUpgradeModal('multi');
+      fire('Multi-Outlet features require a Multi-Branch or Multi-Store Plan. Please upgrade to unlock.');
+      openUpgradeModal('branch');
       return;
     }
 
@@ -210,28 +213,32 @@ export default function SettingsPage() {
     } else {
       setUserData(prev => prev ? { ...prev, scale: newScale } : prev);
       setScale(newScale);
-      fire(newScale === 'multi' ? '🚀 Upgraded to Multi-Branch Mode!' : '✅ Switched to Single Store Mode');
+      fire(newScale === 'multi' ? '🚀 Upgraded to Multi-Outlet Mode!' : '✅ Switched to Single Store Mode');
     }
     setUpdatingScale(false);
   };
 
-  const handleCheckout = async (plan: 'BASIC' | 'PRO') => {
+  const handleCheckout = async (planCategory: PlanCategory, outletsCount: number = 1) => {
     const storeId = userData?.id;
     if (!storeId || !user?.email) {
       fire('User email or store ID missing');
       return;
     }
-    setCheckingOutPlan(plan);
+    setCheckingOutPlan(planCategory);
     try {
-      const amount = plan === 'BASIC' ? 999 * paymentCycle : 1999 * paymentCycle;
+      const amount = calculateAnnualPrice(planCategory, outletsCount);
+      const isAddon = isGrowthPaid || isStarterPaid;
+      const planCode = planCategory === 'single' ? 'BASIC' : (planCategory === 'branch' ? 'MULTI_BRANCH' : 'MULTI_STORE');
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           storeId,
-          plan,
-          months: paymentCycle,
+          plan: planCode,
+          months: 12,
           amount,
+          outlets: outletsCount,
+          isAddon,
           email: user.email,
           name: userData?.store_name,
         }),
@@ -584,7 +591,7 @@ export default function SettingsPage() {
               </p>
             </div>
             <button
-              onClick={() => openUpgradeModal(scale === 'multi' ? 'multi' : 'single')}
+              onClick={() => openUpgradeModal(scale === 'multi' ? 'branch' : 'single')}
               className="px-4 py-2 bg-[var(--color-gold)] text-white rounded-lg text-[13px] font-bold hover:opacity-90 cursor-pointer shadow-sm"
             >
               {userData?.subscription_plan ? 'Upgrade / Renew 🚀' : 'Choose Subscription Plan 🚀'}
@@ -600,110 +607,214 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* ─── UPGRADE / PAYMENT MODAL (TAILORED TO CHOSEN PLAN) ─── */}
+      {/* ─── UPGRADE / PAYMENT MODAL (DYNAMIC MULTI-BRANCH & MULTI-STORE) ─── */}
       {showUpgrade && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[500] p-4" onClick={() => setShowUpgrade(false)}>
-          <div className="bg-white rounded-[20px] p-6 w-full max-w-[480px] shadow-[0_24px_64px_rgba(0,0,0,0.2)]" onClick={e => e.stopPropagation()}>
-            <div className="text-center mb-5">
-              <div className="text-[36px] mb-2">{modalScale === 'single' ? '🏪' : '🏬'}</div>
+          <div className="bg-white rounded-[24px] p-6 w-full max-w-[540px] shadow-[0_24px_64px_rgba(0,0,0,0.2)] max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="text-center mb-4">
+              <div className="text-[34px] mb-1">
+                {modalTier === 'single' ? '🏪' : modalTier === 'branch' ? '🏢' : '🏬'}
+              </div>
               <h2 className="font-serif text-[20px] font-bold text-[var(--color-ink)]">
-                {modalScale === 'single' ? 'Single Store Starter Plan' : 'Multi-Branch Growth Plan'}
+                {modalTier === 'single' ? 'Single Store Starter Plan' : modalTier === 'branch' ? 'Multi-Branch Chain Plan' : 'Multi-Store Diversified Plan'}
               </h2>
-              <p className="text-[13px] text-[var(--color-muted)] mt-1">
-                {modalScale === 'single' 
+              <p className="text-[12px] text-[var(--color-muted)] mt-0.5">
+                {modalTier === 'single' 
                   ? 'Complete business operations tailored for 1 single shop'
-                  : 'Advanced multi-location management for up to 3 branches'}
+                  : modalTier === 'branch'
+                  ? 'Chain outlets with identical business type & synchronized catalogue'
+                  : 'Different business types (e.g. Pub + Chemist) with independent catalogues'}
               </p>
             </div>
 
-            <div className="flex flex-col gap-4 mb-5">
-              <div className="flex flex-col">
-                <label className="text-[12px] font-bold text-[var(--color-slate)] mb-1">Payment Cycle</label>
-                <div className="w-full px-3 py-2.5 border border-[var(--color-teal)] rounded-xl text-[14px] font-semibold text-[var(--color-teal)] bg-[var(--color-teal-bg)] flex items-center justify-between">
-                  <span>12 Months — Annual Plan</span>
-                  <span className="text-[11px] bg-[var(--color-teal)] text-white px-2 py-0.5 rounded-full font-bold">Best Value</span>
-                </div>
-              </div>
+            {/* ─── PLAN SELECTION TABS ─── */}
+            <div className="grid grid-cols-3 gap-1.5 p-1 bg-[var(--color-canvas)] rounded-xl border border-[var(--color-line)] mb-4">
+              <button
+                type="button"
+                onClick={() => setModalTier('single')}
+                className={`py-2 text-[12px] font-bold rounded-lg transition-all cursor-pointer ${modalTier === 'single' ? 'bg-white text-[var(--color-ink)] shadow-sm' : 'text-[var(--color-muted)] hover:text-[var(--color-ink)]'}`}
+              >
+                🏪 Single Store
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalTier('branch')}
+                className={`py-2 text-[12px] font-bold rounded-lg transition-all cursor-pointer ${modalTier === 'branch' ? 'bg-white text-[var(--color-teal)] shadow-sm' : 'text-[var(--color-muted)] hover:text-[var(--color-ink)]'}`}
+              >
+                🏢 Multi-Branch
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalTier('store')}
+                className={`py-2 text-[12px] font-bold rounded-lg transition-all cursor-pointer ${modalTier === 'store' ? 'bg-white text-[var(--color-gold)] shadow-sm' : 'text-[var(--color-muted)] hover:text-[var(--color-ink)]'}`}
+              >
+                🏬 Multi-Store
+              </button>
+            </div>
 
-              {/* ─── SINGLE STORE: STARTER PLAN CARD ONLY ─── */}
-              {modalScale === 'single' && (
-                <div className="border-2 border-[var(--color-teal)] rounded-2xl p-5 bg-[var(--color-teal-bg)]/20 shadow-sm">
+            <div className="flex flex-col gap-4 mb-4">
+              {/* ─── SINGLE STORE: 1 OUTLET ─── */}
+              {modalTier === 'single' && (
+                <div className="border-2 border-[var(--color-teal)] rounded-2xl p-4 bg-[var(--color-teal-bg)]/20 shadow-sm">
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-teal)] text-white px-2 py-0.5 rounded-full">Single Store</span>
-                      <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)] mt-1">Starter Plan</h3>
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-teal)] text-white px-2 py-0.5 rounded-full">1 Outlet</span>
+                      <h3 className="font-serif text-[17px] font-bold text-[var(--color-ink)] mt-1">Starter License</h3>
                     </div>
                     <div className="text-right">
-                      <div className="font-serif text-[20px] font-bold text-[var(--color-teal)]">KES {(999 * paymentCycle).toLocaleString()}</div>
-                      <div className="text-[11px] text-[var(--color-muted)]">KES 999 / month</div>
+                      <div className="font-serif text-[20px] font-bold text-[var(--color-teal)]">KES {calculateAnnualPrice('single', 1).toLocaleString()}</div>
+                      <div className="text-[11px] text-[var(--color-muted)]">KES 999 / mo (billed annually)</div>
                     </div>
                   </div>
-                  <ul className="text-[13px] text-[var(--color-slate)] space-y-2 mb-4">
-                    <li className="flex items-center gap-2">✅ <strong>1 Branch</strong> (Main Branch)</li>
+                  <ul className="text-[12px] text-[var(--color-slate)] space-y-1.5 mb-4">
+                    <li className="flex items-center gap-2">✅ <strong>1 Store location</strong> (Main Branch)</li>
                     <li className="flex items-center gap-2">✅ <strong>1 Staff account</strong> included</li>
-                    <li className="flex items-center gap-2">✅ <strong>Full dashboard & reporting</strong></li>
                     <li className="flex items-center gap-2">✅ <strong>Sales Tracker & POS checkout</strong></li>
                     <li className="flex items-center gap-2">✅ <strong>Product Catalogue with Excel import</strong></li>
                   </ul>
                   <button
-                    onClick={() => handleCheckout('BASIC')}
+                    onClick={() => handleCheckout('single', 1)}
                     disabled={checkingOutPlan !== null}
-                    className="block w-full py-3 bg-[var(--color-teal)] rounded-xl font-bold text-[14px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer shadow-md"
+                    className="block w-full py-2.5 bg-[var(--color-teal)] rounded-xl font-bold text-[13px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer shadow-md"
                   >
-                    {checkingOutPlan === 'BASIC' ? 'Processing Checkout...' : `Proceed to Pay KES ${(999 * paymentCycle).toLocaleString()}`}
+                    {checkingOutPlan === 'single' ? 'Processing...' : `Proceed to Pay KES ${calculateAnnualPrice('single', 1).toLocaleString()}`}
                   </button>
-
-                  <div className="text-center mt-3">
-                    <button
-                      type="button"
-                      onClick={() => setModalScale('multi')}
-                      className="text-[12px] text-[var(--color-teal)] font-semibold hover:underline bg-transparent border-none cursor-pointer"
-                    >
-                      Need multiple branches instead? Switch to Growth Plan →
-                    </button>
-                  </div>
                 </div>
               )}
 
-              {/* ─── MULTI BRANCH: GROWTH PLAN CARD ONLY ─── */}
-              {modalScale === 'multi' && (
-                <div className="border-2 border-[var(--color-gold)] rounded-2xl p-5 bg-[var(--color-gold-pale)]/30 shadow-sm">
+              {/* ─── MULTI-BRANCH: UP TO 10 BRANCHES ─── */}
+              {modalTier === 'branch' && (
+                <div className="border-2 border-[var(--color-teal)] rounded-2xl p-4 bg-teal-50/40 shadow-sm">
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-gold)] text-white px-2 py-0.5 rounded-full">Multi Branch</span>
-                      <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)] mt-1">Growth Plan</h3>
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-teal)] text-white px-2 py-0.5 rounded-full">Chain Outlets (Max 10)</span>
+                      <h3 className="font-serif text-[17px] font-bold text-[var(--color-ink)] mt-1">Same Business Type</h3>
                     </div>
                     <div className="text-right">
-                      <div className="font-serif text-[20px] font-bold text-[var(--color-gold)]">KES {(1999 * paymentCycle).toLocaleString()}</div>
-                      <div className="text-[11px] text-[var(--color-muted)]">KES 1,999 / month</div>
+                      <div className="font-serif text-[20px] font-bold text-[var(--color-teal)]">
+                        KES {calculateAnnualPrice('branch', branchOutlets).toLocaleString()}
+                      </div>
+                      <div className="text-[11px] text-[var(--color-muted)]">
+                        KES {getMonthlyEquivalent(calculateAnnualPrice('branch', branchOutlets)).toLocaleString()} / mo (annual)
+                      </div>
                     </div>
                   </div>
-                  <ul className="text-[13px] text-[var(--color-slate)] space-y-2 mb-4">
-                    <li className="flex items-center gap-2">✅ <strong>3 Branches</strong> (Main Branch + Branch 2 + Branch 3)</li>
-                    <li className="flex items-center gap-2">✅ <strong>Up to 4 Staff accounts</strong> with branch assignment</li>
-                    <li className="flex items-center gap-2">✅ <strong>Multi-branch analytics & comparative reports</strong></li>
-                    <li className="flex items-center gap-2">✅ <strong>Independent branch inventories & POS</strong></li>
-                    <li className="flex items-center gap-2">✅ <strong>Priority support & PDF export</strong></li>
+
+                  {/* Outlet Stepper */}
+                  <div className="bg-white p-3 rounded-xl border border-teal-200 flex items-center justify-between mb-3">
+                    <div>
+                      <div className="text-[11px] font-bold text-[var(--color-slate)] uppercase">Number of Branches</div>
+                      <div className="text-[11px] text-[var(--color-muted)]">+KES 6,000/yr per extra branch</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setBranchOutlets(prev => Math.max(2, prev - 1))}
+                        disabled={branchOutlets <= 2}
+                        className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] font-bold text-[16px] text-[var(--color-ink)] flex items-center justify-center disabled:opacity-40 cursor-pointer"
+                      >
+                        -
+                      </button>
+                      <span className="w-10 text-center font-bold text-[15px] text-[var(--color-ink)]">
+                        {branchOutlets}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setBranchOutlets(prev => Math.min(10, prev + 1))}
+                        disabled={branchOutlets >= 10}
+                        className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] font-bold text-[16px] text-[var(--color-ink)] flex items-center justify-center disabled:opacity-40 cursor-pointer"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <ul className="text-[12px] text-[var(--color-slate)] space-y-1.5 mb-4">
+                    <li className="flex items-center gap-2">✅ <strong>{branchOutlets} Branches</strong> included (Main Branch + {branchOutlets - 1} branches)</li>
+                    <li className="flex items-center gap-2">✅ <strong>Up to {branchOutlets * 2} Staff accounts</strong> (assignable per branch)</li>
+                    <li className="flex items-center gap-2">✅ <strong>1-Click Catalogue Sync</strong> between branches</li>
+                    <li className="flex items-center gap-2">✅ <strong>Centralized inventory & cross-branch reports</strong></li>
                   </ul>
                   <button
-                    onClick={() => handleCheckout('PRO')}
+                    onClick={() => handleCheckout('branch', branchOutlets)}
                     disabled={checkingOutPlan !== null}
-                    className="block w-full py-3 bg-[var(--color-gold)] rounded-xl font-bold text-[14px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer shadow-md"
+                    className="block w-full py-2.5 bg-[var(--color-teal)] rounded-xl font-bold text-[13px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer shadow-md"
                   >
-                    {checkingOutPlan === 'PRO' ? 'Processing Checkout...' : `Proceed to Pay KES ${(1999 * paymentCycle).toLocaleString()}`}
+                    {checkingOutPlan === 'branch' ? 'Processing...' : `Proceed to Pay KES ${calculateAnnualPrice('branch', branchOutlets).toLocaleString()}`}
                   </button>
-
-                  <div className="text-center mt-3">
-                    <button
-                      type="button"
-                      onClick={() => setModalScale('single')}
-                      className="text-[12px] text-[var(--color-slate)] font-semibold hover:underline bg-transparent border-none cursor-pointer"
-                    >
-                      Need a single shop plan instead? Switch to Starter Plan →
-                    </button>
-                  </div>
                 </div>
               )}
+
+              {/* ─── MULTI-STORE: UP TO 4 DIVERSIFIED STORES ─── */}
+              {modalTier === 'store' && (
+                <div className="border-2 border-[var(--color-gold)] rounded-2xl p-4 bg-amber-50/40 shadow-sm">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-gold)] text-white px-2 py-0.5 rounded-full">Diversified Ventures (Max 4)</span>
+                      <h3 className="font-serif text-[17px] font-bold text-[var(--color-ink)] mt-1">Different Business Types</h3>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-serif text-[20px] font-bold text-[var(--color-gold)]">
+                        KES {calculateAnnualPrice('store', storeOutlets).toLocaleString()}
+                      </div>
+                      <div className="text-[11px] text-[var(--color-muted)]">
+                        KES {getMonthlyEquivalent(calculateAnnualPrice('store', storeOutlets)).toLocaleString()} / mo (annual)
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Store Stepper */}
+                  <div className="bg-white p-3 rounded-xl border border-amber-200 flex items-center justify-between mb-3">
+                    <div>
+                      <div className="text-[11px] font-bold text-[var(--color-slate)] uppercase">Number of Stores</div>
+                      <div className="text-[11px] text-amber-700 font-medium">Discounted: +KES 8,988/yr per store (KES 749/mo)</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setStoreOutlets(prev => Math.max(2, prev - 1))}
+                        disabled={storeOutlets <= 2}
+                        className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] font-bold text-[16px] text-[var(--color-ink)] flex items-center justify-center disabled:opacity-40 cursor-pointer"
+                      >
+                        -
+                      </button>
+                      <span className="w-10 text-center font-bold text-[15px] text-[var(--color-ink)]">
+                        {storeOutlets}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setStoreOutlets(prev => Math.min(4, prev + 1))}
+                        disabled={storeOutlets >= 4}
+                        className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] font-bold text-[16px] text-[var(--color-ink)] flex items-center justify-center disabled:opacity-40 cursor-pointer"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <ul className="text-[12px] text-[var(--color-slate)] space-y-1.5 mb-4">
+                    <li className="flex items-center gap-2">✅ <strong>{storeOutlets} Different Business Types</strong> (e.g. Chemist + Pub + Grocery)</li>
+                    <li className="flex items-center gap-2">✅ <strong>Completely isolated product catalogues</strong> & pricing rules</li>
+                    <li className="flex items-center gap-2">✅ <strong>Independent supplier databases</strong> & expense tracking</li>
+                    <li className="flex items-center gap-2">✅ <strong>Up to {storeOutlets * 2} Staff accounts</strong> across stores</li>
+                  </ul>
+                  <button
+                    onClick={() => handleCheckout('store', storeOutlets)}
+                    disabled={checkingOutPlan !== null}
+                    className="block w-full py-2.5 bg-[var(--color-gold)] rounded-xl font-bold text-[13px] text-white text-center hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer shadow-md"
+                  >
+                    {checkingOutPlan === 'store' ? 'Processing...' : `Proceed to Pay KES ${calculateAnnualPrice('store', storeOutlets).toLocaleString()}`}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Co-Terming & Synchronization Terms */}
+            <div className="bg-[var(--color-canvas)] p-3 rounded-xl border border-[var(--color-line-lt)] text-[11px] text-[var(--color-muted)] leading-relaxed mb-4">
+              <strong className="text-[var(--color-slate)]">📋 Subscription & Synchronization Policy:</strong><br />
+              All additional outlet licenses are billed annually and synchronize with your primary account&apos;s anniversary cycle
+              {userData?.subscription_end_date ? ` (expires ${new Date(userData.subscription_end_date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })})` : ''}.
+              All active outlets renew together under one unified annual invoice.
             </div>
 
             <button

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import { useStore } from '@/context/StoreContext';
 import { Topbar } from '@/components/Topbar';
@@ -60,7 +61,7 @@ const BLANK_PROFILE: BranchProfile = {
 };
 
 export default function StaffPage() {
-  const { storeId, isTrial, subscriptionPlan, storeName, businessType, setStoreName, setBusinessType, refreshBranchProfiles, scale } = useStore();
+  const { storeId, isTrial, subscriptionPlan, storeName, businessType, setStoreName, setBusinessType, refreshBranchProfiles, scale, branchLimit } = useStore();
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [branchProfiles, setBranchProfiles] = useState<Record<string, BranchProfile>>({});
   const [loading, setLoading] = useState(true);
@@ -78,8 +79,21 @@ export default function StaffPage() {
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
-  const canAccess999 = isTrial || subscriptionPlan === '999' || subscriptionPlan === '1999' || subscriptionPlan === '1499' || subscriptionPlan === 'pro' || subscriptionPlan === 'growth';
-  const canAccess1999 = isTrial || subscriptionPlan === '1999' || subscriptionPlan === '1499' || subscriptionPlan === 'pro' || subscriptionPlan === 'growth';
+  const canAccess999 = isTrial || subscriptionPlan === '999' || subscriptionPlan === '1999' || subscriptionPlan === '1499' || subscriptionPlan === 'pro' || subscriptionPlan === 'growth' || subscriptionPlan?.includes('branch') || subscriptionPlan?.includes('store');
+  const canAccess1999 = isTrial || subscriptionPlan === '1999' || subscriptionPlan === '1499' || subscriptionPlan === 'pro' || subscriptionPlan === 'growth' || subscriptionPlan?.includes('branch') || subscriptionPlan?.includes('store');
+
+  const effectiveBranchLimit = scale === 'multi' ? Math.max(2, branchLimit || 3) : 1;
+  const ICONS = ['🏬', '🏢', '🛒', '🏭', '🏥', '🍻', '🛍️', '📦', '📍', '🏪'];
+
+  const dynamicBranchConfigs: BranchConfig[] = Array.from({ length: effectiveBranchLimit }, (_, i) => {
+    if (i === 0) return { key: 'Main Branch', icon: '🏪', maxSlots: 2, requiresPlan: '999' as const };
+    return {
+      key: `Branch ${i + 1}`,
+      icon: ICONS[(i - 1) % ICONS.length],
+      maxSlots: 2,
+      requiresPlan: '1999' as const,
+    };
+  });
 
   const fetchStaff = async () => {
     if (!storeId) return;
@@ -335,7 +349,7 @@ export default function StaffPage() {
 
       {/* Branches Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {BRANCH_CONFIGS.filter(b => scale === 'multi' || b.key === 'Main Branch').map(branch => {
+        {dynamicBranchConfigs.filter(b => scale === 'multi' || b.key === 'Main Branch').map(branch => {
           const branchStaff = staff.filter(s => s.branch_name === branch.key);
           const hasAccess = scale === 'single' ? true : (branch.requiresPlan === '999' ? canAccess999 : canAccess1999);
           const profile = branchProfiles[branch.key];
@@ -434,6 +448,23 @@ export default function StaffPage() {
             </div>
           );
         })}
+
+        {/* Add Another Outlet Expansion Card */}
+        {scale === 'multi' && effectiveBranchLimit < 10 && (
+          <div className="bg-white/60 border-2 border-dashed border-[var(--color-line)] rounded-xl p-5 flex flex-col items-center justify-center text-center hover:border-[var(--color-teal)] transition-colors min-h-[240px]">
+            <div className="text-[36px] mb-2">➕</div>
+            <h3 className="font-serif text-[16px] font-bold text-[var(--color-ink)] mb-1">Add Another Outlet</h3>
+            <p className="text-[12px] text-[var(--color-muted)] mb-4 max-w-[220px]">
+              Expand your business with an extra branch (+KES 6,000/yr) or store (+KES 8,988/yr)
+            </p>
+            <Link
+              href="/portal/settings"
+              className="px-4 py-2 bg-[var(--color-teal)] text-white font-bold text-[12px] rounded-lg hover:opacity-90 shadow-sm"
+            >
+              Upgrade & Add Outlet
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Add Staff Modal */}

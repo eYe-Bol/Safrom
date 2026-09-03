@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     // 1. Check Owner Subscription & Quotas
     const { data: owner } = await supabaseAdmin
       .from('users')
-      .select('subscription_plan, created_at, store_name')
+      .select('subscription_plan, created_at, store_name, branch_limit, scale')
       .eq('id', owner_id)
       .single();
 
@@ -37,24 +37,23 @@ export async function POST(req: Request) {
     const trialEnd = new Date(owner.created_at);
     trialEnd.setDate(trialEnd.getDate() + 7);
     const isTrial = trialEnd > new Date();
-    const plan = owner.subscription_plan;
+    const plan = (owner.subscription_plan || '').toLowerCase();
 
-    // Quota limits
-    let maxTotal = 0;
-    let maxMain = 0;
-    let maxBranch2 = 0;
-    let maxBranch3 = 0;
+    const isMultiPlan = plan.includes('branch') || plan.includes('store') || plan === '1999' || plan === '1499' || plan === 'pro' || plan === 'growth' || isTrial;
+    const branchLimit = owner.branch_limit || (isMultiPlan ? 3 : 1);
 
-    if (plan === '1999' || plan === '1499' || plan === 'pro' || plan === 'growth' || isTrial) {
-      maxTotal = 4;
-      maxMain = 2;
-      maxBranch2 = 1;
-      maxBranch3 = 1;
+    // Quota limits: up to 2 staff per branch for multi-outlet, 1 staff for starter
+    let maxTotal = 1;
+    let maxPerBranch = 1;
+
+    if (isMultiPlan) {
+      maxTotal = branchLimit * 2;
+      maxPerBranch = 2;
     } else if (plan === '999' || plan === 'basic' || plan === 'starter') {
       maxTotal = 1;
-      maxMain = 1;
+      maxPerBranch = 1;
     } else {
-      return NextResponse.json({ error: 'Subscription required to add staff' }, { status: 403 });
+      return NextResponse.json({ error: 'Active subscription required to add staff' }, { status: 403 });
     }
 
     // Check current usage
@@ -66,16 +65,13 @@ export async function POST(req: Request) {
 
     const staffCount = currentStaff?.length || 0;
     if (staffCount >= maxTotal) {
-      return NextResponse.json({ error: 'Maximum total staff limit reached for your plan.' }, { status: 403 });
+      return NextResponse.json({ error: `Maximum total staff limit (${maxTotal}) reached for your plan.` }, { status: 403 });
     }
 
-    const mainCount = currentStaff?.filter(s => s.branch_name === 'Main Branch').length || 0;
-    const b2Count = currentStaff?.filter(s => s.branch_name === 'Branch 2').length || 0;
-    const b3Count = currentStaff?.filter(s => s.branch_name === 'Branch 3').length || 0;
-
-    if (branch_name === 'Main Branch' && mainCount >= maxMain) return NextResponse.json({ error: 'Main Branch is full' }, { status: 403 });
-    if (branch_name === 'Branch 2' && b2Count >= maxBranch2) return NextResponse.json({ error: 'Branch 2 is full' }, { status: 403 });
-    if (branch_name === 'Branch 3' && b3Count >= maxBranch3) return NextResponse.json({ error: 'Branch 3 is full' }, { status: 403 });
+    const branchCount = currentStaff?.filter(s => s.branch_name === branch_name).length || 0;
+    if (branchCount >= maxPerBranch) {
+      return NextResponse.json({ error: `${branch_name} has reached its staff limit (${maxPerBranch} staff).` }, { status: 403 });
+    }
 
     // 2. Create Auth User
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { SFSLogo } from '@/components/SFSLogo';
+import { calculateAnnualPrice, getMonthlyEquivalent, PlanCategory } from '@/utils/pricing';
 
 type UserData = {
   id: string;
@@ -16,7 +17,9 @@ type UserData = {
 export default function BillingPage() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
-  const [paymentCycle] = useState<12>(12);
+  const [selectedTier, setSelectedTier] = useState<PlanCategory>('single');
+  const [branchCount, setBranchCount] = useState<number>(2);
+  const [storeCount, setStoreCount] = useState<number>(2);
   const [checkingOut, setCheckingOut] = useState(false);
   const [toast, setToast] = useState('');
   const [loading, setLoading] = useState(true);
@@ -30,28 +33,21 @@ export default function BillingPage() {
       if (user) {
         setUserEmail(user.email || '');
         const { data } = await supabase.from('users').select('*').eq('id', user.id).single();
-        if (data) setUserData(data as UserData);
+        if (data) {
+          setUserData(data as UserData);
+          if (data.scale === 'multi') {
+            setSelectedTier('branch');
+          }
+        }
       }
       setLoading(false);
     };
     load();
   }, []);
 
-  const userScale = userData?.scale || 'single';
-  const isMulti = userScale === 'multi';
-  const plan = isMulti ? 'PRO' : 'BASIC';
-  const monthlyRate = isMulti ? 1999 : 999;
-  const planLabel = isMulti ? 'Growth Plan' : 'Starter Plan';
-  const planScale = isMulti ? 'Multi Branch' : 'Single Store';
-  const planEmoji = isMulti ? '🏢' : '🏪';
-  const planDesc = isMulti
-    ? 'Manage multiple branches with one account'
-    : 'Complete business operations tailored for 1 single shop';
-  const planFeatures = isMulti
-    ? ['Unlimited branches', 'Staff per branch', 'Full dashboard & reporting', 'Sales Tracker & POS checkout', 'Product Catalogue with Excel import', 'Multi-branch analytics']
-    : ['1 Branch (Main Branch)', '1 Staff account included', 'Full dashboard & reporting', 'Sales Tracker & POS checkout', 'Product Catalogue with Excel import'];
-
-  const totalAmount = monthlyRate * paymentCycle;
+  const currentOutlets = selectedTier === 'single' ? 1 : (selectedTier === 'branch' ? branchCount : storeCount);
+  const totalAmount = calculateAnnualPrice(selectedTier, currentOutlets);
+  const monthlyEquivalent = getMonthlyEquivalent(totalAmount);
 
   const trialEnd = userData
     ? new Date(new Date(userData.created_at).getTime() + 7 * 24 * 60 * 60 * 1000)
@@ -67,14 +63,17 @@ export default function BillingPage() {
     }
     setCheckingOut(true);
     try {
+      const planCode = selectedTier === 'single' ? 'BASIC' : (selectedTier === 'branch' ? 'MULTI_BRANCH' : 'MULTI_STORE');
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           storeId: userData.id,
-          plan,
-          months: paymentCycle,
+          plan: planCode,
+          months: 12,
           amount: totalAmount,
+          outlets: currentOutlets,
+          isAddon: false,
           email: userEmail,
           name: userData.store_name || 'SFS User',
         }),
@@ -90,13 +89,6 @@ export default function BillingPage() {
       fire('Failed to start checkout. Please try again.');
       setCheckingOut(false);
     }
-  };
-
-  const switchScale = async (to: 'single' | 'multi') => {
-    if (!userData?.id) return;
-    const supabase = createClient();
-    await supabase.from('users').update({ scale: to }).eq('id', userData.id);
-    setUserData(prev => prev ? { ...prev, scale: to } : prev);
   };
 
   const handleSignOut = async () => {
@@ -135,47 +127,150 @@ export default function BillingPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-[var(--color-line-lt)] shadow-md w-full max-w-[420px] overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[var(--color-line-lt)] shadow-md w-full max-w-[480px] overflow-hidden">
 
-        <div className="p-6 border-b border-[var(--color-line-lt)] text-center">
-          <div className="text-[40px] mb-2">{planEmoji}</div>
-          <h2 className="font-serif text-[20px] font-bold text-[var(--color-ink)]">{planScale} {planLabel}</h2>
-          <p className="text-[13px] text-[var(--color-muted)] mt-1">{planDesc}</p>
+        {/* ─── TIER SELECTION TABS ─── */}
+        <div className="p-4 bg-[var(--color-canvas)] border-b border-[var(--color-line-lt)]">
+          <div className="grid grid-cols-3 gap-1.5 p-1 bg-white rounded-xl border border-[var(--color-line)]">
+            <button
+              type="button"
+              onClick={() => setSelectedTier('single')}
+              className={`py-2 text-[12px] font-bold rounded-lg transition-all cursor-pointer ${selectedTier === 'single' ? 'bg-[var(--color-teal)] text-white shadow-sm' : 'text-[var(--color-muted)] hover:text-[var(--color-ink)]'}`}
+            >
+              🏪 Single Store
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTier('branch')}
+              className={`py-2 text-[12px] font-bold rounded-lg transition-all cursor-pointer ${selectedTier === 'branch' ? 'bg-[var(--color-teal)] text-white shadow-sm' : 'text-[var(--color-muted)] hover:text-[var(--color-ink)]'}`}
+            >
+              🏢 Multi-Branch
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTier('store')}
+              className={`py-2 text-[12px] font-bold rounded-lg transition-all cursor-pointer ${selectedTier === 'store' ? 'bg-[var(--color-gold)] text-white shadow-sm' : 'text-[var(--color-muted)] hover:text-[var(--color-ink)]'}`}
+            >
+              🏬 Multi-Store
+            </button>
+          </div>
         </div>
 
-        <div className="p-6 flex flex-col gap-5">
-          <div>
-            <label className="block text-[12px] font-bold text-[var(--color-slate)] uppercase tracking-wider mb-2">
-              Payment Cycle
-            </label>
-            <div className="w-full px-4 py-2.5 border-[1.5px] border-[var(--color-teal)] rounded-xl text-[14px] font-semibold text-[var(--color-teal)] bg-[var(--color-teal-bg)] flex items-center justify-between">
-              <span>12 Months — Annual Plan</span>
-              <span className="text-[11px] bg-[var(--color-teal)] text-white px-2 py-0.5 rounded-full font-bold">Best Value</span>
-            </div>
+        <div className="p-6 flex flex-col gap-4">
+          {/* Header Description */}
+          <div className="text-center">
+            <h2 className="font-serif text-[19px] font-bold text-[var(--color-ink)]">
+              {selectedTier === 'single' ? 'Single Store Starter Plan' : selectedTier === 'branch' ? 'Multi-Branch Chain Plan' : 'Multi-Store Diversified Plan'}
+            </h2>
+            <p className="text-[12px] text-[var(--color-muted)] mt-0.5">
+              {selectedTier === 'single'
+                ? 'Tailored for 1 standalone business shop'
+                : selectedTier === 'branch'
+                ? 'Chain outlets with identical business type (Max 10 branches)'
+                : 'Diverse business types e.g. Pub + Chemist (Max 4 stores)'}
+            </p>
           </div>
 
-          <div className="border-[2px] border-[var(--color-teal)] rounded-xl p-4 flex flex-col gap-3">
+          {/* Stepper for Multi-Branch / Multi-Store */}
+          {selectedTier === 'branch' && (
+            <div className="bg-teal-50/50 p-3.5 rounded-xl border border-teal-200 flex items-center justify-between">
+              <div>
+                <div className="text-[11px] font-bold text-[var(--color-slate)] uppercase">Total Branches</div>
+                <div className="text-[11px] text-[var(--color-muted)]">+KES 6,000/yr per extra branch</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBranchCount(prev => Math.max(2, prev - 1))}
+                  disabled={branchCount <= 2}
+                  className="w-8 h-8 rounded-lg bg-white border border-[var(--color-line)] font-bold text-[16px] text-[var(--color-ink)] flex items-center justify-center disabled:opacity-40 cursor-pointer shadow-sm"
+                >
+                  -
+                </button>
+                <span className="w-10 text-center font-bold text-[15px] text-[var(--color-ink)]">
+                  {branchCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setBranchCount(prev => Math.min(10, prev + 1))}
+                  disabled={branchCount >= 10}
+                  className="w-8 h-8 rounded-lg bg-white border border-[var(--color-line)] font-bold text-[16px] text-[var(--color-ink)] flex items-center justify-center disabled:opacity-40 cursor-pointer shadow-sm"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          )}
+
+          {selectedTier === 'store' && (
+            <div className="bg-amber-50/50 p-3.5 rounded-xl border border-amber-200 flex items-center justify-between">
+              <div>
+                <div className="text-[11px] font-bold text-[var(--color-slate)] uppercase">Total Diverse Stores</div>
+                <div className="text-[11px] text-amber-700 font-medium">Discounted: +KES 8,988/yr per store</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStoreCount(prev => Math.max(2, prev - 1))}
+                  disabled={storeCount <= 2}
+                  className="w-8 h-8 rounded-lg bg-white border border-[var(--color-line)] font-bold text-[16px] text-[var(--color-ink)] flex items-center justify-center disabled:opacity-40 cursor-pointer shadow-sm"
+                >
+                  -
+                </button>
+                <span className="w-10 text-center font-bold text-[15px] text-[var(--color-ink)]">
+                  {storeCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setStoreCount(prev => Math.min(4, prev + 1))}
+                  disabled={storeCount >= 4}
+                  className="w-8 h-8 rounded-lg bg-white border border-[var(--color-line)] font-bold text-[16px] text-[var(--color-ink)] flex items-center justify-center disabled:opacity-40 cursor-pointer shadow-sm"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Pricing Summary Box */}
+          <div className="border-2 border-[var(--color-teal)] rounded-xl p-4 flex flex-col gap-3 bg-[var(--color-teal-bg)]/20">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold bg-[var(--color-teal)] text-white px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                {planScale}
+                {currentOutlets} {currentOutlets === 1 ? 'Location' : 'Locations'}
               </span>
               <div className="text-right">
                 <div className="font-serif text-[22px] font-bold text-[var(--color-teal)]">
                   KES {totalAmount.toLocaleString()}
                 </div>
                 <div className="text-[11px] text-[var(--color-muted)]">
-                  KES {monthlyRate.toLocaleString()} / month
+                  KES {monthlyEquivalent.toLocaleString()} / month (12 months)
                 </div>
               </div>
             </div>
-            <div className="font-serif text-[16px] font-bold text-[var(--color-ink)]">{planLabel}</div>
-            <ul className="flex flex-col gap-1.5">
-              {planFeatures.map(f => (
-                <li key={f} className="flex items-start gap-2 text-[13px] text-[var(--color-slate)]">
-                  <span className="text-[var(--color-teal)] mt-0.5 shrink-0">✅</span>
-                  <span>{f}</span>
-                </li>
-              ))}
+
+            <ul className="flex flex-col gap-1.5 text-[12px] text-[var(--color-slate)]">
+              {selectedTier === 'single' ? (
+                <>
+                  <li className="flex items-center gap-2">✅ <strong>1 Store location</strong> (Main Branch)</li>
+                  <li className="flex items-center gap-2">✅ <strong>1 Staff account</strong> included</li>
+                  <li className="flex items-center gap-2">✅ <strong>Sales Tracker & POS checkout</strong></li>
+                  <li className="flex items-center gap-2">✅ <strong>Product Catalogue with Excel import</strong></li>
+                </>
+              ) : selectedTier === 'branch' ? (
+                <>
+                  <li className="flex items-center gap-2">✅ <strong>{branchCount} Branches</strong> (Same business type)</li>
+                  <li className="flex items-center gap-2">✅ <strong>Up to {branchCount * 2} Staff accounts</strong></li>
+                  <li className="flex items-center gap-2">✅ <strong>1-Click Catalogue Sync</strong> between branches</li>
+                  <li className="flex items-center gap-2">✅ <strong>Cross-branch comparative analytics</strong></li>
+                </>
+              ) : (
+                <>
+                  <li className="flex items-center gap-2">✅ <strong>{storeCount} Diverse Store Types</strong> (e.g. Pub + Chemist)</li>
+                  <li className="flex items-center gap-2">✅ <strong>Isolated catalogues</strong> & independent pricing</li>
+                  <li className="flex items-center gap-2">✅ <strong>Up to {storeCount * 2} Staff accounts</strong></li>
+                  <li className="flex items-center gap-2">✅ <strong>Centralized dashboard for all ventures</strong></li>
+                </>
+              )}
             </ul>
 
             <button
@@ -185,29 +280,18 @@ export default function BillingPage() {
             >
               {checkingOut ? 'Redirecting to payment...' : `Proceed to Pay KES ${totalAmount.toLocaleString()}`}
             </button>
+          </div>
 
-            {!isMulti ? (
-              <p className="text-center text-[12px] text-[var(--color-teal)] font-semibold">
-                Need multiple branches instead?{' '}
-                <button onClick={() => switchScale('multi')} className="underline cursor-pointer bg-transparent border-none text-[var(--color-teal)] font-semibold">
-                  Switch to Growth Plan &rarr;
-                </button>
-              </p>
-            ) : (
-              <p className="text-center text-[12px] text-[var(--color-teal)] font-semibold">
-                Only need one store?{' '}
-                <button onClick={() => switchScale('single')} className="underline cursor-pointer bg-transparent border-none text-[var(--color-teal)] font-semibold">
-                  Switch to Starter Plan &rarr;
-                </button>
-              </p>
-            )}
+          <div className="bg-[var(--color-canvas)] p-3 rounded-xl border border-[var(--color-line-lt)] text-[11px] text-[var(--color-muted)] leading-relaxed">
+            <strong className="text-[var(--color-slate)]">📋 Annual Subscription Terms:</strong><br />
+            Subscribed outlets synchronize under one master account anniversary date. All active locations renew together annually.
           </div>
 
           <button
             onClick={handleSignOut}
-            className="w-full py-3 bg-[var(--color-canvas)] border border-[var(--color-line)] text-[var(--color-slate)] font-bold text-[14px] rounded-xl cursor-pointer hover:bg-[var(--color-line-lt)] transition-colors"
+            className="w-full py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] text-[var(--color-slate)] font-bold text-[13px] rounded-xl cursor-pointer hover:bg-[var(--color-line-lt)] transition-colors"
           >
-            Maybe Later
+            Sign Out
           </button>
         </div>
       </div>

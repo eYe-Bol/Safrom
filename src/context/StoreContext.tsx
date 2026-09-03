@@ -22,6 +22,7 @@ export type StoreContextType = {
   isActive: boolean;
   scale: string;
   setScale: (scale: string) => void;
+  branchLimit: number;
   branchProfiles: Record<string, string>;
   branchBusinessTypes: Record<string, string>;
   refreshBranchProfiles: () => Promise<void>;
@@ -44,6 +45,7 @@ type UserProfile = {
   is_active: boolean | null;
   owner_id: string | null;
   scale: string | null;
+  branch_limit?: number | null;
 };
 
 type OwnerProfile = {
@@ -54,6 +56,7 @@ type OwnerProfile = {
   subscription_status: string | null;
   subscription_end_date: string | null;
   scale: string | null;
+  branch_limit?: number | null;
 };
 
 type BranchProfileRow = {
@@ -79,6 +82,7 @@ const StoreContext = createContext<StoreContextType>({
   isActive: true,
   scale: 'single',
   setScale: () => {},
+  branchLimit: 1,
   branchProfiles: {},
   branchBusinessTypes: {},
   refreshBranchProfiles: async () => {},
@@ -98,6 +102,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     subscriptionPlan: null,
     isActive: true,
     scale: 'single',
+    branchLimit: 1,
     branchProfiles: {},
     branchBusinessTypes: {},
   });
@@ -167,7 +172,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           storeId = typedProfile.owner_id;
           const { data: ownerProfile } = await supabase
             .from('users')
-            .select('store_name, business_type, created_at, subscription_plan, subscription_status, subscription_end_date, scale')
+            .select('store_name, business_type, created_at, subscription_plan, subscription_status, subscription_end_date, scale, branch_limit')
             .eq('id', typedProfile.owner_id)
             .single();
 
@@ -216,6 +221,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
+        const finalBranchLimit = typedProfile.role === 'employee'
+          ? (typedProfile.branch_limit || 1)
+          : (typedProfile.branch_limit || (scale === 'multi' ? 3 : 1));
+
         const { nameMap, typeMap } = await fetchBranchProfiles(storeId);
 
         // Always ensure Main Branch has default values if not explicitly set in branch_profiles
@@ -237,6 +246,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           subscriptionPlan,
           isActive,
           scale,
+          branchLimit: finalBranchLimit,
           branchProfiles: nameMap,
           branchBusinessTypes: typeMap,
         });
