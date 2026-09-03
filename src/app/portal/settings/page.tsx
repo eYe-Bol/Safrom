@@ -309,16 +309,15 @@ export default function SettingsPage() {
           name: userData?.store_name,
         }),
       });
-      const data = await res.json() as { url?: string; error?: string; details?: unknown };
+      const data = await res.json() as { url?: string; error?: string };
       if (data.url) {
         window.location.href = data.url;
       } else {
-        const errorMessage = data.details ? JSON.stringify(data.details) : data.error;
-        fire('Checkout error: ' + errorMessage);
+        fire(data.error ? `Checkout error: ${data.error}` : 'Unable to proceed to payment. Please try again.');
         setCheckingOutPlan(null);
       }
     } catch {
-      fire('Failed to start checkout');
+      fire('Failed to start checkout. Please try again.');
       setCheckingOutPlan(null);
     }
   };

@@ -162,11 +162,11 @@ export default function BillingPage() {
           name: userData.store_name || 'SFS User',
         }),
       });
-      const data = await res.json() as { url?: string; error?: string; details?: unknown };
+      const data = await res.json() as { url?: string; error?: string };
       if (data.url) {
         window.location.href = data.url;
       } else {
-        fire('Checkout error: ' + (data.details ? JSON.stringify(data.details) : data.error));
+        fire(data.error ? `Checkout error: ${data.error}` : 'Unable to proceed to payment. Please try again.');
         setCheckingOut(false);
       }
     } catch {
