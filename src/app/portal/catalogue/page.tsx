@@ -7,6 +7,7 @@ import { useStore } from '@/context/StoreContext';
 import { fmt } from '@/utils/format';
 import ProperCaseInput from '@/components/ProperCaseInput';
 import * as XLSX from 'xlsx';
+import { autoDeduplicateInventory } from '@/utils/dedup';
 
 type Product = {
   id: string;
@@ -98,7 +99,13 @@ export default function CataloguePage() {
     const supabase = createClient();
     const curBranch = branchName || 'Main Branch';
 
-    // 1. Fetch current branch inventory & suppliers
+    // 1. Auto-deduplicate any existing duplicates in database before display
+    const cleanedCount = await autoDeduplicateInventory(supabase, storeId, curBranch);
+    if (cleanedCount > 0) {
+      fire(`✓ Auto-cleaned & merged ${cleanedCount} duplicate product ${cleanedCount === 1 ? 'entry' : 'entries'}!`);
+    }
+
+    // 2. Fetch current branch inventory & suppliers
     const [{ data: prods }, { data: sups }, { data: branchData }, { data: allPending }] = await Promise.all([
       supabase.from('inventory').select('*').eq('user_id', storeId).eq('branch_name', curBranch).order('name'),
       supabase.from('suppliers').select('name').eq('user_id', storeId).eq('branch_name', curBranch),

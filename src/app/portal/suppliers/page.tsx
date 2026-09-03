@@ -5,6 +5,7 @@ import { Topbar } from '@/components/Topbar';
 import { createClient } from '@/utils/supabase/client';
 import { useStore } from '@/context/StoreContext';
 import ProperCaseInput from '@/components/ProperCaseInput';
+import { autoDeduplicateSuppliers } from '@/utils/dedup';
 
 type Supplier = {
   id: string;
@@ -38,7 +39,15 @@ export default function SuppliersPage() {
   const fetchSuppliers = async () => {
     if (!storeId) return;
     const supabase = createClient();
-    const { data, error } = await supabase.from('suppliers').select('*').eq('user_id', storeId).eq('branch_name', branchName || 'Main Branch').order('name', { ascending: true });
+    const curBranch = branchName || 'Main Branch';
+
+    // Auto-clean any pre-existing duplicate suppliers
+    const cleaned = await autoDeduplicateSuppliers(supabase, storeId, curBranch);
+    if (cleaned > 0) {
+      fire(`✓ Auto-cleaned ${cleaned} duplicate supplier ${cleaned === 1 ? 'entry' : 'entries'}!`);
+    }
+
+    const { data, error } = await supabase.from('suppliers').select('*').eq('user_id', storeId).eq('branch_name', curBranch).order('name', { ascending: true });
     if (!error && data) setSuppliers(data as Supplier[]);
     setLoading(false);
   };
