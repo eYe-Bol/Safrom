@@ -158,11 +158,16 @@ export default function SettingsPage() {
       }
     } else {
       // Multi-branch: update specific active branch profile (e.g. Branch 2, Branch 3)
+      const isMultiStorePlan = userData?.subscription_plan === 'store' || userData?.subscription_plan === 'MULTI_STORE' || userData?.subscription_plan?.toLowerCase().includes('store');
+      const finalBizType = (!isMultiStorePlan && activeBranchKey !== 'Main Branch')
+        ? (userData?.business_type || 'retail_store')
+        : businessType;
+
       const payload = {
         owner_id: user.id,
         branch_name: activeBranchKey,
         branch_display_name: storeName,
-        business_type: businessType,
+        business_type: finalBizType,
         branch_phone: storePhone,
         branch_email: storeEmail,
       };
@@ -184,6 +189,7 @@ export default function SettingsPage() {
 
   const isStarterPaid = userData?.subscription_plan === '999' || userData?.subscription_plan === 'basic' || userData?.subscription_plan === 'starter';
   const isGrowthPaid = userData?.subscription_plan === '1999' || userData?.subscription_plan === '1499' || userData?.subscription_plan === 'pro' || userData?.subscription_plan === 'growth' || userData?.subscription_plan?.includes('branch') || userData?.subscription_plan?.includes('store');
+  const isMultiStorePlan = userData?.subscription_plan === 'store' || userData?.subscription_plan === 'MULTI_STORE' || userData?.subscription_plan?.toLowerCase().includes('store');
 
   // ── Smart outlet detection ────────────────────────────────────────────────────
   type BranchProfileRow = { branch_name: string; business_type: string | null; branch_display_name: string | null };
@@ -452,15 +458,45 @@ export default function SettingsPage() {
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">
                   {scale === 'multi' ? `Branch Category (${activeBranchKey})` : 'Business Type / Category'}
                 </label>
-                <select
-                  value={businessType}
-                  onChange={e => setBusinessType(e.target.value)}
-                  className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none bg-white font-medium text-[var(--color-ink)] cursor-pointer"
-                >
-                  {BUSINESS_TYPES.map(b => (
-                    <option key={b.id} value={b.id}>{b.label}</option>
-                  ))}
-                </select>
+                {scale === 'multi' && activeBranchKey !== 'Main Branch' && !isMultiStorePlan ? (
+                  <div className="p-3 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[13px] font-bold text-[var(--color-ink)]">
+                        {getBusinessTypeLabel(userData?.business_type || 'retail_store')}
+                      </span>
+                      <span className="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full">
+                        🔒 Inherited (Chain Rule)
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[var(--color-muted)] leading-relaxed">
+                      All branches in a Multi-Branch chain share the same business type as your main store. To run diversified ventures (e.g. Chemist + Pub),{' '}
+                      <button
+                        type="button"
+                        onClick={() => openUpgradeModal('store')}
+                        className="text-[var(--color-teal)] underline font-bold cursor-pointer inline"
+                      >
+                        upgrade to Multi-Store Ventures
+                      </button>.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <select
+                      value={businessType}
+                      onChange={e => setBusinessType(e.target.value)}
+                      className="w-full px-3 py-2 border border-[var(--color-teal)] rounded-lg text-[14px] outline-none bg-white font-medium text-[var(--color-ink)] cursor-pointer"
+                    >
+                      {BUSINESS_TYPES.map(b => (
+                        <option key={b.id} value={b.id}>{b.label}</option>
+                      ))}
+                    </select>
+                    {scale === 'multi' && isMultiStorePlan && activeBranchKey !== 'Main Branch' && (
+                      <p className="text-[11px] text-[var(--color-teal)] font-medium mt-1">
+                        🏬 Multi-Store Active: You can set an independent category for this store.
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Store WhatsApp Number</label>
@@ -596,14 +632,27 @@ export default function SettingsPage() {
                         {bName}
                       </div>
                     </div>
-                    <div className="mt-3 pt-2 border-t border-[var(--color-line-lt)] flex items-center justify-between">
+                    <div className="mt-3 pt-2 border-t border-[var(--color-line-lt)] flex items-center justify-between flex-wrap gap-1">
                       <span className="text-[11px] font-bold text-[var(--color-slate)]">
                         {getBusinessTypeLabel(bType)}
+                      </span>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded uppercase ${bKey === 'Main Branch' ? 'bg-teal-50 text-teal-700' : isMultiStorePlan ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'}`}>
+                        {bKey === 'Main Branch' ? 'Primary' : isMultiStorePlan ? '🏬 Venture' : '🏢 Branch'}
                       </span>
                     </div>
                   </div>
                 );
               })}
+            </div>
+
+            <div className="bg-[var(--color-canvas)] p-3.5 rounded-xl border border-[var(--color-line-lt)] text-[12px] text-[var(--color-muted)] leading-relaxed mt-3 flex flex-col gap-1.5">
+              <strong className="text-[var(--color-slate)]">⚖️ Multi-Branch vs Multi-Store Policy:</strong>
+              <div>
+                • <strong className="text-[var(--color-ink)]">Multi-Branch Chains (KES 6,000/yr per extra branch):</strong> All outlets share identical business types (e.g. all Chemist or all Retail), operate under your primary parent brand, and synchronize product catalogues.
+              </div>
+              <div>
+                • <strong className="text-[var(--color-ink)]">Multi-Store Ventures (KES 8,988/yr per extra store):</strong> Outlets can operate different business types (e.g. Chemist + Pub), feature independent brand names on receipts, and maintain isolated product catalogues.
+              </div>
             </div>
           </div>
         )}

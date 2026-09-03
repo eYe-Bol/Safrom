@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import { useStore } from '@/context/StoreContext';
@@ -81,6 +81,7 @@ export default function StaffPage() {
 
   const canAccess999 = isTrial || subscriptionPlan === '999' || subscriptionPlan === '1999' || subscriptionPlan === '1499' || subscriptionPlan === 'pro' || subscriptionPlan === 'growth' || subscriptionPlan?.includes('branch') || subscriptionPlan?.includes('store');
   const canAccess1999 = isTrial || subscriptionPlan === '1999' || subscriptionPlan === '1499' || subscriptionPlan === 'pro' || subscriptionPlan === 'growth' || subscriptionPlan?.includes('branch') || subscriptionPlan?.includes('store');
+  const isMultiStorePlan = isTrial || subscriptionPlan === 'store' || subscriptionPlan === 'MULTI_STORE' || subscriptionPlan?.toLowerCase().includes('store');
 
   const effectiveBranchLimit = scale === 'multi' ? Math.max(2, branchLimit || 3) : 1;
   const ICONS = ['🏬', '🏢', '🛒', '🏭', '🏥', '🍻', '🛍️', '📦', '📍', '🏪'];
@@ -95,73 +96,65 @@ export default function StaffPage() {
     };
   });
 
-  const fetchStaff = async () => {
+  const fetchStaff = useCallback(async () => {
     if (!storeId) return;
+    setLoading(true);
     const supabase = createClient();
     const { data } = await supabase
       .from('users')
-      .select('id, full_name, email, branch_name, staff_role, is_active')
+      .select('id, full_name, email, role, staff_role, branch_name, is_active, created_at')
       .eq('owner_id', storeId)
-      .eq('role', 'employee');
-    setStaff(data || []);
+      .order('created_at', { ascending: false });
+
+    if (data) setStaff(data as unknown as StaffMember[]);
     setLoading(false);
-  };
-
-  const fetchBranchProfiles = async () => {
-    if (!storeId) return;
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('branch_profiles')
-      .select('*')
-      .eq('owner_id', storeId);
-
-    const map: Record<string, BranchProfile> = {};
-    (data as BranchProfile[] | null || []).forEach(bp => {
-      map[bp.branch_name] = bp;
-    });
-
-    // Ensure Main Branch always defaults to current storeName and businessType
-    if (!map['Main Branch'] || scale === 'single') {
-      map['Main Branch'] = {
-        branch_name: 'Main Branch',
-        branch_display_name: storeName || 'Main Branch',
-        branch_phone: map['Main Branch']?.branch_phone || '',
-        branch_email: map['Main Branch']?.branch_email || '',
-        branch_address: map['Main Branch']?.branch_address || '',
-        business_type: businessType || map['Main Branch']?.business_type || 'retail_store',
-      };
-    }
-    setBranchProfiles(map);
-  };
+  }, [storeId]);
 
   useEffect(() => {
-    if (storeId) {
-      fetchStaff();
-      fetchBranchProfiles();
-    }
-  }, [storeId, storeName, businessType]);
+    fetchStaff();
+    const loadProfiles = async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('branch_profiles')
+        .select('*')
+        .eq('owner_id', storeId);
+      if (data) {
+        const map: Record<string, BranchProfile> = {};
+        (data as any[]).forEach((p: any) => { map[p.branch_name] = p; });
+        setBranchProfiles(map);
+      }
+    };
+    if (storeId) loadProfiles();
+  }, [storeId, fetchStaff]);
 
   const openModal = (branch: string) => {
     setForm({ full_name: '', email: '', password: '', staff_role: 'Sales Staff' });
-    setError('');
-    setSuccess('');
     setModal({ open: true, branch });
   };
 
   const openEditModal = (member: StaffMember) => {
-    setForm({ full_name: member.full_name, email: member.email, password: '', staff_role: member.staff_role });
-    setError('');
-    setSuccess('');
+    setForm({
+      full_name: member.full_name,
+      email: member.email,
+      password: '',
+      staff_role: member.staff_role || 'Sales Staff',
+    });
     setEditModal({ open: true, staffId: member.id });
   };
 
   const openBranchModal = (branch: string) => {
     const existing = branchProfiles[branch];
-    setBranchForm(existing || {
-      ...BLANK_PROFILE,
+    const defaultType = branch === 'Main Branch'
+      ? (businessType || 'retail_store')
+      : (isMultiStorePlan ? (existing?.business_type || 'retail_store') : (businessType || 'retail_store'));
+
+    setBranchForm({
       branch_name: branch,
-      branch_display_name: branch === 'Main Branch' ? (storeName || branch) : branch,
-      business_type: branch === 'Main Branch' ? (businessType || 'retail_store') : 'retail_store',
+      branch_display_name: existing?.branch_display_name || (branch === 'Main Branch' ? (storeName || branch) : branch),
+      branch_phone: existing?.branch_phone || '',
+      branch_email: existing?.branch_email || '',
+      branch_address: existing?.branch_address || '',
+      business_type: defaultType,
     });
     setBranchModal({ open: true, branch });
   };
@@ -237,6 +230,10 @@ export default function StaffPage() {
     setSavingBranch(true);
     const supabase = createClient();
 
+    const finalBizType = (!isMultiStorePlan && branchModal.branch !== 'Main Branch')
+      ? (businessType || 'retail_store')
+      : (branchForm.business_type || 'retail_store');
+
     const payload = {
       owner_id: storeId,
       branch_name: branchModal.branch,
@@ -244,7 +241,7 @@ export default function StaffPage() {
       branch_phone: branchForm.branch_phone,
       branch_email: branchForm.branch_email,
       branch_address: branchForm.branch_address,
-      business_type: branchForm.business_type || 'retail_store',
+      business_type: finalBizType,
     };
 
     // 1. Save to branch_profiles
@@ -271,7 +268,7 @@ export default function StaffPage() {
     }
 
     // Update local state
-    setBranchProfiles(prev => ({ ...prev, [branchModal.branch]: { ...branchForm, branch_name: branchModal.branch, business_type: payload.business_type } }));
+    setBranchProfiles(prev => ({ ...prev, [branchModal.branch]: { ...branchForm, branch_name: branchModal.branch, business_type: finalBizType } }));
     await refreshBranchProfiles();
     setSavingBranch(false);
     fire(`✅ ${branchModal.branch} profile saved and synchronized!`);
@@ -372,13 +369,18 @@ export default function StaffPage() {
                   </div>
                   <div>
                     <h2 className="font-serif text-[15px] font-bold text-[var(--color-ink)]">{displayName}</h2>
-                    <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       {displayName !== branch.key && (
                         <span className="text-[10px] text-[var(--color-muted)] font-medium">{branch.key} ·</span>
                       )}
                       <span className="text-[10px] font-bold text-[var(--color-teal)] bg-[var(--color-teal-bg)] px-1.5 py-0.2 rounded">
                         {getBusinessTypeLabel(branchBizType)}
                       </span>
+                      {branch.key !== 'Main Branch' && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider ${isMultiStorePlan ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-slate-100 text-slate-700 border border-slate-200'}`}>
+                          {isMultiStorePlan ? '🏬 Store Venture' : '🏢 Chain Branch'}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -409,59 +411,83 @@ export default function StaffPage() {
                 ))}
               </div>
 
-              {/* Staff List */}
+              {/* Staff List for this branch */}
               <div className="flex-1 space-y-2 mb-4">
-                {branchStaff.map(member => (
-                  <div key={member.id} className={`p-2.5 rounded-lg border ${member.is_active ? 'bg-[var(--color-canvas)] border-[var(--color-line-lt)]' : 'bg-red-50 border-red-100 opacity-70'} flex flex-col`}>
-                    <div className="flex justify-between items-start mb-0.5">
-                      <div className="text-[13px] font-bold text-[var(--color-ink)] truncate">{member.full_name}</div>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1 shrink-0 ${member.is_active ? 'bg-[var(--color-emerald-bg)] text-[var(--color-emerald)]' : 'bg-red-100 text-red-500'}`}>
-                        {member.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-[var(--color-muted)] truncate">{member.email}</div>
-                    {member.staff_role && (
-                      <div className="text-[10px] font-semibold text-[var(--color-teal)] mt-0.5">👤 {member.staff_role}</div>
-                    )}
-                    <div className="flex items-center gap-1 mt-2 border-t border-[var(--color-line-lt)] pt-2">
-                      <button onClick={() => openEditModal(member)} className="flex-1 py-1 rounded-md text-[11px] font-bold text-[var(--color-teal)] hover:bg-[var(--color-teal-bg)] transition-colors">✏️ Edit</button>
-                      <button onClick={() => handleToggleActive(member.id, member.is_active)} className="flex-1 py-1 rounded-md text-[11px] font-bold text-[var(--color-slate)] hover:bg-gray-200 transition-colors">{member.is_active ? '⏸ Pause' : '▶️ Resume'}</button>
-                      <button onClick={() => openDeleteModal(member)} className="flex-1 py-1 rounded-md text-[11px] font-bold text-red-500 hover:bg-red-50 transition-colors">🗑 Delete</button>
-                    </div>
+                {branchStaff.length === 0 ? (
+                  <div className="text-[12px] text-[var(--color-muted)] py-4 text-center bg-[var(--color-canvas)] rounded-lg border border-dashed border-[var(--color-line)]">
+                    No staff assigned to this outlet
                   </div>
-                ))}
-                {branchStaff.length === 0 && (
-                  <div className="text-[12px] text-[var(--color-muted)] text-center py-4 border border-dashed border-[var(--color-line)] rounded-lg">
-                    No staff assigned
-                  </div>
+                ) : (
+                  branchStaff.map(member => (
+                    <div key={member.id} className="flex items-center justify-between p-2.5 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line-lt)]">
+                      <div className="min-w-0 pr-2">
+                        <div className="text-[13px] font-bold text-[var(--color-ink)] truncate flex items-center gap-1.5">
+                          {member.full_name}
+                          {!member.is_active && (
+                            <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-bold">Suspended</span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-[var(--color-muted)] truncate">{member.email} · <span className="font-semibold text-[var(--color-slate)]">{member.staff_role || 'Sales Staff'}</span></div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => openEditModal(member)}
+                          className="p-1.5 text-[var(--color-muted)] hover:text-[var(--color-teal)] hover:bg-white rounded transition-colors"
+                          title="Edit role or reset password"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => openDeleteModal(member)}
+                          className="p-1.5 text-[var(--color-muted)] hover:text-[var(--color-red)] hover:bg-white rounded transition-colors"
+                          title="Remove Staff"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
 
-              {/* Add Button */}
-              <button
-                disabled={!hasAccess || branchStaff.length >= branch.maxSlots}
-                onClick={() => openModal(branch.key)}
-                className="mt-auto w-full py-2.5 rounded-lg border-2 border-dashed border-[var(--color-teal)] text-[var(--color-teal)] font-bold text-[13px] hover:bg-[var(--color-teal-bg)] disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
-              >
-                + Add Staff
-              </button>
+              {/* Add Staff Button for this branch */}
+              {hasAccess ? (
+                <button
+                  disabled={branchStaff.length >= branch.maxSlots}
+                  onClick={() => openModal(branch.key)}
+                  className="w-full py-2.5 bg-white border border-[var(--color-teal)] text-[var(--color-teal)] hover:bg-[var(--color-teal-bg)] font-bold text-[13px] rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                >
+                  <span>+</span> Add {branch.key === 'Main Branch' ? 'Main' : ''} Staff
+                </button>
+              ) : (
+                <Link
+                  href="/portal/settings"
+                  className="w-full py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] text-[var(--color-slate)] font-bold text-[12px] rounded-xl text-center hover:bg-[var(--color-line-lt)] transition-colors block"
+                >
+                  Upgrade to Unlock
+                </Link>
+              )}
             </div>
           );
         })}
 
-        {/* Add Another Outlet Expansion Card */}
+        {/* Dynamic "+ Add Another Outlet" expansion card */}
         {scale === 'multi' && effectiveBranchLimit < 10 && (
-          <div className="bg-white/60 border-2 border-dashed border-[var(--color-line)] rounded-xl p-5 flex flex-col items-center justify-center text-center hover:border-[var(--color-teal)] transition-colors min-h-[240px]">
-            <div className="text-[36px] mb-2">➕</div>
-            <h3 className="font-serif text-[16px] font-bold text-[var(--color-ink)] mb-1">Add Another Outlet</h3>
-            <p className="text-[12px] text-[var(--color-muted)] mb-4 max-w-[220px]">
-              Expand your business with an extra branch (+KES 6,000/yr) or store (+KES 8,988/yr)
-            </p>
+          <div className="bg-[var(--color-canvas)]/40 rounded-xl p-5 border-2 border-dashed border-[var(--color-line)] flex flex-col items-center justify-center text-center gap-3 min-h-[220px]">
+            <div className="w-12 h-12 rounded-full bg-[var(--color-canvas)] border border-[var(--color-line)] flex items-center justify-center text-[22px]">
+              ➕
+            </div>
+            <div>
+              <div className="font-serif text-[15px] font-bold text-[var(--color-ink)]">Add Another Outlet</div>
+              <p className="text-[12px] text-[var(--color-muted)] max-w-[240px] mt-1">
+                Expand your business with another synchronized branch or store
+              </p>
+            </div>
             <Link
               href="/portal/settings"
-              className="px-4 py-2 bg-[var(--color-teal)] text-white font-bold text-[12px] rounded-lg hover:opacity-90 shadow-sm"
+              className="px-4 py-2 bg-[var(--color-teal)] text-white font-bold text-[12px] rounded-xl hover:opacity-90 transition-opacity shadow-sm"
             >
-              Upgrade & Add Outlet
+              Add Outlet ({effectiveBranchLimit + 1} of 10)
             </Link>
           </div>
         )}
@@ -473,78 +499,83 @@ export default function StaffPage() {
           <div className="bg-white rounded-2xl p-6 w-full max-w-[420px] shadow-[0_24px_64px_rgba(0,0,0,0.2)]" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-5">
               <div>
-                <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)]">Add Staff Member</h3>
-                <p className="text-[12px] text-[var(--color-muted)] mt-0.5">Assigning to: <strong>{modal.branch}</strong></p>
+                <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)]">Add Staff ({modal.branch})</h3>
+                <p className="text-[12px] text-[var(--color-muted)] mt-0.5">Create a login for your employee</p>
               </div>
               <button onClick={() => setModal({ open: false, branch: '' })} className="text-[20px] text-[var(--color-muted)] hover:text-[var(--color-ink)]">&times;</button>
             </div>
 
-            {error && <div className="mb-4 p-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-[13px] font-semibold">{error}</div>}
-            {success && <div className="mb-4 p-3 bg-[var(--color-teal-bg)] text-[var(--color-teal)] border border-[var(--color-teal)]/20 rounded-xl text-[13px] font-semibold">{success}</div>}
+            {error && <div className="mb-4 p-3 rounded-xl bg-red-50 text-red-700 text-[12px] font-semibold">{error}</div>}
+            {success && <div className="mb-4 p-3 rounded-xl bg-emerald-50 text-emerald-800 text-[12px] font-semibold">{success}</div>}
 
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Full Name</label>
-                <ProperCaseInput required value={form.full_name} onChange={v => setForm({...form, full_name: v})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="John Doe" />
+                <ProperCaseInput value={form.full_name} onChange={v => setForm({...form, full_name: v})} required className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="e.g. Jane Doe" />
               </div>
               <div>
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Job Role / Position</label>
-                <select value={form.staff_role} onChange={e => setForm({...form, staff_role: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)] cursor-pointer">
-                  {STAFF_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Email Address</label>
+                <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="staff@example.com" />
+              </div>
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Temporary Password</label>
+                <input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} required minLength={6} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="Min 6 characters" />
+              </div>
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Staff Role</label>
+                <select
+                  value={form.staff_role}
+                  onChange={e => setForm({...form, staff_role: e.target.value})}
+                  className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)] cursor-pointer font-medium text-[var(--color-ink)]"
+                >
+                  <option value="Sales Staff">Sales Staff (POS & Sales Entry)</option>
+                  <option value="Manager">Manager (Reports, Inventory & Sales)</option>
                 </select>
-              </div>
-              <div>
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Email (For Login)</label>
-                <input required type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="john@example.com" />
-              </div>
-              <div>
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Password</label>
-                <input required type="password" minLength={6} value={form.password} onChange={e => setForm({...form, password: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="Min 6 characters" />
               </div>
 
               <button disabled={saving} type="submit" className="w-full py-3 mt-2 bg-[var(--color-teal)] text-white font-bold text-[14px] rounded-xl shadow-[0_4px_14px_rgba(20,83,88,0.25)] hover:bg-[#104347] disabled:opacity-50 transition-colors">
-                {saving ? 'Creating Account...' : 'Create Account'}
+                {saving ? 'Creating Account...' : 'Add Staff Account'}
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* Edit Staff Modal */}
+      {/* Edit Staff Role Modal */}
       {editModal.open && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-[var(--color-ink)]/40 backdrop-blur-sm" onClick={() => setEditModal({ open: false, staffId: '' })}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-[420px] shadow-[0_24px_64px_rgba(0,0,0,0.2)]" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-5">
-              <div>
-                <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)]">Edit Staff Member</h3>
-                <p className="text-[12px] text-[var(--color-muted)] mt-0.5">Update profile details</p>
-              </div>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-[400px] shadow-[0_24px_64px_rgba(0,0,0,0.2)]" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)]">Edit Staff Member</h3>
               <button onClick={() => setEditModal({ open: false, staffId: '' })} className="text-[20px] text-[var(--color-muted)] hover:text-[var(--color-ink)]">&times;</button>
             </div>
 
-            {error && <div className="mb-4 p-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-[13px] font-semibold">{error}</div>}
-            {success && <div className="mb-4 p-3 bg-[var(--color-teal-bg)] text-[var(--color-teal)] border border-[var(--color-teal)]/20 rounded-xl text-[13px] font-semibold">{success}</div>}
+            {error && <div className="mb-3 p-2.5 rounded-xl bg-red-50 text-red-700 text-[12px] font-semibold">{error}</div>}
+            {success && <div className="mb-3 p-2.5 rounded-xl bg-emerald-50 text-emerald-800 text-[12px] font-semibold">{success}</div>}
 
-            {/* Read-only profile info */}
-            <div className="bg-[var(--color-canvas)] rounded-xl p-3 mb-4 border border-[var(--color-line-lt)]">
-              <div className="text-[11px] font-bold text-[var(--color-muted)] uppercase tracking-wider mb-1">Login Email</div>
-              <div className="text-[13px] font-semibold text-[var(--color-ink)]">{form.email}</div>
-            </div>
-
-            <form onSubmit={handleUpdate} className="space-y-4">
+            <form onSubmit={handleUpdate} className="space-y-3.5">
               <div>
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Full Name</label>
-                <ProperCaseInput required value={form.full_name} onChange={v => setForm({...form, full_name: v})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" />
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Full Name</label>
+                <ProperCaseInput value={form.full_name} onChange={v => setForm({...form, full_name: v})} required className="w-full px-3 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[13px] outline-none" />
               </div>
               <div>
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Job Role / Position</label>
-                <select value={form.staff_role} onChange={e => setForm({...form, staff_role: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)] cursor-pointer">
-                  {STAFF_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Email Address</label>
+                <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required className="w-full px-3 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[13px] outline-none" />
+              </div>
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Role Permission</label>
+                <select
+                  value={form.staff_role}
+                  onChange={e => setForm({...form, staff_role: e.target.value})}
+                  className="w-full px-3 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[13px] outline-none font-medium"
+                >
+                  <option value="Sales Staff">Sales Staff (POS & Sales Entry)</option>
+                  <option value="Manager">Manager (Reports, Inventory & Sales)</option>
                 </select>
               </div>
               <div>
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">New Password <span className="font-normal text-[var(--color-muted)]">(leave blank to keep current)</span></label>
-                <input type="password" minLength={6} value={form.password} onChange={e => setForm({...form, password: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="Min 6 characters" />
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Reset Password <span className="text-[10px] text-[var(--color-muted)] font-normal">(optional)</span></label>
+                <input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} minLength={6} placeholder="Leave blank to keep current" className="w-full px-3 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[13px] outline-none" />
               </div>
 
               <button disabled={saving} type="submit" className="w-full py-3 mt-2 bg-[var(--color-teal)] text-white font-bold text-[14px] rounded-xl shadow-[0_4px_14px_rgba(20,83,88,0.25)] hover:bg-[#104347] disabled:opacity-50 transition-colors">
@@ -561,20 +592,91 @@ export default function StaffPage() {
           <div className="bg-white rounded-2xl p-6 w-full max-w-[440px] shadow-[0_24px_64px_rgba(0,0,0,0.2)]" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-5">
               <div>
-                <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)]">{branchModal.branch} Profile</h3>
-                <p className="text-[12px] text-[var(--color-muted)] mt-0.5">Set contact info for this branch</p>
+                <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)]">
+                  {branchModal.branch === 'Main Branch'
+                    ? 'Main Store Profile'
+                    : isMultiStorePlan
+                    ? `${branchModal.branch} (Store Venture)`
+                    : `${branchModal.branch} (Chain Branch)`}
+                </h3>
+                <p className="text-[12px] text-[var(--color-muted)] mt-0.5">
+                  {isMultiStorePlan
+                    ? 'Configure independent store branding and category'
+                    : 'Set contact info and location details'}
+                </p>
               </div>
               <button onClick={() => setBranchModal({ open: false, branch: '' })} className="text-[20px] text-[var(--color-muted)] hover:text-[var(--color-ink)]">&times;</button>
             </div>
 
             <form onSubmit={handleSaveBranchProfile} className="space-y-4">
               <div>
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Display Name</label>
-                <ProperCaseInput value={branchForm.branch_display_name} onChange={v => setBranchForm({...branchForm, branch_display_name: v})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder={branchModal.branch === 'Main Branch' ? storeName || 'Main Branch' : branchModal.branch} />
-                {branchModal.branch === 'Main Branch' && (
-                  <p className="text-[11px] text-[var(--color-muted)] mt-1">Defaults to your store name. Change here to show a custom label.</p>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">
+                  {branchModal.branch === 'Main Branch' 
+                    ? 'Store Name' 
+                    : isMultiStorePlan 
+                    ? 'Venture Brand Name' 
+                    : 'Branch Display Name'}
+                </label>
+                <ProperCaseInput
+                  value={branchForm.branch_display_name}
+                  onChange={v => setBranchForm({...branchForm, branch_display_name: v})}
+                  className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]"
+                  placeholder={branchModal.branch === 'Main Branch' 
+                    ? (storeName || 'Main Branch') 
+                    : isMultiStorePlan 
+                    ? 'e.g. Club Mirage or MedPlus Chemist' 
+                    : `${storeName || 'Main Store'} - ${branchModal.branch}`}
+                />
+                <p className="text-[11px] text-[var(--color-muted)] mt-1">
+                  {branchModal.branch === 'Main Branch'
+                    ? 'Defaults to your registered store name.'
+                    : isMultiStorePlan
+                    ? '🏬 Diversified store ventures can configure their own custom brand name.'
+                    : `🏢 Chain branches operate under your parent brand name (${storeName || 'Main Store'}).`}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">
+                  {isMultiStorePlan ? 'Store Venture Business Type' : 'Branch Business Type'}
+                </label>
+                {!isMultiStorePlan && branchModal.branch !== 'Main Branch' ? (
+                  <div className="p-3 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[13px] font-bold text-[var(--color-ink)]">
+                        {getBusinessTypeLabel(businessType || 'retail_store')}
+                      </span>
+                      <span className="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full">
+                        🔒 Inherited (Chain Rule)
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[var(--color-muted)] leading-relaxed">
+                      All branches in a Multi-Branch chain share the same business type. Want to run different business types (e.g. Pub + Chemist)? Upgrade to{' '}
+                      <Link href="/portal/settings" className="text-[var(--color-teal)] underline font-bold">
+                        Multi-Store Ventures
+                      </Link>.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <select
+                      value={branchForm.business_type || 'retail_store'}
+                      onChange={e => setBranchForm({...branchForm, business_type: e.target.value})}
+                      className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)] cursor-pointer font-medium text-[var(--color-ink)]"
+                    >
+                      {BUSINESS_TYPES.map(b => (
+                        <option key={b.id} value={b.id}>{b.label}</option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-[var(--color-muted)] mt-1">
+                      {isMultiStorePlan
+                        ? '🏬 Multi-Store Active: Each venture can select its own specialized category & catalogue.'
+                        : 'Defines your primary business type.'}
+                    </p>
+                  </>
                 )}
               </div>
+
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Branch Phone</label>
                 <input type="tel" value={branchForm.branch_phone} onChange={e => setBranchForm({...branchForm, branch_phone: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="+254 700 000 000" />
@@ -582,19 +684,6 @@ export default function StaffPage() {
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Branch Email</label>
                 <input type="email" value={branchForm.branch_email} onChange={e => setBranchForm({...branchForm, branch_email: e.target.value})} className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)]" placeholder="branch@example.com" />
-              </div>
-              <div>
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Branch Business Type</label>
-                <select
-                  value={branchForm.business_type || 'retail_store'}
-                  onChange={e => setBranchForm({...branchForm, business_type: e.target.value})}
-                  className="w-full px-3.5 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[14px] outline-none focus:border-[var(--color-teal)] cursor-pointer font-medium text-[var(--color-ink)]"
-                >
-                  {BUSINESS_TYPES.map(b => (
-                    <option key={b.id} value={b.id}>{b.label}</option>
-                  ))}
-                </select>
-                <p className="text-[11px] text-[var(--color-muted)] mt-1">Defines the specific category & purpose of this branch (e.g. Chemist, Pub, Cosmetics).</p>
               </div>
               <div>
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">Branch Address</label>
