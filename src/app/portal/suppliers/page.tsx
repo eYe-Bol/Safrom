@@ -59,6 +59,22 @@ export default function SuppliersPage() {
 
   const save = async () => {
     if (!form.name || !storeId) return;
+
+    const normalizedName = form.name.trim().toLowerCase();
+    if (!editItem) {
+      const existing = suppliers.find(s => s.name.trim().toLowerCase() === normalizedName);
+      if (existing) {
+        fire(`⚠️ Supplier "${existing.name}" is already registered. Duplicate entries are blocked.`);
+        return;
+      }
+    } else {
+      const duplicate = suppliers.find(s => s.id !== editItem.id && s.name.trim().toLowerCase() === normalizedName);
+      if (duplicate) {
+        fire(`⚠️ Another supplier named "${duplicate.name}" already exists.`);
+        return;
+      }
+    }
+
     const supabase = createClient();
     const entry = { user_id: storeId, name: form.name, category: form.category, contact_person: form.contact_person, phone: form.phone, email: form.email, terms: form.terms, rating: parseInt(form.rating) || 5, products: form.products, branch_name: branchName || 'Main Branch' };
     let error;

@@ -144,13 +144,35 @@ export default function CataloguePage() {
 
   const save = async () => {
     if (!form.name || !form.sell_price) return;
+
+    const normalizedName = form.name.trim().toLowerCase();
+    const curBranch = branchName || 'Main Branch';
+    const isEmployee = role === 'employee';
+
+    // ─── DUPLICATE DETECTION & BLOCKING ───
+    if (!editItem) {
+      // Adding new product: check if a product with the same name already exists in this branch
+      const existing = products.find(p => p.name.trim().toLowerCase() === normalizedName);
+      if (existing) {
+        fire(`⚠️ "${existing.name}" is already in your catalogue (${existing.category || 'General'}). Duplicate product entries are blocked.`);
+        return;
+      }
+    } else if (!isEmployee) {
+      // Editing existing product: ensure new name doesn't conflict with another existing product
+      const duplicate = products.find(p => p.id !== editItem.id && p.name.trim().toLowerCase() === normalizedName);
+      if (duplicate) {
+        fire(`⚠️ Another product named "${duplicate.name}" already exists in this branch.`);
+        return;
+      }
+    }
+
     setSaving(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !storeId) return;
-
-    const curBranch = branchName || 'Main Branch';
-    const isEmployee = role === 'employee';
+    if (!user || !storeId) {
+      setSaving(false);
+      return;
+    }
 
     if (editItem) {
       if (isEmployee) {
@@ -340,11 +362,27 @@ export default function CataloguePage() {
         const ws = wb.Sheets[wb.SheetNames[0]];
         const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
 
+        const existingBranchNames = new Set(products.map(p => p.name.trim().toLowerCase()));
+        const seenInSheet = new Set<string>();
+
         const rows: ImportRow[] = raw.map((r) => {
           const errors: string[] = [];
           const name = String(r['name'] || r['Name'] || r['PRODUCT'] || r['product'] || '').trim();
           const sell_price = parseFloat(String(r['sell_price'] || r['Sell Price'] || r['SELL_PRICE'] || r['price'] || 0));
-          if (!name) errors.push('Name required');
+          
+          if (!name) {
+            errors.push('Name required');
+          } else {
+            const lowerName = name.toLowerCase();
+            if (existingBranchNames.has(lowerName)) {
+              errors.push('Already exists in catalogue');
+            } else if (seenInSheet.has(lowerName)) {
+              errors.push('Duplicate row in file');
+            } else {
+              seenInSheet.add(lowerName);
+            }
+          }
+
           if (!sell_price || isNaN(sell_price)) errors.push('Sell price required');
           return {
             name,
