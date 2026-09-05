@@ -5,6 +5,10 @@ import { VerifiedSupplier, SupplierConnection } from '@/types/supplier';
 import { WholesaleProduct, DEFAULT_MOCK_CATALOGUES } from '@/types/catalogue';
 import { WholesaleOrder, WholesaleOrderItem, OrderPaymentMethod } from '@/types/order';
 import { useStore } from '@/context/StoreContext';
+import { createClient } from '@/utils/supabase/client';
+
+const isUUID = (str?: string | null) =>
+  !!str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
 interface Props {
   isOpen: boolean;
@@ -122,7 +126,7 @@ export default function PurchaseOrderModal({
   };
 
   // Submit PO
-  const handleTransmitPO = () => {
+  const handleTransmitPO = async () => {
     if (!supplier) return;
     if (lineItems.length === 0) {
       alert('Please add at least one product to your order.');
@@ -136,9 +140,20 @@ export default function PurchaseOrderModal({
     setSubmitting(true);
     const orderId = 'PO-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.floor(1000 + Math.random() * 9000);
 
+    let effectiveStoreId = storeId || 'store_current';
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.id && isUUID(user.id)) {
+        effectiveStoreId = user.id;
+      }
+    } catch (e) {
+      // ignore auth check error in offline mode
+    }
+
     const newOrder: WholesaleOrder = {
       id: orderId,
-      retailer_store_id: storeId || 'store_current',
+      retailer_store_id: effectiveStoreId,
       retailer_store_name: storeName || 'My Retail Store',
       retailer_phone: '0712 345 678',
       supplier_id: supplier.id,
@@ -161,20 +176,49 @@ export default function PurchaseOrderModal({
       updated_at: new Date().toISOString(),
     };
 
-    // Save to shared orders storage
+    // Save to shared orders storage (offline fallback)
     try {
       const ordersKey = 'sfs_wholesale_orders';
       const existing = JSON.parse(localStorage.getItem(ordersKey) || '[]');
       localStorage.setItem(ordersKey, JSON.stringify([newOrder, ...existing]));
     } catch (e) {
-      console.error('Error saving order:', e);
+      console.error('Error saving order to localStorage:', e);
     }
 
-    setTimeout(() => {
-      setSubmitting(false);
-      setOrderComplete(newOrder);
-      if (onOrderCreated) onOrderCreated(newOrder);
-    }, 500);
+    // Persist to Supabase wholesale_orders if valid UUIDs exist
+    if (isUUID(effectiveStoreId) && isUUID(supplier.id)) {
+      try {
+        const supabase = createClient();
+        await supabase.from('wholesale_orders').insert({
+          id: newOrder.id,
+          retailer_store_id: effectiveStoreId,
+          retailer_store_name: newOrder.retailer_store_name,
+          retailer_phone: newOrder.retailer_phone,
+          supplier_id: supplier.id,
+          supplier_name: newOrder.supplier_name,
+          corridor: newOrder.corridor,
+          delivery_landmark: newOrder.delivery_landmark,
+          delivery_day: newOrder.delivery_day,
+          items: newOrder.items,
+          subtotal: newOrder.subtotal,
+          surcharge: newOrder.surcharge,
+          total_amount: newOrder.total_amount,
+          payment_method: newOrder.payment_method,
+          payment_ref: newOrder.payment_ref,
+          delivery_handover_pin: newOrder.delivery_handover_pin,
+          payment_status: newOrder.payment_status,
+          status: newOrder.status,
+          grn_signed: newOrder.grn_signed,
+          notes: newOrder.notes,
+        });
+      } catch (err) {
+        console.warn('Supabase wholesale order insert fallback to local:', err);
+      }
+    }
+
+    setSubmitting(false);
+    setOrderComplete(newOrder);
+    if (onOrderCreated) onOrderCreated(newOrder);
   };
 
   // Generate PDF

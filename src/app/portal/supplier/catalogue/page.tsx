@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Topbar } from '@/components/Topbar';
 import { useStore } from '@/context/StoreContext';
+import { createClient } from '@/utils/supabase/client';
 import ProperCaseInput from '@/components/ProperCaseInput';
 import { WholesaleProduct, DEFAULT_MOCK_CATALOGUES } from '@/types/catalogue';
 
@@ -52,24 +53,49 @@ export default function SupplierCataloguePage() {
     setTimeout(() => setToast(''), 3500);
   };
 
-  // Load products (LocalStorage or Mock fallback)
+  // Load products: Query Supabase wholesale_products first, fallback to cache
   useEffect(() => {
-    const key = `sfs_wholesale_catalogue_${storeId || 'default'}`;
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      try {
-        setProducts(JSON.parse(saved));
-        return;
-      } catch (e) {
-        console.error('Error parsing catalogue:', e);
+    const fetchCatalogue = async () => {
+      if (storeId) {
+        try {
+          const supabase = createClient();
+          const { data, error } = await supabase
+            .from('wholesale_products')
+            .select('*')
+            .eq('supplier_id', storeId)
+            .order('created_at', { ascending: false });
+
+          if (!error && data && data.length > 0) {
+            setProducts(data as WholesaleProduct[]);
+            localStorage.setItem(`sfs_wholesale_catalogue_${storeId}`, JSON.stringify(data));
+            return;
+          }
+        } catch (e) {
+          console.warn('Using local fallback for wholesale catalogue:', e);
+        }
       }
-    }
-    // Default seed
-    const defaultList = [
-      ...DEFAULT_MOCK_CATALOGUES['sup_eabl_thika_rd'],
-      ...DEFAULT_MOCK_CATALOGUES['sup_brookside_kapa_fmcg']
-    ];
-    setProducts(defaultList);
+
+      // Local cache fallback
+      const key = `sfs_wholesale_catalogue_${storeId || 'default'}`;
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        try {
+          setProducts(JSON.parse(saved));
+          return;
+        } catch (e) {
+          console.error('Error parsing catalogue cache:', e);
+        }
+      }
+
+      // Default initial mock seed
+      const defaultList = [
+        ...DEFAULT_MOCK_CATALOGUES['sup_eabl_thika_rd'],
+        ...DEFAULT_MOCK_CATALOGUES['sup_brookside_kapa_fmcg']
+      ];
+      setProducts(defaultList);
+    };
+
+    fetchCatalogue();
   }, [storeId]);
 
   // Persist helper
@@ -104,29 +130,69 @@ export default function SupplierCataloguePage() {
     setModalOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.brand.trim()) {
       fire('⚠️ Product name and brand are required.');
       return;
     }
 
+    const payload = {
+      name: form.name.trim(),
+      brand: form.brand.trim(),
+      category: form.category,
+      pack_size: form.pack_size.trim(),
+      wholesale_price: Number(form.wholesale_price) || 0,
+      rrp: Number(form.rrp) || 0,
+      moq_packs: Number(form.moq_packs) || 1,
+      stock_status: form.stock_status,
+      batch_lot_prefix: form.batch_lot_prefix.trim(),
+      active_deal: form.active_deal?.trim() || null,
+      description: form.description?.trim() || null,
+    };
+
     if (editingProd) {
       const updated = products.map(p =>
         p.id === editingProd.id
-          ? { ...p, ...form, wholesale_price: Number(form.wholesale_price), rrp: Number(form.rrp), moq_packs: Number(form.moq_packs) }
+          ? { ...p, ...payload, active_deal: payload.active_deal || undefined, description: payload.description || undefined }
           : p
       );
       saveProducts(updated);
+
+      // Sync to Supabase
+      if (storeId && editingProd.id && !editingProd.id.startsWith('wp_') && !editingProd.id.startsWith('prod_')) {
+        try {
+          const supabase = createClient();
+          await supabase.from('wholesale_products').update(payload).eq('id', editingProd.id);
+        } catch (err) {
+          console.warn('Supabase update fallback:', err);
+        }
+      }
       fire('✓ Product updated in wholesale catalogue!');
     } else {
+      let createdId = 'wp_' + Math.random().toString(36).slice(2, 9);
+      if (storeId) {
+        try {
+          const supabase = createClient();
+          const { data, error } = await supabase.from('wholesale_products').insert({
+            supplier_id: storeId,
+            ...payload,
+          }).select().single();
+
+          if (!error && data) {
+            createdId = data.id;
+          }
+        } catch (err) {
+          console.warn('Supabase insert fallback:', err);
+        }
+      }
+
       const newProd: WholesaleProduct = {
-        id: 'wp_' + Math.random().toString(36).slice(2, 9),
+        id: createdId,
         supplier_id: storeId || 'sup_current',
-        ...form,
-        wholesale_price: Number(form.wholesale_price),
-        rrp: Number(form.rrp),
-        moq_packs: Number(form.moq_packs),
+        ...payload,
+        active_deal: payload.active_deal || undefined,
+        description: payload.description || undefined,
       };
       saveProducts([newProd, ...products]);
       fire('✓ New wholesale product listed!');
@@ -134,16 +200,34 @@ export default function SupplierCataloguePage() {
     setModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to remove this product from your wholesale catalogue?')) return;
     const updated = products.filter(p => p.id !== id);
     saveProducts(updated);
+
+    if (storeId && !id.startsWith('wp_') && !id.startsWith('prod_')) {
+      try {
+        const supabase = createClient();
+        await supabase.from('wholesale_products').delete().eq('id', id);
+      } catch (err) {
+        console.warn('Supabase delete fallback:', err);
+      }
+    }
     fire('Product removed from catalogue.');
   };
 
-  const toggleStockStatus = (id: string, newStatus: WholesaleProduct['stock_status']) => {
+  const toggleStockStatus = async (id: string, newStatus: WholesaleProduct['stock_status']) => {
     const updated = products.map(p => (p.id === id ? { ...p, stock_status: newStatus } : p));
     saveProducts(updated);
+
+    if (storeId && !id.startsWith('wp_') && !id.startsWith('prod_')) {
+      try {
+        const supabase = createClient();
+        await supabase.from('wholesale_products').update({ stock_status: newStatus }).eq('id', id);
+      } catch (err) {
+        console.warn('Supabase status toggle fallback:', err);
+      }
+    }
     fire(`Stock status updated to ${newStatus.replace('_', ' ')}`);
   };
 

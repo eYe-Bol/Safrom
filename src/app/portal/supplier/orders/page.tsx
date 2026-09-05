@@ -4,6 +4,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { Topbar } from '@/components/Topbar';
 import { useStore } from '@/context/StoreContext';
 import { WholesaleOrder, OrderStatus } from '@/types/order';
+import { createClient } from '@/utils/supabase/client';
+
+const isUUID = (str?: string | null) =>
+  !!str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
 const INITIAL_MOCK_ORDERS: WholesaleOrder[] = [
   {
@@ -95,7 +99,7 @@ const INITIAL_MOCK_ORDERS: WholesaleOrder[] = [
 ];
 
 export default function SupplierOrdersPage() {
-  const { storeName } = useStore();
+  const { storeId, storeName } = useStore();
   const [orders, setOrders] = useState<WholesaleOrder[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [corridorFilter, setCorridorFilter] = useState<string>('all');
@@ -108,31 +112,78 @@ export default function SupplierOrdersPage() {
     setTimeout(() => setToast(''), 3500);
   };
 
-  // Load orders
+  // Load orders: Query Supabase wholesale_orders, falling back to local storage
   useEffect(() => {
-    const key = 'sfs_wholesale_orders';
-    const saved = localStorage.getItem(key);
-    if (saved) {
+    const fetchOrders = async () => {
+      let cloudOrders: WholesaleOrder[] = [];
       try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setOrders(parsed);
-          return;
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        const effectiveSupplierId = (user?.id && isUUID(user.id)) ? user.id : (storeId && isUUID(storeId) ? storeId : null);
+
+        if (effectiveSupplierId) {
+          const { data, error } = await supabase
+            .from('wholesale_orders')
+            .select('*')
+            .eq('supplier_id', effectiveSupplierId)
+            .order('created_at', { ascending: false });
+
+          if (!error && data && data.length > 0) {
+            cloudOrders = data as WholesaleOrder[];
+          }
         }
       } catch (e) {
-        console.error(e);
+        console.warn('Supabase orders fetch fallback:', e);
       }
-    }
-    setOrders(INITIAL_MOCK_ORDERS);
-    localStorage.setItem(key, JSON.stringify(INITIAL_MOCK_ORDERS));
-  }, []);
+
+      // Check local cache
+      const key = 'sfs_wholesale_orders';
+      const saved = localStorage.getItem(key);
+      let localOrders: WholesaleOrder[] = [];
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            localOrders = parsed;
+          }
+        } catch (e) {
+          console.error('Error reading wholesale orders cache:', e);
+        }
+      }
+
+      // Merge cloud and local orders without duplicates by ID
+      if (cloudOrders.length > 0) {
+        const mergedMap = new Map<string, WholesaleOrder>();
+        cloudOrders.forEach(o => mergedMap.set(o.id, o));
+        localOrders.forEach(o => {
+          if (!mergedMap.has(o.id)) {
+            mergedMap.set(o.id, o);
+          }
+        });
+        const merged = Array.from(mergedMap.values());
+        setOrders(merged);
+        localStorage.setItem(key, JSON.stringify(merged));
+        return;
+      }
+
+      if (localOrders.length > 0) {
+        setOrders(localOrders);
+        return;
+      }
+
+      setOrders(INITIAL_MOCK_ORDERS);
+      localStorage.setItem(key, JSON.stringify(INITIAL_MOCK_ORDERS));
+    };
+
+    fetchOrders();
+  }, [storeId]);
 
   const saveOrders = (updated: WholesaleOrder[]) => {
     setOrders(updated);
     localStorage.setItem('sfs_wholesale_orders', JSON.stringify(updated));
   };
 
-  const updateStatus = (orderId: string, newStatus: OrderStatus) => {
+  const updateStatus = async (orderId: string, newStatus: OrderStatus) => {
     const updated = orders.map(o => {
       if (o.id === orderId) {
         return {
@@ -147,6 +198,27 @@ export default function SupplierOrdersPage() {
       return o;
     });
     saveOrders(updated);
+
+    // Sync to Supabase if order exists in cloud
+    try {
+      const targetOrder = updated.find(o => o.id === orderId);
+      if (targetOrder) {
+        const supabase = createClient();
+        await supabase
+          .from('wholesale_orders')
+          .update({
+            status: newStatus,
+            grn_signed: targetOrder.grn_signed,
+            grn_signed_at: targetOrder.grn_signed_at,
+            payment_status: targetOrder.payment_status,
+            updated_at: targetOrder.updated_at,
+          })
+          .eq('id', orderId);
+      }
+    } catch (err) {
+      console.warn('Supabase status update fallback to local:', err);
+    }
+
     fire(`Order ${orderId} marked as ${newStatus.replace('_', ' ').toUpperCase()}`);
   };
 
