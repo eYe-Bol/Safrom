@@ -34,36 +34,36 @@ export default function SupplierDashboardPage() {
 
       <div className="p-3 sm:p-5 max-w-[1200px] mx-auto w-full flex flex-col gap-5">
         {/* Verification Status Banner */}
-        <div className="bg-gradient-to-r from-[#0e3b3e] to-[var(--color-teal)] text-white rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-xs flex items-center justify-center text-[24px]">
+        <div className="bg-gradient-to-r from-[#0e3b3e] to-[var(--color-teal)] text-white rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-3.5">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white/10 backdrop-blur-xs flex items-center justify-center text-[22px] sm:text-[24px] shrink-0">
               🛡️
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="font-serif text-[18px] font-bold">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="font-serif text-[17px] sm:text-[18px] font-bold">
                   {storeName || 'Metro Wholesale Depot'}
                 </h2>
-                <span className="text-[10px] font-bold bg-amber-300 text-amber-950 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                <span className="text-[9px] sm:text-[10px] font-bold bg-amber-300 text-amber-950 px-2 py-0.5 rounded-full uppercase tracking-wider">
                   ✓ Verified Supplier
                 </span>
               </div>
-              <p className="text-[12px] text-white/80 mt-0.5">
+              <p className="text-[11px] sm:text-[12px] text-white/80 mt-0.5">
                 Authorized Manufacturer Agent · Tier-1 Wholesale Distributor · Active on Safrom Registry
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Link
               href="/portal/supplier/catalogue"
-              className="px-4 py-2 bg-white text-[var(--color-teal)] font-bold text-[12px] rounded-xl shadow-sm hover:bg-gray-100 transition-colors cursor-pointer inline-block"
+              className="flex-1 sm:flex-initial text-center px-4 py-2.5 sm:py-2 bg-white text-[var(--color-teal)] font-bold text-[12px] rounded-xl shadow-sm hover:bg-gray-100 transition-colors cursor-pointer"
             >
               Manage Catalogue
             </Link>
             <Link
               href="/portal/supplier/orders"
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-[12px] rounded-xl transition-colors cursor-pointer border border-white/20 inline-block"
+              className="flex-1 sm:flex-initial text-center px-4 py-2.5 sm:py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-[12px] rounded-xl transition-colors cursor-pointer border border-white/20"
             >
               Wholesale Orders
             </Link>
@@ -71,45 +71,45 @@ export default function SupplierDashboardPage() {
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <div className="bg-white p-4 rounded-xl border border-[var(--color-line-lt)] shadow-xs">
-            <div className="text-[11px] font-bold text-[var(--color-muted)] uppercase tracking-wider mb-1">
-              Connected Retail Stores
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+          <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[var(--color-line-lt)] shadow-xs">
+            <div className="text-[10px] sm:text-[11px] font-bold text-[var(--color-muted)] uppercase tracking-wider mb-1">
+              Connected Stores
             </div>
-            <div className="font-serif text-[24px] font-bold text-[var(--color-ink)]">
-              24 <span className="text-[12px] font-sans font-normal text-emerald-600 font-semibold">+3 this week</span>
+            <div className="font-serif text-[20px] sm:text-[24px] font-bold text-[var(--color-ink)]">
+              24 <span className="text-[11px] font-sans font-normal text-emerald-600 font-semibold">+3 wk</span>
             </div>
-            <div className="text-[11px] text-[var(--color-muted)] mt-1">Geo-synced to your corridors</div>
+            <div className="text-[10px] sm:text-[11px] text-[var(--color-muted)] mt-1 truncate">Geo-synced routes</div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-[var(--color-line-lt)] shadow-xs">
-            <div className="text-[11px] font-bold text-[var(--color-muted)] uppercase tracking-wider mb-1">
-              Active Delivery Corridors
+          <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[var(--color-line-lt)] shadow-xs">
+            <div className="text-[10px] sm:text-[11px] font-bold text-[var(--color-muted)] uppercase tracking-wider mb-1">
+              Active Corridors
             </div>
-            <div className="font-serif text-[24px] font-bold text-[var(--color-ink)]">
-              2 <span className="text-[12px] font-sans font-normal text-[var(--color-teal)] font-semibold">Corridors</span>
+            <div className="font-serif text-[20px] sm:text-[24px] font-bold text-[var(--color-ink)]">
+              2 <span className="text-[11px] font-sans font-normal text-[var(--color-teal)] font-semibold">Routes</span>
             </div>
-            <div className="text-[11px] text-[var(--color-muted)] mt-1">Nairobi North & East</div>
+            <div className="text-[10px] sm:text-[11px] text-[var(--color-muted)] mt-1 truncate">North & East</div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-[var(--color-line-lt)] shadow-xs">
-            <div className="text-[11px] font-bold text-[var(--color-muted)] uppercase tracking-wider mb-1">
-              Supplier Reliability Score
+          <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[var(--color-line-lt)] shadow-xs">
+            <div className="text-[10px] sm:text-[11px] font-bold text-[var(--color-muted)] uppercase tracking-wider mb-1">
+              Reliability Score
             </div>
-            <div className="font-serif text-[24px] font-bold text-[var(--color-ink)]">
+            <div className="font-serif text-[20px] sm:text-[24px] font-bold text-[var(--color-ink)]">
               4.9 ★
             </div>
-            <div className="text-[11px] text-[var(--color-muted)] mt-1">Based on 1,420 delivery sign-offs</div>
+            <div className="text-[10px] sm:text-[11px] text-[var(--color-muted)] mt-1 truncate">1,420 sign-offs</div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-[var(--color-line-lt)] shadow-xs">
-            <div className="text-[11px] font-bold text-[var(--color-muted)] uppercase tracking-wider mb-1">
+          <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[var(--color-line-lt)] shadow-xs">
+            <div className="text-[10px] sm:text-[11px] font-bold text-[var(--color-muted)] uppercase tracking-wider mb-1">
               Active Trade Deals
             </div>
-            <div className="font-serif text-[24px] font-bold text-[var(--color-teal)]">
-              1 Deal Active
+            <div className="font-serif text-[20px] sm:text-[24px] font-bold text-[var(--color-teal)]">
+              1 Active
             </div>
-            <div className="text-[11px] text-[var(--color-muted)] mt-1">Buy 25 Crates → 1 Free</div>
+            <div className="text-[10px] sm:text-[11px] text-[var(--color-muted)] mt-1 truncate">Buy 25 → 1 Free</div>
           </div>
         </div>
 
@@ -171,7 +171,7 @@ export default function SupplierDashboardPage() {
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-[var(--color-line-lt)] flex justify-between items-center text-[12px]">
+            <div className="mt-4 pt-3 border-t border-[var(--color-line-lt)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-[12px]">
               <span className="text-[var(--color-muted)]">Outside-Corridor Surcharge: <strong>KES 600 flat</strong></span>
               <button
                 onClick={() => fire('Corridor management settings opening…')}
@@ -209,7 +209,7 @@ export default function SupplierDashboardPage() {
                   { name: 'Eastleigh Central Store', area: '1st Avenue Section 2', corridor: 'Nairobi East', days: 'Mon / Thu', date: '3 days ago' },
                   { name: 'Donholm Family Grocers', area: 'Donholm Phase 5', corridor: 'Nairobi East', days: 'Mon / Thu', date: '1 week ago' },
                 ].map((st, i) => (
-                  <div key={i} className="p-3 rounded-xl bg-[var(--color-canvas)] border border-[var(--color-line-lt)] flex justify-between items-center">
+                  <div key={i} className="p-3 rounded-xl bg-[var(--color-canvas)] border border-[var(--color-line-lt)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <div>
                       <div className="font-bold text-[13px] text-[var(--color-ink)]">
                         {st.name}
@@ -218,7 +218,7 @@ export default function SupplierDashboardPage() {
                         📍 {st.area} · <span className="font-semibold text-[var(--color-slate)]">{st.corridor}</span>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="self-end sm:self-auto text-right">
                       <span className="text-[10px] font-bold bg-white text-[var(--color-teal)] border border-[var(--color-teal)]/20 px-2 py-0.5 rounded-md">
                         {st.days}
                       </span>
@@ -229,7 +229,7 @@ export default function SupplierDashboardPage() {
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-[var(--color-line-lt)] flex justify-between items-center text-[12px]">
+            <div className="mt-4 pt-3 border-t border-[var(--color-line-lt)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-[12px]">
               <span className="text-[var(--color-muted)]">All stores pre-verified for route offloading</span>
               <button
                 onClick={() => fire('Exporting route delivery sheet…')}

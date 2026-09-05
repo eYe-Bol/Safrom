@@ -212,12 +212,12 @@ export default function SupplierOnboardingPage() {
 
       {/* Step progress */}
       <div className="bg-white border-b border-[var(--color-line)] sticky top-0 z-20 shadow-sm">
-        <div className="max-w-[680px] mx-auto px-5 py-3">
+        <div className="max-w-[680px] mx-auto px-3 sm:px-5 py-2.5 sm:py-3">
           <div className="flex items-center">
             {STEPS.map((s, idx) => (
               <div key={s.n} className="flex items-center flex-1">
-                <div className="flex flex-col items-center flex-1">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-bold transition-all ${
+                <div className="flex flex-col items-center flex-1 min-w-0">
+                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[11px] sm:text-[13px] font-bold transition-all ${
                     step > s.n
                       ? 'bg-emerald-500 text-white'
                       : step === s.n
@@ -226,12 +226,12 @@ export default function SupplierOnboardingPage() {
                   }`}>
                     {step > s.n ? '✓' : s.icon}
                   </div>
-                  <span className={`text-[10px] font-bold mt-1 text-center leading-tight ${
+                  <span className={`text-[9px] sm:text-[10px] font-bold mt-1 text-center leading-tight truncate max-w-full px-0.5 ${
                     step === s.n ? 'text-[var(--color-teal)]' : 'text-[var(--color-muted)]'
                   }`}>{s.title}</span>
                 </div>
                 {idx < STEPS.length - 1 && (
-                  <div className={`h-0.5 flex-1 mx-1 mb-5 rounded ${step > s.n ? 'bg-emerald-400' : 'bg-[var(--color-line)]'}`} />
+                  <div className={`h-0.5 flex-1 mx-0.5 sm:mx-1 mb-4 sm:mb-5 rounded ${step > s.n ? 'bg-emerald-400' : 'bg-[var(--color-line)]'}`} />
                 )}
               </div>
             ))}
@@ -284,7 +284,7 @@ export default function SupplierOnboardingPage() {
                   <input value={form.kra_pin} onChange={e => patch({ kra_pin: e.target.value.toUpperCase() })} placeholder="P0512345678A" maxLength={11} className={`${inp} font-mono`} />
                   <p className="text-[11px] text-[var(--color-muted)] mt-1">Used for KYC only — not shown publicly.</p>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">County *</label>
                     <select value={form.county} onChange={e => patch({ county: e.target.value })} className={`${inp} bg-white`}>
@@ -301,7 +301,7 @@ export default function SupplierOnboardingPage() {
                   <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Depot / Warehouse Address *</label>
                   <input value={form.depot_address} onChange={e => patch({ depot_address: e.target.value })} placeholder="Plot 15, Lunga Lunga Rd, Industrial Area" className={inp} />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Contact Person *</label>
                     <ProperCaseInput value={form.contact_person} onChange={v => patch({ contact_person: v })} placeholder="e.g. John Kamau" className={inp} />
@@ -428,7 +428,7 @@ export default function SupplierOnboardingPage() {
                       ))}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Order Cutoff Time</label>
                       <input type="time" value={corridor.cutoff_time} onChange={e => patchC(corridor.id, { cutoff_time: e.target.value })} className={inp} />
@@ -461,12 +461,12 @@ export default function SupplierOnboardingPage() {
               <div className="flex flex-col gap-3">
                 <div className="p-4 rounded-xl bg-[var(--color-canvas)] border border-[var(--color-line-lt)]">
                   <div className="text-[11px] font-bold text-[var(--color-muted)] uppercase tracking-wider mb-2">Business Profile</div>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12px]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-[12px]">
                     <div><span className="text-[var(--color-muted)]">Company:</span> <strong>{form.company_name}</strong></div>
                     <div><span className="text-[var(--color-muted)]">Type:</span> <strong className="capitalize">{form.business_type}</strong></div>
                     <div><span className="text-[var(--color-muted)]">KRA PIN:</span> <strong className="font-mono">{form.kra_pin}</strong></div>
                     <div><span className="text-[var(--color-muted)]">County:</span> <strong>{form.county}</strong></div>
-                    <div className="col-span-2"><span className="text-[var(--color-muted)]">Depot:</span> <strong>{form.depot_address}</strong></div>
+                    <div className="col-span-1 sm:col-span-2"><span className="text-[var(--color-muted)]">Depot:</span> <strong>{form.depot_address}</strong></div>
                     <div><span className="text-[var(--color-muted)]">Contact:</span> <strong>{form.contact_person}</strong></div>
                     <div><span className="text-[var(--color-muted)]">Phone:</span> <strong>{form.phone}</strong></div>
                   </div>
@@ -532,21 +532,21 @@ export default function SupplierOnboardingPage() {
         )}
 
         {/* Navigation */}
-        <div className="mt-2 flex gap-3 justify-between">
+        <div className="mt-2 flex items-center gap-2 sm:gap-3 justify-between">
           {step > 1 ? (
             <button type="button" onClick={back}
-              className="px-6 py-3 rounded-xl border-2 border-[var(--color-line)] text-[var(--color-slate)] font-bold text-[13px] hover:border-[var(--color-teal)] hover:text-[var(--color-teal)] transition-all cursor-pointer">
+              className="flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-xl border-2 border-[var(--color-line)] text-[var(--color-slate)] font-bold text-[13px] hover:border-[var(--color-teal)] hover:text-[var(--color-teal)] transition-all cursor-pointer text-center active:scale-[0.98]">
               ← Back
             </button>
-          ) : <div />}
+          ) : <div className="hidden sm:block" />}
           {step < 4 ? (
             <button type="button" onClick={next}
-              className="px-8 py-3 rounded-xl bg-[var(--color-teal)] text-white font-bold text-[13px] hover:opacity-90 cursor-pointer shadow-sm">
+              className="flex-1 sm:flex-none px-6 sm:px-8 py-3 rounded-xl bg-[var(--color-teal)] text-white font-bold text-[13px] hover:opacity-90 cursor-pointer shadow-sm text-center active:scale-[0.98]">
               Continue →
             </button>
           ) : (
             <button type="button" onClick={submit} disabled={loading}
-              className="px-8 py-3 rounded-xl bg-[var(--color-gold)] text-white font-bold text-[14px] hover:opacity-90 cursor-pointer shadow-sm disabled:opacity-70 flex items-center gap-2">
+              className="flex-1 sm:flex-none px-6 sm:px-8 py-3 rounded-xl bg-[var(--color-gold)] text-white font-bold text-[13px] sm:text-[14px] hover:opacity-90 cursor-pointer shadow-sm disabled:opacity-70 flex items-center justify-center gap-2 text-center active:scale-[0.98]">
               {loading ? (
                 <>
                   <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">

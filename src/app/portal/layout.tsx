@@ -222,18 +222,27 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
         <div className="md:hidden fixed top-0 left-0 right-0 bg-[var(--color-cream)] border-b border-[var(--color-cream-dk)] flex items-center px-3 h-14 z-30 gap-2">
           <button
             onClick={() => setMobileOpen(true)}
-            className="flex flex-col gap-[5px] p-1 shrink-0"
+            className="flex flex-col gap-[5px] p-1.5 shrink-0 active:opacity-70"
             aria-label="Open menu"
           >
             {[0,1,2].map(i => (
               <span key={i} className="block w-5 h-0.5 bg-[var(--color-teal)] rounded" />
             ))}
           </button>
-          <SFSLogo size={32} href="/portal/dashboard" />
-          <span className="font-serif text-[14px] font-bold text-[var(--color-ink)] truncate flex-1">
-            {scale === 'single' ? storeName : (branchProfiles?.[branchName || 'Main Branch'] || (branchName === 'Main Branch' ? storeName : branchName) || 'Sales From Scratch')}
-          </span>
-          <div className="flex flex-col items-end shrink-0">
+          <SFSLogo size={32} href={role === 'supplier' ? '/portal/supplier/dashboard' : '/portal/dashboard'} />
+          <div className="flex items-center gap-1.5 truncate flex-1 min-w-0">
+            <span className="font-serif text-[14px] font-bold text-[var(--color-ink)] truncate">
+              {role === 'supplier'
+                ? (storeName || 'Wholesale Supplier')
+                : (scale === 'single' ? storeName : (branchProfiles?.[branchName || 'Main Branch'] || (branchName === 'Main Branch' ? storeName : branchName) || 'Sales From Scratch'))}
+            </span>
+            {role === 'supplier' && (
+              <span className="text-[9px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-1.5 py-0.2 rounded-full uppercase tracking-wider shrink-0">
+                Supplier
+              </span>
+            )}
+          </div>
+          <div className="flex flex-col items-end shrink-0 pl-1">
             <LiveClock />
           </div>
         </div>

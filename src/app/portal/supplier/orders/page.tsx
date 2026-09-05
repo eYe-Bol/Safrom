@@ -292,55 +292,55 @@ export default function SupplierOrdersPage() {
         {/* Top Summary & Actions */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-[var(--color-line-lt)] shadow-xs">
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="font-serif text-[18px] font-bold text-[var(--color-ink)]">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="font-serif text-[17px] sm:text-[18px] font-bold text-[var(--color-ink)]">
                 Wholesale Order Pipeline
               </h2>
-              <span className="text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full">
+              <span className="text-[10px] sm:text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full">
                 {orders.filter(o => o.status === 'pending' || o.status === 'packed').length} Pending Dispatch
               </span>
             </div>
-            <p className="text-[12px] text-[var(--color-muted)] mt-0.5">
+            <p className="text-[11px] sm:text-[12px] text-[var(--color-muted)] mt-0.5">
               Orders placed by connected retail stores in your delivery corridors.
             </p>
           </div>
 
           <button
             onClick={handleExportRouteSheet}
-            className="px-4 py-2.5 bg-[var(--color-teal)] hover:bg-[#104347] text-white font-bold text-[13px] rounded-xl shadow-sm transition-colors cursor-pointer flex items-center gap-2 shrink-0"
+            className="w-full sm:w-auto justify-center px-4 py-2.5 bg-[var(--color-teal)] hover:bg-[#104347] text-white font-bold text-[13px] rounded-xl shadow-sm transition-colors cursor-pointer flex items-center gap-2 shrink-0"
           >
             <span>📄</span> Export Route Sheet (PDF)
           </button>
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-[var(--color-line-lt)]">
-          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
-            <input
-              type="text"
-              placeholder="Search by PO #, store name, or landmark…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="px-3.5 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[12px] outline-none focus:border-[var(--color-teal)] flex-1 min-w-[200px]"
-            />
+        <div className="bg-white p-3.5 rounded-xl border border-[var(--color-line-lt)] flex flex-col sm:flex-row gap-2">
+          <input
+            type="text"
+            placeholder="Search by PO #, store name, or landmark…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="px-3.5 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[12px] outline-none focus:border-[var(--color-teal)] w-full sm:flex-1"
+          />
 
+          <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
-              className="px-3 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[12px] font-medium text-[var(--color-ink)] outline-none cursor-pointer"
+              className="px-3 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[12px] font-medium text-[var(--color-ink)] outline-none cursor-pointer w-full sm:w-auto"
             >
-              <option value="all">All Order Statuses</option>
-              <option value="pending">Pending Review</option>
+              <option value="all">All Statuses</option>
+              <option value="pending">Pending</option>
               <option value="confirmed">Confirmed</option>
               <option value="packed">Packed</option>
               <option value="en_route">En Route</option>
-              <option value="delivered">Delivered / Signed Off</option>
+              <option value="delivered">Delivered</option>
             </select>
 
             <select
               value={corridorFilter}
               onChange={e => setCorridorFilter(e.target.value)}
-              className="px-3 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[12px] font-medium text-[var(--color-ink)] outline-none cursor-pointer"
+              className="px-3 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[12px] font-medium text-[var(--color-ink)] outline-none cursor-pointer w-full sm:w-auto"
             >
               <option value="all">All Corridors</option>
               <option value="north">Nairobi North</option>
@@ -370,17 +370,17 @@ export default function SupplierOrdersPage() {
                 >
                   {/* Card Header Row */}
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-[var(--color-line-lt)]">
-                    <div>
+                    <div className="w-full sm:w-auto">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono font-bold text-[14px] text-[var(--color-teal)]">
+                        <span className="font-mono font-bold text-[13px] sm:text-[14px] text-[var(--color-teal)]">
                           {order.id}
                         </span>
-                        <span className="text-[10px] font-bold bg-[var(--color-canvas)] text-[var(--color-slate)] border px-2 py-0.5 rounded">
+                        <span className="text-[10px] font-bold bg-[var(--color-canvas)] text-[var(--color-slate)] border border-[var(--color-line-lt)] px-2 py-0.5 rounded">
                           {new Date(order.created_at).toLocaleDateString('en-KE')}
                         </span>
                         {/* Status Badge */}
                         <span
-                          className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                          className={`text-[10px] sm:text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                             order.status === 'delivered'
                               ? 'bg-emerald-100 text-emerald-800'
                               : order.status === 'en_route'
@@ -393,24 +393,28 @@ export default function SupplierOrdersPage() {
                           ● {order.status.replace('_', ' ')}
                         </span>
                       </div>
-                      <h3 className="font-serif text-[17px] font-bold text-[var(--color-ink)] mt-1">
+                      <h3 className="font-serif text-[16px] sm:text-[17px] font-bold text-[var(--color-ink)] mt-1">
                         {order.retailer_store_name}
                       </h3>
-                      <div className="text-[12px] text-[var(--color-muted)]">
+                      <div className="text-[11px] sm:text-[12px] text-[var(--color-muted)]">
                         📍 Offload Point: <strong className="text-[var(--color-slate)]">{order.delivery_landmark}</strong> · Corridor:{' '}
                         <span className="font-semibold text-[var(--color-ink)]">{order.corridor.split('(')[0]}</span>
                       </div>
                     </div>
 
                     {/* Amount & Terms */}
-                    <div className="text-right self-end sm:self-auto">
-                      <div className="text-[11px] text-[var(--color-muted)] uppercase tracking-wider">Total Value</div>
-                      <div className="font-serif text-[20px] font-bold text-[var(--color-teal)]">
-                        KES {order.total_amount.toLocaleString()}
+                    <div className="w-full sm:w-auto bg-[var(--color-canvas)] sm:bg-transparent p-2.5 sm:p-0 rounded-xl sm:rounded-none flex flex-row sm:flex-col justify-between sm:justify-start items-center sm:items-end border sm:border-0 border-[var(--color-line-lt)]">
+                      <div>
+                        <div className="text-[10px] sm:text-[11px] text-[var(--color-muted)] uppercase tracking-wider sm:text-right">Total Value</div>
+                        <div className="font-serif text-[18px] sm:text-[20px] font-bold text-[var(--color-teal)] sm:text-right">
+                          KES {order.total_amount.toLocaleString()}
+                        </div>
                       </div>
-                      <div className="text-[11px] font-medium text-[var(--color-slate)]">
-                        {order.payment_method === 'pay_before_delivery' ? '📲 Pay Before Delivery' : '🚚 Pay on Delivery (POD)'} (
-                        {order.payment_status.toUpperCase()})
+                      <div className="text-[11px] font-medium text-[var(--color-slate)] text-right">
+                        <div>{order.payment_method === 'pay_before_delivery' ? '📲 Pay Before' : '🚚 Pay on Delivery'}</div>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white sm:bg-[var(--color-canvas)] border border-[var(--color-line-lt)] uppercase">
+                          {order.payment_status}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -418,47 +422,71 @@ export default function SupplierOrdersPage() {
                   {/* Line Items Preview / Table */}
                   <div>
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-[12px] font-bold text-[var(--color-slate)] uppercase tracking-wider">
+                      <span className="text-[11px] sm:text-[12px] font-bold text-[var(--color-slate)] uppercase tracking-wider">
                         Ordered Items ({order.items.reduce((acc, it) => acc + it.qty, 0)} total packs)
                       </span>
                       <button
                         onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
-                        className="text-[11px] text-[var(--color-teal)] font-bold hover:underline cursor-pointer"
+                        className="text-[11px] text-[var(--color-teal)] font-bold hover:underline cursor-pointer py-1 px-2 rounded hover:bg-[var(--color-teal-bg)] transition-colors"
                       >
                         {isExpanded ? 'Hide Line Items ▲' : 'View Line Items ▼'}
                       </button>
                     </div>
 
                     {isExpanded && (
-                      <div className="bg-[var(--color-canvas)] rounded-xl p-3 border border-[var(--color-line-lt)] overflow-x-auto mb-3">
-                        <table className="w-full text-left text-[12px]">
-                          <thead>
-                            <tr className="border-b border-[var(--color-line-lt)] text-[var(--color-muted)] font-bold">
-                              <th className="pb-1.5">Product Description</th>
-                              <th className="pb-1.5">Pack Size</th>
-                              <th className="pb-1.5">Batch / Lot</th>
-                              <th className="pb-1.5 text-center">Qty</th>
-                              <th className="pb-1.5 text-right">Price</th>
-                              <th className="pb-1.5 text-right">Total</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[var(--color-line-lt)]">
-                            {order.items.map((it, idx) => (
-                              <tr key={idx} className="py-1.5">
-                                <td className="py-1.5 font-bold text-[var(--color-ink)]">{it.name}</td>
-                                <td className="py-1.5 text-[var(--color-slate)]">{it.pack_size}</td>
-                                <td className="py-1.5 font-mono text-[11px] text-[var(--color-muted)]">
-                                  {it.batch_no || 'Standard Lot'}
-                                </td>
-                                <td className="py-1.5 text-center font-bold">{it.qty}</td>
-                                <td className="py-1.5 text-right font-mono">KES {it.unit_price.toLocaleString()}</td>
-                                <td className="py-1.5 text-right font-mono font-bold text-[var(--color-teal)]">
+                      <div className="mb-3">
+                        {/* Mobile Card List for Small Screens */}
+                        <div className="sm:hidden space-y-2">
+                          {order.items.map((it, idx) => (
+                            <div key={idx} className="p-3 bg-[var(--color-canvas)] rounded-xl border border-[var(--color-line-lt)] text-[12px]">
+                              <div className="flex justify-between items-start gap-2 font-bold text-[var(--color-ink)]">
+                                <span>{it.name}</span>
+                                <span className="text-[var(--color-teal)] font-mono font-bold shrink-0">
                                   KES {it.subtotal.toLocaleString()}
-                                </td>
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-[var(--color-slate)] mt-0.5">
+                                Pack: {it.pack_size} · Lot: <span className="font-mono text-[var(--color-muted)]">{it.batch_no || 'Std Lot'}</span>
+                              </div>
+                              <div className="mt-1 flex justify-between items-center text-[11px] text-[var(--color-muted)] pt-1 border-t border-[var(--color-line-lt)]">
+                                <span>Qty: <strong className="text-[var(--color-ink)] text-[12px]">{it.qty}</strong></span>
+                                <span className="font-mono">KES {it.unit_price.toLocaleString()} / pack</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Desktop Table for Tablet & Desktop */}
+                        <div className="hidden sm:block bg-[var(--color-canvas)] rounded-xl p-3 border border-[var(--color-line-lt)] overflow-x-auto">
+                          <table className="w-full text-left text-[12px]">
+                            <thead>
+                              <tr className="border-b border-[var(--color-line-lt)] text-[var(--color-muted)] font-bold">
+                                <th className="pb-1.5">Product Description</th>
+                                <th className="pb-1.5">Pack Size</th>
+                                <th className="pb-1.5">Batch / Lot</th>
+                                <th className="pb-1.5 text-center">Qty</th>
+                                <th className="pb-1.5 text-right">Price</th>
+                                <th className="pb-1.5 text-right">Total</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody className="divide-y divide-[var(--color-line-lt)]">
+                              {order.items.map((it, idx) => (
+                                <tr key={idx} className="py-1.5">
+                                  <td className="py-1.5 font-bold text-[var(--color-ink)]">{it.name}</td>
+                                  <td className="py-1.5 text-[var(--color-slate)]">{it.pack_size}</td>
+                                  <td className="py-1.5 font-mono text-[11px] text-[var(--color-muted)]">
+                                    {it.batch_no || 'Standard Lot'}
+                                  </td>
+                                  <td className="py-1.5 text-center font-bold">{it.qty}</td>
+                                  <td className="py-1.5 text-right font-mono">KES {it.unit_price.toLocaleString()}</td>
+                                  <td className="py-1.5 text-right font-mono font-bold text-[var(--color-teal)]">
+                                    KES {it.subtotal.toLocaleString()}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -470,10 +498,10 @@ export default function SupplierOrdersPage() {
                   )}
 
                   {/* Actions & Status Pipeline Progression */}
-                  <div className="pt-2 border-t border-[var(--color-line-lt)] flex flex-wrap justify-between items-center gap-2">
-                    <div className="text-[12px] text-[var(--color-muted)]">
+                  <div className="pt-2 border-t border-[var(--color-line-lt)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div className="text-[11px] sm:text-[12px] text-[var(--color-muted)]">
                       {order.grn_signed ? (
-                        <span className="text-emerald-700 font-bold">
+                        <span className="text-emerald-700 font-bold flex items-center gap-1">
                           ✓ Goods Received Note (GRN) Signed by Retailer
                         </span>
                       ) : (
@@ -481,11 +509,11 @@ export default function SupplierOrdersPage() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
                       {order.status === 'pending' && (
                         <button
                           onClick={() => updateStatus(order.id, 'confirmed')}
-                          className="px-3.5 py-1.5 bg-[var(--color-teal)] text-white font-bold text-[12px] rounded-lg hover:bg-[#104347] transition-all cursor-pointer shadow-xs"
+                          className="flex-1 sm:flex-initial text-center px-4 py-2 bg-[var(--color-teal)] text-white font-bold text-[12px] rounded-lg hover:bg-[#104347] transition-all cursor-pointer shadow-xs active:scale-[0.98]"
                         >
                           Confirm Order
                         </button>
@@ -494,7 +522,7 @@ export default function SupplierOrdersPage() {
                       {order.status === 'confirmed' && (
                         <button
                           onClick={() => updateStatus(order.id, 'packed')}
-                          className="px-3.5 py-1.5 bg-purple-700 text-white font-bold text-[12px] rounded-lg hover:bg-purple-800 transition-all cursor-pointer shadow-xs"
+                          className="flex-1 sm:flex-initial text-center px-4 py-2 bg-purple-700 text-white font-bold text-[12px] rounded-lg hover:bg-purple-800 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
                         >
                           📦 Mark Crates Packed
                         </button>
@@ -503,18 +531,18 @@ export default function SupplierOrdersPage() {
                       {order.status === 'packed' && (
                         <button
                           onClick={() => updateStatus(order.id, 'en_route')}
-                          className="px-3.5 py-1.5 bg-blue-600 text-white font-bold text-[12px] rounded-lg hover:bg-blue-700 transition-all cursor-pointer shadow-xs"
+                          className="flex-1 sm:flex-initial text-center px-4 py-2 bg-blue-600 text-white font-bold text-[12px] rounded-lg hover:bg-blue-700 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
                         >
-                          🚚 Dispatch on Corridor Run
+                          🚚 Dispatch on Run
                         </button>
                       )}
 
                       {order.status === 'en_route' && (
                         <button
                           onClick={() => updateStatus(order.id, 'delivered')}
-                          className="px-3.5 py-1.5 bg-emerald-600 text-white font-bold text-[12px] rounded-lg hover:bg-emerald-700 transition-all cursor-pointer shadow-xs"
+                          className="flex-1 sm:flex-initial text-center px-4 py-2 bg-emerald-600 text-white font-bold text-[12px] rounded-lg hover:bg-emerald-700 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
                         >
-                          ✓ Confirm Counter Delivery
+                          ✓ Confirm Delivery
                         </button>
                       )}
 
@@ -522,7 +550,7 @@ export default function SupplierOrdersPage() {
                         href={`https://wa.me/${order.retailer_phone.replace(/[^0-9]/g, '')}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-3 py-1.5 border border-[var(--color-line)] text-[var(--color-slate)] hover:bg-[var(--color-canvas)] font-bold text-[12px] rounded-lg transition-all flex items-center gap-1"
+                        className="flex-1 sm:flex-initial text-center justify-center px-3.5 py-2 border border-[var(--color-line)] text-[var(--color-slate)] hover:bg-[var(--color-canvas)] font-bold text-[12px] rounded-lg transition-all flex items-center gap-1.5 active:scale-[0.98]"
                       >
                         <span>💬</span> Contact Shop
                       </a>

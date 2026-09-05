@@ -261,42 +261,42 @@ export default function SupplierCataloguePage() {
         {/* Header Action Row */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-[var(--color-line-lt)] shadow-xs">
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="font-serif text-[18px] font-bold text-[var(--color-ink)]">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="font-serif text-[17px] sm:text-[18px] font-bold text-[var(--color-ink)]">
                 {storeName || 'Wholesale Depot'} — Product Catalogue
               </h2>
-              <span className="text-[11px] font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">
+              <span className="text-[10px] sm:text-[11px] font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">
                 {products.length} Active SKUs
               </span>
             </div>
-            <p className="text-[12px] text-[var(--color-muted)] mt-0.5">
+            <p className="text-[11px] sm:text-[12px] text-[var(--color-muted)] mt-0.5">
               Wholesale prices and deals listed here are automatically visible to connected retail shops during replenishment.
             </p>
           </div>
 
           <button
             onClick={openCreateModal}
-            className="px-4 py-2.5 bg-[var(--color-teal)] hover:bg-[#104347] text-white font-bold text-[13px] rounded-xl shadow-sm transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
+            className="w-full sm:w-auto justify-center px-4 py-2.5 bg-[var(--color-teal)] hover:bg-[#104347] text-white font-bold text-[13px] rounded-xl shadow-sm transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
           >
             <span>+</span> Add Wholesale Product
           </button>
         </div>
 
         {/* Filters & Search */}
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-[var(--color-line-lt)]">
-          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
-            <input
-              type="text"
-              placeholder="Search by product, brand, or batch prefix…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="px-3.5 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[12px] outline-none focus:border-[var(--color-teal)] flex-1 min-w-[200px]"
-            />
+        <div className="bg-white p-3.5 rounded-xl border border-[var(--color-line-lt)] flex flex-col sm:flex-row gap-2">
+          <input
+            type="text"
+            placeholder="Search by product, brand, or batch prefix…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="px-3.5 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[12px] outline-none focus:border-[var(--color-teal)] w-full sm:flex-1"
+          />
 
+          <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
             <select
               value={selectedCat}
               onChange={e => setSelectedCat(e.target.value)}
-              className="px-3 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[12px] font-medium text-[var(--color-ink)] outline-none cursor-pointer"
+              className="px-3 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[12px] font-medium text-[var(--color-ink)] outline-none cursor-pointer w-full sm:w-auto"
             >
               {CATEGORIES.map(c => (
                 <option key={c} value={c}>
@@ -308,9 +308,9 @@ export default function SupplierCataloguePage() {
             <select
               value={selectedStatus}
               onChange={e => setSelectedStatus(e.target.value)}
-              className="px-3 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[12px] font-medium text-[var(--color-ink)] outline-none cursor-pointer"
+              className="px-3 py-2 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl text-[12px] font-medium text-[var(--color-ink)] outline-none cursor-pointer w-full sm:w-auto"
             >
-              <option value="all">All Stock Statuses</option>
+              <option value="all">All Statuses</option>
               <option value="in_stock">In Stock</option>
               <option value="low_stock">Low Stock</option>
               <option value="out_of_stock">Out of Stock</option>
@@ -329,7 +329,7 @@ export default function SupplierCataloguePage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {filtered.map(p => (
               <div
                 key={p.id}
@@ -402,17 +402,17 @@ export default function SupplierCataloguePage() {
                   )}
                 </div>
 
-                {/* Card Actions */}
-                <div className="pt-2 border-t border-[var(--color-line-lt)] flex justify-between items-center text-[12px]">
+                {/* Actions */}
+                <div className="pt-2 border-t border-[var(--color-line-lt)] flex gap-2 justify-end">
                   <button
                     onClick={() => openEditModal(p)}
-                    className="text-[var(--color-teal)] font-bold hover:underline cursor-pointer"
+                    className="flex-1 sm:flex-initial text-center px-3 py-1.5 border border-[var(--color-line)] rounded-lg text-[12px] font-bold text-[var(--color-slate)] hover:bg-[var(--color-canvas)] cursor-pointer"
                   >
-                    ✏️ Edit Product
+                    Edit
                   </button>
                   <button
                     onClick={() => handleDelete(p.id)}
-                    className="text-red-500 font-bold hover:underline cursor-pointer"
+                    className="px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg text-[12px] font-bold cursor-pointer"
                   >
                     Delete
                   </button>
@@ -423,10 +423,18 @@ export default function SupplierCataloguePage() {
         )}
       </div>
 
-      {/* Product Create / Edit Modal */}
+      {/* ═════════════════════════════════════════════════════════════════════ */}
+      {/* MODAL: ADD / EDIT PRODUCT                                              */}
+      {/* ═════════════════════════════════════════════════════════════════════ */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl p-5 sm:p-6 w-full max-w-[560px] shadow-2xl border border-[var(--color-line-lt)] my-8">
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[500] p-3 sm:p-4 overflow-y-auto"
+          onClick={() => setModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl p-4 sm:p-5 w-full max-w-[550px] shadow-2xl border border-[var(--color-line-lt)] max-h-[92vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="flex justify-between items-center mb-4 pb-2 border-b border-[var(--color-line-lt)]">
               <h3 className="font-serif text-[18px] font-bold text-[var(--color-ink)]">
                 {editingProd ? 'Edit Wholesale Product' : 'Add Wholesale Product'}
@@ -440,8 +448,8 @@ export default function SupplierCataloguePage() {
             </div>
 
             <form onSubmit={handleSave} className="flex flex-col gap-3 text-[13px]">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="sm:col-span-2">
                   <label className="block text-[11px] font-bold text-[var(--color-slate)] mb-1">
                     Product Title & Variant *
                   </label>
@@ -482,7 +490,7 @@ export default function SupplierCataloguePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-[var(--color-slate)] mb-1">
                     Packaging / Pack Size *
@@ -511,7 +519,7 @@ export default function SupplierCataloguePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-[var(--color-slate)] mb-1">
                     Wholesale Price (KES) *
@@ -580,17 +588,17 @@ export default function SupplierCataloguePage() {
                 />
               </div>
 
-              <div className="mt-3 flex gap-2 justify-end pt-3 border-t border-[var(--color-line-lt)]">
+              <div className="mt-3 flex flex-col-reverse sm:flex-row gap-2 justify-end pt-3 border-t border-[var(--color-line-lt)]">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 border border-[var(--color-line)] rounded-xl text-[12px] font-bold text-[var(--color-slate)] hover:bg-[var(--color-canvas)] cursor-pointer"
+                  className="w-full sm:w-auto px-4 py-2.5 sm:py-2 border border-[var(--color-line)] rounded-xl text-[12px] font-bold text-[var(--color-slate)] hover:bg-[var(--color-canvas)] cursor-pointer text-center"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[var(--color-teal)] text-white font-bold text-[12px] rounded-xl hover:bg-[#104347] transition-colors cursor-pointer shadow-sm"
+                  className="w-full sm:w-auto px-5 py-2.5 sm:py-2 bg-[var(--color-teal)] text-white font-bold text-[12px] rounded-xl hover:bg-[#104347] transition-colors cursor-pointer shadow-sm text-center"
                 >
                   {editingProd ? 'Save Changes' : 'List Product'}
                 </button>

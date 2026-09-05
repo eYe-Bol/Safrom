@@ -338,21 +338,21 @@ export default function PurchaseOrderModal({
   if (!isOpen || !supplier) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl w-full max-w-[780px] shadow-2xl border border-[var(--color-line-lt)] max-h-[92vh] flex flex-col my-auto">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-3xl w-full max-w-[780px] shadow-2xl border border-[var(--color-line-lt)] max-h-[95vh] sm:max-h-[92vh] flex flex-col my-auto">
         {/* Modal Header */}
-        <div className="p-4 sm:p-5 border-b border-[var(--color-line-lt)] flex justify-between items-start bg-gradient-to-r from-emerald-950 via-[var(--color-teal)] to-slate-900 text-white rounded-t-3xl">
+        <div className="p-3.5 sm:p-5 border-b border-[var(--color-line-lt)] flex justify-between items-start bg-gradient-to-r from-emerald-950 via-[var(--color-teal)] to-slate-900 text-white rounded-t-3xl">
           <div>
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="text-[18px]">🛒</span>
-              <h2 className="font-serif text-[18px] sm:text-[20px] font-bold leading-tight">
+              <h2 className="font-serif text-[16px] sm:text-[20px] font-bold leading-tight">
                 Create Purchase Order (PO)
               </h2>
-              <span className="text-[10px] font-bold bg-amber-300 text-amber-950 px-2 py-0.5 rounded-full uppercase tracking-wider">
+              <span className="text-[9px] sm:text-[10px] font-bold bg-amber-300 text-amber-950 px-2 py-0.5 rounded-full uppercase tracking-wider">
                 ✓ Verified Supplier
               </span>
             </div>
-            <p className="text-[12px] text-white/80">
+            <p className="text-[11px] sm:text-[12px] text-white/80">
               Ordering directly from <strong>{supplier.company_name}</strong> · {supplier.town}
             </p>
           </div>
@@ -366,21 +366,21 @@ export default function PurchaseOrderModal({
         </div>
 
         {/* Modal Body */}
-        <div className="p-4 sm:p-5 overflow-y-auto flex-1 flex flex-col gap-4 text-[13px]">
+        <div className="p-3.5 sm:p-5 overflow-y-auto flex-1 flex flex-col gap-4 text-[13px]">
           {orderComplete ? (
             /* Order Success View */
-            <div className="py-6 flex flex-col items-center text-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[32px] shadow-xs">
+            <div className="py-4 sm:py-6 flex flex-col items-center text-center gap-4">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[28px] sm:text-[32px] shadow-xs">
                 ✓
               </div>
               <div>
-                <h3 className="font-serif text-[22px] font-bold text-[var(--color-ink)]">
+                <h3 className="font-serif text-[20px] sm:text-[22px] font-bold text-[var(--color-ink)]">
                   Purchase Order Transmitted!
                 </h3>
                 <p className="text-[13px] text-[var(--color-muted)] mt-1">
                   PO Number: <strong className="font-mono text-[var(--color-ink)]">{orderComplete.id}</strong>
                 </p>
-                <p className="text-[12px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2 mt-3 inline-block">
+                <p className="text-[12px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2 mt-3 inline-block">
                   Your order has been queued in <strong>{supplier.company_name}</strong>'s dispatch system for the{' '}
                   <strong>{orderComplete.delivery_day}</strong> route run.
                 </p>
@@ -396,7 +396,7 @@ export default function PurchaseOrderModal({
                 </div>
 
                 {orderComplete.payment_method === 'pay_before_delivery' && (
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center flex-wrap gap-1">
                     <span className="text-[var(--color-muted)]">M-Pesa Reference:</span>
                     <strong className="font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                       {orderComplete.payment_ref || 'Direct Buy Goods Settlement'}
@@ -425,22 +425,22 @@ export default function PurchaseOrderModal({
               </div>
 
               {/* Action Buttons for Transmitted Order */}
-              <div className="flex flex-wrap gap-3 justify-center mt-2">
+              <div className="w-full flex flex-col sm:flex-row gap-2.5 justify-center mt-2">
                 <button
                   onClick={handleDownloadPDF}
-                  className="px-5 py-2.5 bg-[var(--color-teal)] hover:bg-[#104347] text-white font-bold rounded-xl text-[13px] shadow-sm transition-all cursor-pointer flex items-center gap-2"
+                  className="w-full sm:w-auto px-5 py-2.5 bg-[var(--color-teal)] hover:bg-[#104347] text-white font-bold rounded-xl text-[13px] shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   <span>📄</span> Download Official PDF LPO
                 </button>
                 <button
                   onClick={handleWhatsApp}
-                  className="px-5 py-2.5 bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold rounded-xl text-[13px] shadow-sm transition-all cursor-pointer flex items-center gap-2"
+                  className="w-full sm:w-auto px-5 py-2.5 bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold rounded-xl text-[13px] shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   <span>📲</span> Dispatch via WhatsApp
                 </button>
                 <button
                   onClick={onClose}
-                  className="px-5 py-2.5 border border-[var(--color-line)] text-[var(--color-slate)] hover:bg-[var(--color-canvas)] font-bold rounded-xl text-[13px] transition-all cursor-pointer"
+                  className="w-full sm:w-auto px-5 py-2.5 border border-[var(--color-line)] text-[var(--color-slate)] hover:bg-[var(--color-canvas)] font-bold rounded-xl text-[13px] transition-all cursor-pointer"
                 >
                   Done
                 </button>
@@ -520,29 +520,31 @@ export default function PurchaseOrderModal({
                         </div>
 
                         {/* Qty Controls */}
-                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                          <button
-                            type="button"
-                            onClick={() => handleQtyChange(prod.id, -1)}
-                            className="w-7 h-7 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] font-bold text-[14px] flex items-center justify-center hover:bg-gray-200 cursor-pointer"
-                          >
-                            −
-                          </button>
-                          <input
-                            type="number"
-                            value={qty}
-                            onChange={e => handleManualQty(prod.id, parseInt(e.target.value) || 0)}
-                            min={0}
-                            className="w-14 text-center py-1 border border-[var(--color-line)] rounded-lg font-mono font-bold text-[13px] outline-none"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleQtyChange(prod.id, 1)}
-                            className="w-7 h-7 rounded-lg bg-[var(--color-teal)] text-white font-bold text-[14px] flex items-center justify-center hover:bg-[#104347] cursor-pointer"
-                          >
-                            +
-                          </button>
-                          <span className="text-[11px] text-[var(--color-muted)] w-16 text-right font-mono">
+                        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-0 border-[var(--color-line-lt)]">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleQtyChange(prod.id, -1)}
+                              className="w-8 h-8 rounded-lg bg-[var(--color-canvas)] border border-[var(--color-line)] font-bold text-[16px] flex items-center justify-center hover:bg-gray-200 active:bg-gray-300 cursor-pointer"
+                            >
+                              −
+                            </button>
+                            <input
+                              type="number"
+                              value={qty}
+                              onChange={e => handleManualQty(prod.id, parseInt(e.target.value) || 0)}
+                              min={0}
+                              className="w-14 text-center py-1 border border-[var(--color-line)] rounded-lg font-mono font-bold text-[13px] outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleQtyChange(prod.id, 1)}
+                              className="w-8 h-8 rounded-lg bg-[var(--color-teal)] text-white font-bold text-[16px] flex items-center justify-center hover:bg-[#104347] active:opacity-80 cursor-pointer"
+                            >
+                              +
+                            </button>
+                          </div>
+                          <span className="text-[12px] text-[var(--color-slate)] font-bold sm:w-20 text-right font-mono">
                             {qty > 0 ? 'KES ' + (prod.wholesale_price * qty).toLocaleString() : '—'}
                           </span>
                         </div>
@@ -753,8 +755,8 @@ export default function PurchaseOrderModal({
 
         {/* Modal Footer */}
         {!orderComplete && (
-          <div className="p-4 border-t border-[var(--color-line-lt)] flex flex-col sm:flex-row justify-between items-center gap-3 bg-[var(--color-canvas)] rounded-b-3xl">
-            <div className="text-[12px] text-[var(--color-muted)]">
+          <div className="p-3.5 sm:p-4 border-t border-[var(--color-line-lt)] flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 bg-[var(--color-canvas)] rounded-b-3xl">
+            <div className="text-[12px] text-[var(--color-muted)] text-center sm:text-left">
               {moqMet ? (
                 <span className="text-emerald-700 font-bold">✓ Ready for dispatch queue</span>
               ) : (
@@ -766,7 +768,7 @@ export default function PurchaseOrderModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 sm:flex-initial px-4 py-2.5 border border-[var(--color-line)] text-[var(--color-slate)] hover:bg-white rounded-xl font-bold text-[12px] cursor-pointer"
+                className="flex-1 sm:flex-initial px-4 py-2.5 border border-[var(--color-line)] text-[var(--color-slate)] hover:bg-white rounded-xl font-bold text-[13px] cursor-pointer text-center"
               >
                 Cancel
               </button>
@@ -774,7 +776,7 @@ export default function PurchaseOrderModal({
                 type="button"
                 onClick={handleTransmitPO}
                 disabled={submitting || lineItems.length === 0 || !moqMet}
-                className="flex-1 sm:flex-initial px-6 py-2.5 bg-[var(--color-gold)] hover:bg-[#b07d10] text-white font-bold rounded-xl text-[13px] shadow-sm transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-2 sm:flex-initial px-6 py-2.5 bg-[var(--color-gold)] hover:bg-[#b07d10] text-white font-bold rounded-xl text-[13px] shadow-sm transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 text-center"
               >
                 {submitting ? 'Transmitting…' : '🚀 Transmit Purchase Order'}
               </button>

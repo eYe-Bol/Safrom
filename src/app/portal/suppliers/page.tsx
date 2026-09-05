@@ -314,46 +314,46 @@ export default function SuppliersPage() {
       {/* Top Header Tabs */}
       <div className="p-3 sm:p-5 max-w-[1200px] mx-auto w-full flex flex-col gap-4">
         <div className="flex justify-between items-center flex-wrap gap-3 bg-white p-2.5 rounded-2xl border border-[var(--color-line-lt)] shadow-sm">
-          <div className="flex items-center gap-1.5 p-1 bg-[var(--color-canvas)] rounded-xl border border-[var(--color-line-lt)]">
+          <div className="flex items-center gap-1.5 p-1 bg-[var(--color-canvas)] rounded-xl border border-[var(--color-line-lt)] w-full sm:w-auto grid grid-cols-2 sm:flex">
             <button
               onClick={() => setActiveTab('custom')}
-              className={`px-4 py-2 rounded-lg font-bold text-[13px] transition-all cursor-pointer flex items-center gap-2 ${
+              className={`px-3 sm:px-4 py-2 rounded-lg font-bold text-[12px] sm:text-[13px] transition-all cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 text-center ${
                 activeTab === 'custom'
                   ? 'bg-white text-[var(--color-teal)] shadow-sm'
                   : 'text-[var(--color-slate)] hover:text-[var(--color-ink)]'
               }`}
             >
-              <span>📋 My Store Suppliers</span>
-              <span className="text-[11px] bg-[var(--color-teal-bg)] text-[var(--color-teal)] px-2 py-0.2 rounded-full font-mono">
+              <span className="truncate">📋 My Store Suppliers</span>
+              <span className="text-[11px] bg-[var(--color-teal-bg)] text-[var(--color-teal)] px-1.5 py-0.2 rounded-full font-mono shrink-0">
                 {suppliers.length}
               </span>
             </button>
 
             <button
               onClick={() => setActiveTab('verified')}
-              className={`px-4 py-2 rounded-lg font-bold text-[13px] transition-all cursor-pointer flex items-center gap-2 ${
+              className={`px-3 sm:px-4 py-2 rounded-lg font-bold text-[12px] sm:text-[13px] transition-all cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 text-center ${
                 activeTab === 'verified'
                   ? 'bg-white text-[var(--color-teal)] shadow-sm border border-[var(--color-teal)]/20'
                   : 'text-[var(--color-slate)] hover:text-[var(--color-ink)]'
               }`}
             >
-              <span>🏆 Verified Wholesale Network</span>
-              <span className="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.2 rounded-full uppercase tracking-wider">
+              <span className="truncate">🏆 Verified Network</span>
+              <span className="text-[9px] sm:text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded-full uppercase tracking-wider shrink-0">
                 Direct
               </span>
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             {activeTab === 'custom' ? (
               <button
                 onClick={openAdd}
-                className="px-4 py-2 bg-[var(--color-teal)] hover:bg-[#104347] text-white font-bold text-[13px] rounded-xl shadow-sm cursor-pointer transition-colors flex items-center gap-1.5"
+                className="w-full sm:w-auto justify-center px-4 py-2.5 sm:py-2 bg-[var(--color-teal)] hover:bg-[#104347] text-white font-bold text-[13px] rounded-xl shadow-sm cursor-pointer transition-colors flex items-center gap-1.5"
               >
                 <span>+</span> Add Custom Vendor
               </button>
             ) : (
-              <div className="text-[12px] font-bold text-[var(--color-muted)] bg-[var(--color-canvas)] px-3 py-1.5 rounded-xl border border-[var(--color-line)]">
+              <div className="w-full sm:w-auto text-[11px] sm:text-[12px] font-bold text-[var(--color-muted)] bg-[var(--color-canvas)] px-3 py-2 sm:py-1.5 rounded-xl border border-[var(--color-line)] text-center sm:text-left">
                 📍 Active Store: <span className="text-[var(--color-ink)]">{storeName || 'Main Store'}</span> ({getBusinessTypeLabel(businessType || 'retail_store')})
               </div>
             )}
@@ -367,18 +367,18 @@ export default function SuppliersPage() {
           <div className="bg-white rounded-xl border border-[var(--color-line-lt)] overflow-hidden shadow-sm">
             {/* Toolbar */}
             <div className="p-3.5 border-b border-[var(--color-line-lt)] flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
                 <input
                   type="text"
                   placeholder="Search vendor, contact, or item…"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="px-3 py-1.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg text-[13px] outline-none w-56 focus:border-[var(--color-teal)]"
+                  className="px-3 py-2 sm:py-1.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg text-[13px] outline-none w-full sm:w-56 focus:border-[var(--color-teal)]"
                 />
                 <select
                   value={catF}
                   onChange={e => setCatF(e.target.value)}
-                  className="px-3 py-1.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg text-[13px] outline-none text-[var(--color-slate)] font-medium cursor-pointer"
+                  className="px-3 py-2 sm:py-1.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-lg text-[13px] outline-none text-[var(--color-slate)] font-medium cursor-pointer w-full sm:w-auto"
                 >
                   {cats.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -388,8 +388,94 @@ export default function SuppliersPage() {
               </div>
             </div>
 
-            {/* Table */}
-            <div className="overflow-x-auto">
+            {/* Mobile Cards View (<md) */}
+            <div className="md:hidden divide-y divide-[var(--color-line-lt)]">
+              {loading ? (
+                <div className="p-6 text-center text-[13px] text-[var(--color-muted)]">Loading vendors…</div>
+              ) : filteredCustom.length === 0 ? (
+                <div className="p-8 text-center">
+                  <div className="text-[32px] mb-2">📦</div>
+                  <div className="font-serif text-[15px] font-bold text-[var(--color-ink)] mb-1">No custom suppliers found</div>
+                  <div className="text-[12px] text-[var(--color-muted)] max-w-sm mx-auto mb-4">
+                    Record your local informal vendors (bakers, egg suppliers, farmers) or connect with verified distributors.
+                  </div>
+                  <button onClick={openAdd} className="w-full px-4 py-2.5 bg-[var(--color-teal)] text-white font-bold text-[12px] rounded-xl cursor-pointer">
+                    + Add Your First Vendor
+                  </button>
+                </div>
+              ) : (
+                filteredCustom.map(s => {
+                  const isLinkedVerified = Boolean(s.verified_supplier_id);
+                  return (
+                    <div key={s.id} className="p-4 flex flex-col gap-2.5 bg-white">
+                      <div className="flex justify-between items-start gap-2">
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="font-serif text-[15px] font-bold text-[var(--color-ink)]">{s.name}</h4>
+                            {isLinkedVerified && (
+                              <span className="text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded-full">
+                                ✓ Verified Partner
+                              </span>
+                            )}
+                          </div>
+                          {s.products && <div className="text-[12px] text-[var(--color-muted)] mt-0.5">{s.products}</div>}
+                        </div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-teal-bg)] text-[var(--color-teal)] px-2 py-0.5 rounded-full shrink-0">
+                          {s.category || 'General'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-[11px] bg-[var(--color-canvas)] p-2.5 rounded-xl border border-[var(--color-line-lt)]">
+                        <div>
+                          <span className="text-[var(--color-muted)] block">Contact:</span>
+                          <span className="font-medium text-[var(--color-slate)] truncate block">{s.contact_person || '—'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[var(--color-muted)] block">Terms:</span>
+                          <span className="font-medium text-[var(--color-slate)] truncate block">{s.terms || '—'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[var(--color-muted)] block">Phone:</span>
+                          {s.phone ? (
+                            <span className="font-mono font-bold text-[#128C7E]">+{s.phone.replace(/\D/g, '')}</span>
+                          ) : '—'}
+                        </div>
+                        <div>
+                          <span className="text-[var(--color-muted)] block">Rating:</span>
+                          <span className="text-[var(--color-gold)]">{stars(s.rating || 5)}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1">
+                        {s.phone && (
+                          <button
+                            onClick={() => openWhatsAppOrder(s)}
+                            className="flex-1 py-2 text-[12px] font-bold text-[#128C7E] bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <span>📲</span> Order WhatsApp
+                          </button>
+                        )}
+                        <button
+                          onClick={() => openEdit(s)}
+                          className="px-4 py-2 text-[12px] font-bold text-[var(--color-teal)] bg-[var(--color-teal-bg)] rounded-xl hover:opacity-80 transition-opacity"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => del(s)}
+                          className="px-3 py-2 text-[12px] font-bold text-[var(--color-red)] bg-[var(--color-red-bg)] rounded-xl hover:opacity-80 transition-opacity"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Desktop Table (hidden on mobile) */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[700px]">
                 <thead>
                   <tr className="border-b border-[var(--color-line-lt)] bg-[var(--color-canvas)] text-[11px] font-bold text-[var(--color-muted)] uppercase tracking-wider">
@@ -507,11 +593,11 @@ export default function SuppliersPage() {
               </div>
 
               {/* Quick Filter Controls */}
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
                 <select
                   value={verifiedRegion}
                   onChange={e => setVerifiedRegion(e.target.value)}
-                  className="px-3 py-1.5 bg-white border border-[var(--color-line)] rounded-xl text-[12px] font-bold text-[var(--color-ink)] outline-none shadow-sm cursor-pointer"
+                  className="px-3 py-2 bg-white border border-[var(--color-line)] rounded-xl text-[12px] font-bold text-[var(--color-ink)] outline-none shadow-sm cursor-pointer w-full sm:w-auto"
                 >
                   <option value="All">All Regions / Corridors</option>
                   <option value="Nairobi">Nairobi Metropolitan</option>
@@ -524,7 +610,7 @@ export default function SuppliersPage() {
                   placeholder="Search brand (EABL, Kapa, Bidco)…"
                   value={verifiedSearch}
                   onChange={e => setVerifiedSearch(e.target.value)}
-                  className="px-3 py-1.5 bg-white border border-[var(--color-line)] rounded-xl text-[12px] outline-none shadow-sm focus:border-[var(--color-teal)] w-48"
+                  className="px-3 py-2 bg-white border border-[var(--color-line)] rounded-xl text-[12px] outline-none shadow-sm focus:border-[var(--color-teal)] w-full sm:w-48"
                 />
               </div>
             </div>
@@ -536,7 +622,7 @@ export default function SuppliersPage() {
                 const isConnected = Boolean(conn);
 
                 return (
-                  <div key={sup.id} className="bg-white rounded-2xl p-5 border border-[var(--color-line-lt)] shadow-sm flex flex-col justify-between hover:border-[var(--color-teal)]/40 transition-colors">
+                  <div key={sup.id} className="bg-white rounded-2xl p-4 sm:p-5 border border-[var(--color-line-lt)] shadow-sm flex flex-col justify-between hover:border-[var(--color-teal)]/40 transition-colors">
                     <div>
                       {/* Top Badges */}
                       <div className="flex justify-between items-start mb-2.5 flex-wrap gap-2">
@@ -600,23 +686,23 @@ export default function SuppliersPage() {
                     <div>
                       {/* Synced State Preview */}
                       {isConnected ? (
-                        <div className="mb-3 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-900 flex items-center justify-between">
+                        <div className="mb-3 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-900 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                           <div className="flex items-center gap-1.5 font-semibold">
                             <span>✅</span>
-                            <span>Synced: {conn.synced_landmark}</span>
+                            <span className="truncate">Synced: {conn.synced_landmark}</span>
                           </div>
-                          <span className="font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md">
+                          <span className="font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md self-start sm:self-auto shrink-0">
                             {conn.delivery_days.join(', ')} Run
                           </span>
                         </div>
                       ) : (
-                        <div className="flex justify-between items-center text-[11px] text-[var(--color-muted)] mb-3">
+                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1 text-[11px] text-[var(--color-muted)] mb-3">
                           <span>Min Order: <strong>KES {sup.moq_amount.toLocaleString()}</strong></span>
                           <span>Payment: <strong>M-Pesa Direct / POD</strong> <span className="text-[10px] text-emerald-800 bg-emerald-100 border border-emerald-300 px-1.5 py-0.2 rounded font-semibold ml-1">✓ Instant Settlement</span></span>
                         </div>
                       )}
 
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <button
                           onClick={() => openSyncModal(sup)}
                           className={`flex-1 py-2.5 rounded-xl font-bold text-[12px] transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-sm ${
@@ -630,7 +716,7 @@ export default function SuppliersPage() {
 
                         <button
                           onClick={() => setPoModal({ open: true, supplier: sup })}
-                          className="px-3.5 py-2.5 bg-[var(--color-gold)] hover:bg-[#b07d10] text-white rounded-xl font-bold text-[12px] transition-colors cursor-pointer shadow-xs flex items-center gap-1"
+                          className="w-full sm:w-auto px-4 py-2.5 bg-[var(--color-gold)] hover:bg-[#b07d10] text-white rounded-xl font-bold text-[12px] transition-colors cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
                           title="Open live wholesale catalogue & place Purchase Order"
                         >
                           <span>🛒</span> Catalogue & Order
@@ -828,11 +914,14 @@ export default function SuppliersPage() {
       {/* MODAL: ADD / EDIT CUSTOM SUPPLIER                                      */}
       {/* ═════════════════════════════════════════════════════════════════════ */}
       {showAddForm && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[500] p-4" onClick={() => setShowAddForm(false)}>
-          <div className="bg-white rounded-[18px] p-6 w-full max-w-[500px] shadow-[0_24px_64px_rgba(0,0,0,0.2)] max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h2 className="font-serif text-[18px] font-bold text-[var(--color-ink)] mb-5">{editItem ? 'Edit Vendor Profile' : 'Add New Vendor'}</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[500] p-3 sm:p-4" onClick={() => setShowAddForm(false)}>
+          <div className="bg-white rounded-2xl p-4 sm:p-6 w-full max-w-[500px] shadow-[0_24px_64px_rgba(0,0,0,0.2)] max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="font-serif text-[18px] font-bold text-[var(--color-ink)]">{editItem ? 'Edit Vendor Profile' : 'Add New Vendor'}</h2>
+              <button onClick={() => setShowAddForm(false)} className="text-[20px] text-[var(--color-muted)] hover:text-[var(--color-ink)]">&times;</button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="sm:col-span-2">
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Vendor / Business Name *</label>
                 <ProperCaseInput value={form.name} onChange={v => setForm((p: any) => ({...p, name: v}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="e.g. Mama Mary Fresh Bakery" />
               </div>
@@ -852,7 +941,7 @@ export default function SuppliersPage() {
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Payment Terms</label>
                 <ProperCaseInput mode="sentence" value={form.terms} onChange={v => setForm((p: any) => ({...p, terms: v}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="e.g. COD, Net 14 Days" />
               </div>
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1">Products Supplied (comma-separated)</label>
                 <ProperCaseInput value={form.products} onChange={v => setForm((p: any) => ({...p, products: v}))} className="w-full px-3 py-2 border border-[var(--color-line)] rounded-lg text-[13px] outline-none focus:border-[var(--color-teal)]" placeholder="Fresh Bread, Scones, Cakes" />
               </div>
@@ -870,8 +959,8 @@ export default function SuppliersPage() {
               </div>
             </div>
             <div className="flex gap-2.5 mt-5">
-              <button onClick={() => setShowAddForm(false)} className="flex-1 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[14px] cursor-pointer text-[var(--color-slate)]">Cancel</button>
-              <button onClick={save} disabled={!form.name} className="flex-1 py-2.5 bg-[var(--color-teal)] text-white rounded-xl font-bold text-[14px] cursor-pointer disabled:opacity-50">
+              <button onClick={() => setShowAddForm(false)} className="flex-1 py-2.5 bg-[var(--color-canvas)] border border-[var(--color-line)] rounded-xl font-semibold text-[13px] sm:text-[14px] cursor-pointer text-[var(--color-slate)]">Cancel</button>
+              <button onClick={save} disabled={!form.name} className="flex-1 py-2.5 bg-[var(--color-teal)] text-white rounded-xl font-bold text-[13px] sm:text-[14px] cursor-pointer disabled:opacity-50">
                 {editItem ? 'Save Changes' : 'Add Vendor'}
               </button>
             </div>
