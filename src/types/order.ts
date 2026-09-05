@@ -1,6 +1,6 @@
 'use client';
 
-export type OrderPaymentMethod = 'pay_before_delivery' | 'pod' | 'net_7' | 'net_14';
+export type OrderPaymentMethod = 'pay_before_delivery' | 'pod' | 'bank_transfer' | 'net_7' | 'net_14';
 export type OrderStatus = 'pending' | 'confirmed' | 'packed' | 'en_route' | 'delivered' | 'cancelled';
 
 export type WholesaleOrderItem = {
@@ -29,6 +29,8 @@ export type WholesaleOrder = {
   surcharge: number;
   total_amount: number;
   payment_method: OrderPaymentMethod;
+  payment_ref?: string; // M-Pesa transaction code or Bank EFT ref
+  delivery_handover_pin?: string; // 4-digit counter release PIN for POD
   payment_status: 'pending' | 'paid' | 'verified';
   status: OrderStatus;
   grn_signed: boolean;

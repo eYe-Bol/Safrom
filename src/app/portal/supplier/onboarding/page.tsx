@@ -62,9 +62,9 @@ const CATEGORIES = [
 const WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat'];
 
 const PAYMENT_OPTIONS = [
-  { value: 'cod',             label: '100% Pay Before Delivery (Cash/M-Pesa)' },
-  { value: 'escrow',          label: 'Escrow (Safrom holds until delivery confirmed)' },
-  { value: 'partial_deposit', label: 'Partial Deposit (50% upfront, 50% on delivery)' },
+  { value: 'cod',             label: '100% Pay Before Delivery (Direct M-Pesa Till / Paybill)' },
+  { value: 'pod',             label: 'Payment on Delivery (POD - Counter Handover)' },
+  { value: 'partial_deposit', label: 'Partial Deposit (50% upfront, 50% on counter offload)' },
   { value: 'credit_7',        label: 'Net 7 Days Credit (verified accounts only)' },
   { value: 'credit_14',       label: 'Net 14 Days Credit (verified accounts only)' },
 ];

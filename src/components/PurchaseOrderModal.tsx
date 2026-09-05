@@ -28,6 +28,9 @@ export default function PurchaseOrderModal({
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [selectedCorridorId, setSelectedCorridorId] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<OrderPaymentMethod>('pay_before_delivery');
+  const [paymentRef, setPaymentRef] = useState('');
+  const [stkPrompting, setStkPrompting] = useState(false);
+  const [handoverPin] = useState(() => Math.floor(1000 + Math.random() * 9000).toString());
   const [orderNotes, setOrderNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState<WholesaleOrder | null>(null);
@@ -35,7 +38,7 @@ export default function PurchaseOrderModal({
   // Load supplier catalogue
   useEffect(() => {
     if (!supplier) return;
-    const customKey = `sfs_wholesale_catalogue_${supplier.id}`;
+    const customKey = 'sfs_wholesale_catalogue_' + supplier.id;
     const saved = localStorage.getItem(customKey);
     let items: WholesaleProduct[] = [];
     if (saved) {
@@ -50,7 +53,6 @@ export default function PurchaseOrderModal({
     }
     setCatalogue(items);
 
-    // If a preselected item name was passed, set its initial quantity
     if (preselectedItemName && items.length > 0) {
       const match = items.find(i => i.name.toLowerCase().includes(preselectedItemName.toLowerCase()));
       if (match) {
@@ -60,7 +62,6 @@ export default function PurchaseOrderModal({
       setQuantities({});
     }
 
-    // Default corridor
     if (connection?.corridor_matched) {
       const match = supplier.corridors.find(c => c.name.toLowerCase().includes(connection.corridor_matched.toLowerCase()));
       if (match) setSelectedCorridorId(match.id);
@@ -68,6 +69,7 @@ export default function PurchaseOrderModal({
       setSelectedCorridorId(supplier.corridors[0].id);
     }
     setOrderComplete(null);
+    setPaymentRef('');
   }, [supplier, connection, preselectedItemName]);
 
   // Calculations
@@ -109,6 +111,16 @@ export default function PurchaseOrderModal({
     setQuantities(prev => ({ ...prev, [id]: Math.max(0, val) }));
   };
 
+  // Simulate STK Push
+  const handleTriggerSTK = () => {
+    setStkPrompting(true);
+    setTimeout(() => {
+      const demoCode = 'SLK' + Math.floor(1000000 + Math.random() * 9000000).toString() + 'X';
+      setPaymentRef(demoCode);
+      setStkPrompting(false);
+    }, 2000);
+  };
+
   // Submit PO
   const handleTransmitPO = () => {
     if (!supplier) return;
@@ -117,7 +129,7 @@ export default function PurchaseOrderModal({
       return;
     }
     if (!moqMet) {
-      alert(`This supplier requires a minimum order of KES ${moqRequired.toLocaleString()}. Current total is KES ${subtotal.toLocaleString()}.`);
+      alert('This supplier requires a minimum order of KES ' + moqRequired.toLocaleString() + '. Current total is KES ' + subtotal.toLocaleString() + '.');
       return;
     }
 
@@ -139,7 +151,9 @@ export default function PurchaseOrderModal({
       surcharge,
       total_amount: totalAmount,
       payment_method: paymentMethod,
-      payment_status: paymentMethod === 'pay_before_delivery' ? 'pending' : 'pending',
+      payment_ref: paymentRef || (paymentMethod === 'pay_before_delivery' ? 'PENDING-TILL-VERIFY' : undefined),
+      delivery_handover_pin: paymentMethod === 'pod' ? handoverPin : undefined,
+      payment_status: paymentRef ? 'paid' : 'pending',
       status: 'pending',
       grn_signed: false,
       notes: orderNotes,
@@ -160,7 +174,7 @@ export default function PurchaseOrderModal({
       setSubmitting(false);
       setOrderComplete(newOrder);
       if (onOrderCreated) onOrderCreated(newOrder);
-    }, 600);
+    }, 500);
   };
 
   // Generate PDF
@@ -178,8 +192,8 @@ export default function PurchaseOrderModal({
 
         doc.setFontSize(10);
         doc.setTextColor(71, 85, 105);
-        doc.text(`PO Number: ${ord ? ord.id : 'DRAFT'}`, 14, 28);
-        doc.text(`Issue Date: ${new Date().toLocaleDateString('en-KE')}`, 14, 34);
+        doc.text('PO Number: ' + (ord ? ord.id : 'DRAFT'), 14, 28);
+        doc.text('Issue Date: ' + new Date().toLocaleDateString('en-KE'), 14, 34);
 
         // Buyer & Supplier Info
         doc.setFillColor(248, 250, 252);
@@ -191,7 +205,7 @@ export default function PurchaseOrderModal({
         doc.setFontSize(10);
         doc.setTextColor(71, 85, 105);
         doc.text(storeName || 'Retail Store', 18, 54);
-        doc.text(`Delivery Landmark: ${connection?.synced_landmark || 'Store Counter'}`, 18, 60);
+        doc.text('Delivery Point: ' + (connection?.synced_landmark || 'Store Counter'), 18, 60);
 
         doc.setFontSize(11);
         doc.setTextColor(15, 23, 42);
@@ -199,16 +213,16 @@ export default function PurchaseOrderModal({
         doc.setFontSize(10);
         doc.setTextColor(71, 85, 105);
         doc.text(supplier?.company_name || 'Wholesale Supplier', 110, 54);
-        doc.text(`Corridor: ${activeCorridor?.name?.split('(')[0] || 'Scheduled Route'}`, 110, 60);
+        doc.text('Corridor: ' + (activeCorridor?.name?.split('(')[0] || 'Scheduled Route'), 110, 60);
 
         // Table
         const tableBody = lineItems.map((item, idx) => [
           idx + 1,
           item.name,
           item.pack_size,
-          `KES ${item.unit_price.toLocaleString()}`,
+          'KES ' + item.unit_price.toLocaleString(),
           item.qty,
-          `KES ${item.subtotal.toLocaleString()}`,
+          'KES ' + item.subtotal.toLocaleString(),
         ]);
 
         autoTable(doc, {
@@ -223,20 +237,25 @@ export default function PurchaseOrderModal({
         const finalY = (doc as any).lastAutoTable.finalY + 8;
         doc.setFontSize(11);
         doc.setTextColor(15, 23, 42);
-        doc.text(`Subtotal: KES ${subtotal.toLocaleString()}`, 140, finalY);
+        doc.text('Subtotal: KES ' + subtotal.toLocaleString(), 140, finalY);
         if (surcharge > 0) {
-          doc.text(`Outside Corridor Surcharge: KES ${surcharge.toLocaleString()}`, 140, finalY + 6);
+          doc.text('Outside Corridor Surcharge: KES ' + surcharge.toLocaleString(), 140, finalY + 6);
         }
         doc.setFontSize(13);
         doc.setTextColor(10, 92, 107);
-        doc.text(`TOTAL ORDER: KES ${totalAmount.toLocaleString()}`, 140, finalY + (surcharge > 0 ? 14 : 8));
+        doc.text('TOTAL ORDER: KES ' + totalAmount.toLocaleString(), 140, finalY + (surcharge > 0 ? 14 : 8));
 
         doc.setFontSize(9);
         doc.setTextColor(100, 116, 139);
-        doc.text(`Payment Terms: ${paymentMethod.replace(/_/g, ' ').toUpperCase()} (Escrow Paused for Pilot)`, 14, finalY + 22);
+        const termsText = paymentMethod === 'pay_before_delivery'
+          ? 'M-PESA BUY GOODS TILL (Code: ' + (paymentRef || 'Direct Transfer') + ')'
+          : paymentMethod === 'pod'
+          ? 'PAYMENT ON DELIVERY (Counter Release PIN: ' + handoverPin + ')'
+          : 'DIRECT BANK EFT / RTGS TRANSFER';
+        doc.text('Payment Terms: ' + termsText, 14, finalY + 22);
         doc.text('Authorized Safrom Verified B2B Wholesale Document', 14, finalY + 28);
 
-        doc.save(`LPO_${supplier?.company_name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+        doc.save('LPO_' + supplier?.company_name.replace(/\s+/g, '_') + '_' + new Date().toISOString().split('T')[0] + '.pdf');
       });
     });
   };
@@ -257,9 +276,17 @@ export default function PurchaseOrderModal({
     msg += '\n*Subtotal:* KES ' + subtotal.toLocaleString() + '\n';
     if (surcharge > 0) msg += '*Outside Surcharge:* KES ' + surcharge.toLocaleString() + '\n';
     msg += '*TOTAL ORDER:* KES ' + totalAmount.toLocaleString() + '\n';
-    msg += '*Payment Terms:* ' + paymentMethod.replace(/_/g, ' ').toUpperCase() + ' (Escrow Paused)\n';
+    
+    if (paymentMethod === 'pay_before_delivery') {
+      msg += '*Payment:* M-PESA BUY GOODS (Till Ref: ' + (paymentRef || 'Paid / Attaching Code') + ')\n';
+    } else if (paymentMethod === 'pod') {
+      msg += '*Payment:* PAYMENT ON DELIVERY (Counter Handover PIN: ' + handoverPin + ')\n';
+    } else {
+      msg += '*Payment:* BANK TRANSFER / EFT (Ref: ' + (paymentRef || 'Direct Transfer') + ')\n';
+    }
+
     if (orderNotes) msg += '*Notes:* ' + orderNotes + '\n';
-    msg += '\nPlease confirm receipt, batch availability, and delivery dispatch.\nThank you!';
+    msg += '\nPlease confirm order receipt, stock allocation, and dispatch schedule.\nThank you!';
 
     window.open('https://wa.me/' + phoneClean + '?text=' + encodeURIComponent(msg), '_blank');
   };
@@ -313,6 +340,44 @@ export default function PurchaseOrderModal({
                   Your order has been queued in <strong>{supplier.company_name}</strong>'s dispatch system for the{' '}
                   <strong>{orderComplete.delivery_day}</strong> route run.
                 </p>
+              </div>
+
+              {/* Transaction Details Confirmation Card */}
+              <div className="w-full max-w-md bg-[var(--color-canvas)] border border-[var(--color-line-lt)] rounded-2xl p-4 text-left text-[12px] space-y-2">
+                <div className="flex justify-between items-center pb-2 border-b border-[var(--color-line-lt)]">
+                  <span className="text-[var(--color-muted)]">Total Amount:</span>
+                  <strong className="font-serif text-[16px] text-[var(--color-teal)]">
+                    KES {orderComplete.total_amount.toLocaleString()}
+                  </strong>
+                </div>
+
+                {orderComplete.payment_method === 'pay_before_delivery' && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-[var(--color-muted)]">M-Pesa Reference:</span>
+                    <strong className="font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      {orderComplete.payment_ref || 'Direct Buy Goods Settlement'}
+                    </strong>
+                  </div>
+                )}
+
+                {orderComplete.payment_method === 'pod' && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-950">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-amber-800 mb-1">
+                      Counter Delivery Handover PIN
+                    </div>
+                    <div className="font-mono text-[24px] font-bold tracking-widest text-center text-amber-900 my-1">
+                      {orderComplete.delivery_handover_pin}
+                    </div>
+                    <div className="text-[11px] text-amber-800 text-center">
+                      Give this PIN to the delivery crew only after inspecting all crates at your counter.
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center pt-1 text-[11px] text-[var(--color-muted)]">
+                  <span>Corridor Run:</span>
+                  <span className="font-semibold text-[var(--color-ink)]">{orderComplete.delivery_day}</span>
+                </div>
               </div>
 
               {/* Action Buttons for Transmitted Order */}
@@ -382,17 +447,16 @@ export default function PurchaseOrderModal({
                   </span>
                 </div>
 
-                <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
                   {catalogue.map(prod => {
                     const qty = quantities[prod.id] || 0;
                     return (
                       <div
                         key={prod.id}
-                        className={`p-3 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                          qty > 0
+                        className={'p-3 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ' +
+                          (qty > 0
                             ? 'bg-emerald-50/50 border-emerald-300'
-                            : 'bg-white border-[var(--color-line-lt)] hover:border-[var(--color-line)]'
-                        }`}
+                            : 'bg-white border-[var(--color-line-lt)] hover:border-[var(--color-line)]')}
                       >
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
@@ -435,7 +499,7 @@ export default function PurchaseOrderModal({
                             +
                           </button>
                           <span className="text-[11px] text-[var(--color-muted)] w-16 text-right font-mono">
-                            {qty > 0 ? `KES ${(prod.wholesale_price * qty).toLocaleString()}` : '—'}
+                            {qty > 0 ? 'KES ' + (prod.wholesale_price * qty).toLocaleString() : '—'}
                           </span>
                         </div>
                       </div>
@@ -474,69 +538,156 @@ export default function PurchaseOrderModal({
                     <span className={moqMet ? 'text-emerald-700 font-bold' : 'text-amber-700 font-bold'}>
                       {moqMet
                         ? '✓ MOQ Requirement Met'
-                        : `Need KES ${(moqRequired - subtotal).toLocaleString()} more`}
+                        : 'Need KES ' + (moqRequired - subtotal).toLocaleString() + ' more'}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
                     <div
-                      className={`h-full transition-all ${moqMet ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                      style={{ width: `${Math.min(100, (subtotal / (moqRequired || 1)) * 100)}%` }}
+                      className={'h-full transition-all ' + (moqMet ? 'bg-emerald-500' : 'bg-amber-500')}
+                      style={{ width: Math.min(100, (subtotal / (moqRequired || 1)) * 100) + '%' }}
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Payment Terms Selector (Escrow explicitly paused) */}
-              <div>
-                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-1.5">
-                  Payment Method
+              {/* Payment Method & Transaction Completion Feature */}
+              <div className="bg-white rounded-2xl p-4 border border-[var(--color-line-lt)] shadow-xs">
+                <label className="block text-[12px] font-bold text-[var(--color-slate)] mb-2 uppercase tracking-wider">
+                  Payment Method & Transaction Completion
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+
+                {/* 3 Active Payment Options */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('pay_before_delivery')}
-                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                      paymentMethod === 'pay_before_delivery'
-                        ? 'border-[var(--color-teal)] bg-[var(--color-teal-bg)] shadow-xs'
-                        : 'border-[var(--color-line)] bg-white hover:border-[var(--color-teal)]/50'
-                    }`}
+                    className={'p-2.5 rounded-xl border text-left transition-all cursor-pointer ' +
+                      (paymentMethod === 'pay_before_delivery'
+                        ? 'border-[var(--color-teal)] bg-[var(--color-teal-bg)] shadow-xs ring-1 ring-[var(--color-teal)]'
+                        : 'border-[var(--color-line)] bg-[var(--color-canvas)] hover:border-[var(--color-teal)]/50')}
                   >
-                    <div className="font-bold text-[12px] text-[var(--color-ink)]">
-                      📲 100% Pay Before Delivery
+                    <div className="font-bold text-[12px] text-[var(--color-ink)] flex items-center gap-1">
+                      <span>📲</span> M-Pesa Buy Goods
                     </div>
-                    <div className="text-[11px] text-[var(--color-muted)] mt-0.5">
-                      Direct M-Pesa Till / Paybill payment upon order confirmation
+                    <div className="text-[10px] text-[var(--color-muted)] mt-0.5">
+                      Direct till payment with transaction verification
                     </div>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('pod')}
-                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                      paymentMethod === 'pod'
-                        ? 'border-[var(--color-teal)] bg-[var(--color-teal-bg)] shadow-xs'
-                        : 'border-[var(--color-line)] bg-white hover:border-[var(--color-teal)]/50'
-                    }`}
+                    className={'p-2.5 rounded-xl border text-left transition-all cursor-pointer ' +
+                      (paymentMethod === 'pod'
+                        ? 'border-[var(--color-teal)] bg-[var(--color-teal-bg)] shadow-xs ring-1 ring-[var(--color-teal)]'
+                        : 'border-[var(--color-line)] bg-[var(--color-canvas)] hover:border-[var(--color-teal)]/50')}
                   >
-                    <div className="font-bold text-[12px] text-[var(--color-ink)]">
-                      🚚 Payment on Delivery (POD)
+                    <div className="font-bold text-[12px] text-[var(--color-ink)] flex items-center gap-1">
+                      <span>🚚</span> Pay on Delivery (POD)
                     </div>
-                    <div className="text-[11px] text-[var(--color-muted)] mt-0.5">
-                      Inspect crates at counter, pay driver via M-Pesa / Cash
+                    <div className="text-[10px] text-[var(--color-muted)] mt-0.5">
+                      Counter crate inspection with Handover PIN
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('bank_transfer')}
+                    className={'p-2.5 rounded-xl border text-left transition-all cursor-pointer ' +
+                      (paymentMethod === 'bank_transfer'
+                        ? 'border-[var(--color-teal)] bg-[var(--color-teal-bg)] shadow-xs ring-1 ring-[var(--color-teal)]'
+                        : 'border-[var(--color-line)] bg-[var(--color-canvas)] hover:border-[var(--color-teal)]/50')}
+                  >
+                    <div className="font-bold text-[12px] text-[var(--color-ink)] flex items-center gap-1">
+                      <span>🏦</span> Bank EFT / Transfer
+                    </div>
+                    <div className="text-[10px] text-[var(--color-muted)] mt-0.5">
+                      Direct bank wire for large depot orders
                     </div>
                   </button>
                 </div>
 
-                {/* Escrow Paused Callout */}
-                <div className="mt-2 p-2.5 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-between text-[11px] text-gray-600">
-                  <div className="flex items-center gap-1.5">
-                    <span>🔒</span>
-                    <span>Safrom Escrow Settlement</span>
+                {/* Dynamic Transaction Completion Feature Box */}
+                {paymentMethod === 'pay_before_delivery' && (
+                  <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2.5 text-[12px]">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider block">
+                          Verified Wholesale Till
+                        </span>
+                        <span className="font-mono text-[16px] font-bold text-emerald-950">
+                          Till No: 849 201
+                        </span>
+                        <span className="text-[11px] text-emerald-800 block">
+                          ({supplier.company_name})
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-emerald-800 block">Amount to Send:</span>
+                        <strong className="font-serif text-[15px] text-emerald-950">
+                          KES {totalAmount.toLocaleString()}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-emerald-200/60 flex flex-col sm:flex-row items-center gap-2">
+                      <input
+                        type="text"
+                        value={paymentRef}
+                        onChange={e => setPaymentRef(e.target.value.toUpperCase())}
+                        placeholder="Enter M-Pesa Code (e.g. SKB94X82LK)"
+                        maxLength={12}
+                        className="w-full sm:flex-1 py-2 px-3 border border-emerald-300 rounded-lg text-[12px] font-mono font-bold bg-white outline-none focus:ring-1 focus:ring-emerald-500 uppercase"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleTriggerSTK}
+                        disabled={stkPrompting}
+                        className="w-full sm:w-auto px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[11px] rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+                      >
+                        {stkPrompting ? 'Sending STK Prompt…' : '📲 Request M-Pesa Prompt'}
+                      </button>
+                    </div>
+                    {paymentRef && (
+                      <div className="text-[11px] text-emerald-800 font-semibold flex items-center gap-1">
+                        <span>✓</span> M-Pesa confirmation code attached to order receipt.
+                      </div>
+                    )}
                   </div>
-                  <span className="font-bold bg-gray-200 text-gray-700 px-2 py-0.5 rounded text-[10px] uppercase">
-                    Paused for Pilot Phase
-                  </span>
-                </div>
+                )}
+
+                {paymentMethod === 'pod' && (
+                  <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl space-y-2 text-[12px]">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-blue-900">
+                        Counter Handover Release Code:
+                      </span>
+                      <span className="font-mono text-[18px] font-bold bg-white text-blue-950 px-3 py-0.5 rounded-lg border border-blue-300 shadow-xs tracking-wider">
+                        {handoverPin}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-blue-800 leading-relaxed">
+                      💡 <strong>Inspection Policy:</strong> Inspect goods, crates, and batch numbers with the van salesman upon counter arrival.
+                      Provide this 4-digit code to the delivery driver to officially sign off and release payment via driver M-Pesa / Cash.
+                    </p>
+                  </div>
+                )}
+
+                {paymentMethod === 'bank_transfer' && (
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-[12px]">
+                    <div className="flex justify-between text-[11px] text-[var(--color-slate)]">
+                      <span>Equity Bank · Industrial Area Branch</span>
+                      <span className="font-mono font-bold">A/C: 0110 4829 1029 00</span>
+                    </div>
+                    <input
+                      type="text"
+                      value={paymentRef}
+                      onChange={e => setPaymentRef(e.target.value.toUpperCase())}
+                      placeholder="Enter Bank EFT Reference / Slip No."
+                      className="w-full py-2 px-3 border border-[var(--color-line)] rounded-lg text-[12px] font-mono bg-white outline-none focus:border-[var(--color-teal)] uppercase"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Order Notes */}

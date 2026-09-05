@@ -612,7 +612,7 @@ export default function SuppliersPage() {
                       ) : (
                         <div className="flex justify-between items-center text-[11px] text-[var(--color-muted)] mb-3">
                           <span>Min Order: <strong>KES {sup.moq_amount.toLocaleString()}</strong></span>
-                          <span>Payment: <strong>Pre-Pay / POD</strong> <span className="text-[10px] text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.2 rounded font-semibold ml-1">Escrow Paused</span></span>
+                          <span>Payment: <strong>M-Pesa Direct / POD</strong> <span className="text-[10px] text-emerald-800 bg-emerald-100 border border-emerald-300 px-1.5 py-0.2 rounded font-semibold ml-1">✓ Instant Settlement</span></span>
                         </div>
                       )}
 
