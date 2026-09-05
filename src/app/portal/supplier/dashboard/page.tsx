@@ -55,18 +55,18 @@ export default function SupplierDashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => fire('Wholesale Catalogue editor opening…')}
-              className="px-4 py-2 bg-white text-[var(--color-teal)] font-bold text-[12px] rounded-xl shadow-sm hover:bg-gray-100 transition-colors cursor-pointer"
+            <Link
+              href="/portal/supplier/catalogue"
+              className="px-4 py-2 bg-white text-[var(--color-teal)] font-bold text-[12px] rounded-xl shadow-sm hover:bg-gray-100 transition-colors cursor-pointer inline-block"
             >
               Manage Catalogue
-            </button>
-            <button
-              onClick={() => fire('Active Trade Promotions modal opening…')}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-[12px] rounded-xl transition-colors cursor-pointer border border-white/20"
+            </Link>
+            <Link
+              href="/portal/supplier/orders"
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-[12px] rounded-xl transition-colors cursor-pointer border border-white/20 inline-block"
             >
-              Post Trade Deal
-            </button>
+              Wholesale Orders
+            </Link>
           </div>
         </div>
 

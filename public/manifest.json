@@ -1,11 +1,17 @@
 {
-  "name": "Safrom Business Portal",
-  "short_name": "Safrom",
-  "description": "Manage your store's inventory, track daily sales, and oversee team operations.",
-  "start_url": "/",
+  "name": "Safrom Business & POS Portal",
+  "short_name": "Safrom POS",
+  "description": "Sales From Scratch: Retail inventory, counter sales POS, staff management, and wholesale procurement.",
+  "start_url": "/portal/dashboard",
   "display": "standalone",
-  "background_color": "#111827",
-  "theme_color": "#111827",
+  "background_color": "#0E3B3E",
+  "theme_color": "#0A5C6B",
+  "orientation": "any",
+  "categories": [
+    "business",
+    "finance",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "/logo.png",
@@ -18,6 +24,41 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Sales Tracker & POS",
+      "short_name": "POS",
+      "url": "/portal/sales",
+      "icons": [
+        {
+          "src": "/logo.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Situation Room",
+      "short_name": "Inventory",
+      "url": "/portal/situation",
+      "icons": [
+        {
+          "src": "/logo.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Wholesale Network",
+      "short_name": "Wholesale",
+      "url": "/portal/suppliers",
+      "icons": [
+        {
+          "src": "/logo.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

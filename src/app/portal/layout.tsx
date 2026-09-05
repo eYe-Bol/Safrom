@@ -22,7 +22,9 @@ const NAV_ITEMS = [
 
 const SUPPLIER_NAV_ITEMS = [
   { href: '/portal/supplier/dashboard', label: 'Supplier Hub', icon: '🏭', ownerOnly: false },
-  { href: '/portal/suppliers', label: 'Wholesale Directory', icon: '🤝', ownerOnly: false },
+  { href: '/portal/supplier/catalogue', label: 'Wholesale Catalogue', icon: '📦', ownerOnly: false },
+  { href: '/portal/supplier/orders', label: 'Wholesale Orders', icon: '📑', ownerOnly: false },
+  { href: '/portal/suppliers', label: 'Retailer Network', icon: '🤝', ownerOnly: false },
   { href: '/portal/settings', label: 'Account Settings', icon: '⚙️', ownerOnly: false },
 ];
 

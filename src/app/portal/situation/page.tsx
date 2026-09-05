@@ -4,6 +4,8 @@ import { Topbar } from '@/components/Topbar';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useStore } from '@/context/StoreContext';
+import PurchaseOrderModal from '@/components/PurchaseOrderModal';
+import { MOCK_VERIFIED_SUPPLIERS } from '@/utils/mockVerifiedSuppliers';
 
 type InvItem = {
   id: string;
@@ -119,6 +121,7 @@ export default function SituationRoomPage() {
   const [manualOrders, setManualOrders] = useState<string[]>([]);
   const [toast, setToast] = useState('');
   const [storeProfile, setStoreProfile] = useState<any>(null);
+  const [poModal, setPoModal] = useState<{ open: boolean; supplier: any; preselectedItemName?: string }>({ open: false, supplier: null });
   const { storeId, branchName } = useStore();
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 4000); };
@@ -636,6 +639,16 @@ export default function SituationRoomPage() {
                       >
                         📤 Share PDF
                       </button>
+                      <button
+                        onClick={() => {
+                          const matched = MOCK_VERIFIED_SUPPLIERS.find(s => s.company_name.toLowerCase().includes(group.supplier.toLowerCase())) || MOCK_VERIFIED_SUPPLIERS[0];
+                          setPoModal({ open: true, supplier: matched, preselectedItemName: group.items[0]?.name });
+                        }}
+                        className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 bg-[var(--color-gold)] text-white font-bold text-[13px] rounded-xl hover:bg-[#b07d10] transition-colors whitespace-nowrap cursor-pointer shadow-xs"
+                        title="Open live wholesale catalogue from verified distributor"
+                      >
+                        🛒 Wholesale Reorder
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -786,6 +799,17 @@ export default function SituationRoomPage() {
         )}
 
       </div>
+
+      {/* Purchase Order Modal for Low Stock Replenishment */}
+      <PurchaseOrderModal
+        isOpen={poModal.open}
+        onClose={() => setPoModal({ open: false, supplier: null })}
+        supplier={poModal.supplier}
+        preselectedItemName={poModal.preselectedItemName}
+        onOrderCreated={(ord) => {
+          fire(`✓ Purchase Order ${ord.id} queued for dispatch from ${poModal.supplier?.company_name}!`);
+        }}
+      />
     </div>
   );
 }

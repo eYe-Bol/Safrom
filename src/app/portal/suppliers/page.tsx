@@ -9,6 +9,7 @@ import { autoDeduplicateSuppliers } from '@/utils/dedup';
 import { getBusinessTypeLabel } from '@/utils/businessTypes';
 import { VerifiedSupplier, SupplierConnection } from '@/types/supplier';
 import { MOCK_VERIFIED_SUPPLIERS, evaluateSupplierCorridorMatch } from '@/utils/mockVerifiedSuppliers';
+import PurchaseOrderModal from '@/components/PurchaseOrderModal';
 
 type Supplier = {
   id: string;
@@ -60,6 +61,9 @@ export default function SuppliersPage() {
   const [syncLandmark, setSyncLandmark] = useState('');
   const [syncNotes, setSyncNotes] = useState('');
   const [syncing, setSyncing] = useState(false);
+
+  // Purchase Order Modal State
+  const [poModal, setPoModal] = useState<{ open: boolean; supplier: VerifiedSupplier | null }>({ open: false, supplier: null });
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
@@ -608,7 +612,7 @@ export default function SuppliersPage() {
                       ) : (
                         <div className="flex justify-between items-center text-[11px] text-[var(--color-muted)] mb-3">
                           <span>Min Order: <strong>KES {sup.moq_amount.toLocaleString()}</strong></span>
-                          <span>Payment: <strong>Escrow / Partial / POD</strong></span>
+                          <span>Payment: <strong>Pre-Pay / POD</strong> <span className="text-[10px] text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.2 rounded font-semibold ml-1">Escrow Paused</span></span>
                         </div>
                       )}
 
@@ -625,17 +629,11 @@ export default function SuppliersPage() {
                         </button>
 
                         <button
-                          onClick={() => {
-                            if (sup.open_catalogue) {
-                              fire(`📋 Loading Wholesale Catalogue for ${sup.company_name}…`);
-                            } else {
-                              fire(`📄 Requesting KES 100 Quotation Inquiry for ${sup.company_name}…`);
-                            }
-                          }}
-                          className="px-3.5 py-2.5 bg-white border border-[var(--color-line)] text-[var(--color-slate)] hover:text-[var(--color-ink)] hover:border-[var(--color-teal)] rounded-xl font-bold text-[12px] transition-colors cursor-pointer"
-                          title={sup.open_catalogue ? 'Browse live wholesale catalogue' : 'Submit binding RFQ inquiry (KES 100)'}
+                          onClick={() => setPoModal({ open: true, supplier: sup })}
+                          className="px-3.5 py-2.5 bg-[var(--color-gold)] hover:bg-[#b07d10] text-white rounded-xl font-bold text-[12px] transition-colors cursor-pointer shadow-xs flex items-center gap-1"
+                          title="Open live wholesale catalogue & place Purchase Order"
                         >
-                          {sup.open_catalogue ? '🛒 Catalogue' : '📄 Request Quote'}
+                          <span>🛒</span> Catalogue & Order
                         </button>
                       </div>
                     </div>
@@ -880,6 +878,17 @@ export default function SuppliersPage() {
           </div>
         </div>
       )}
+
+      {/* Purchase Order Composer Modal */}
+      <PurchaseOrderModal
+        isOpen={poModal.open}
+        onClose={() => setPoModal({ open: false, supplier: null })}
+        supplier={poModal.supplier}
+        connection={poModal.supplier ? connections[poModal.supplier.id] : null}
+        onOrderCreated={(ord) => {
+          fire(`✓ Purchase Order ${ord.id} transmitted to ${poModal.supplier?.company_name}!`);
+        }}
+      />
     </div>
   );
 }
