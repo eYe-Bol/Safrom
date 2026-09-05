@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type Role = 'admin' | 'owner' | 'employee';
+export type Role = 'admin' | 'owner' | 'employee' | 'supplier';
 
 export type StoreContextType = {
   storeId: string | null;

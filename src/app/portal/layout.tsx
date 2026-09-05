@@ -12,12 +12,18 @@ const NAV_ITEMS = [
   { href: '/portal/dashboard',   label: 'Dashboard',                    icon: '▦',  ownerOnly: false },
   { href: '/portal/situation',   label: 'Inventory & Expiry Tracker',   icon: '📦', ownerOnly: false },
   { href: '/portal/catalogue',   label: 'Product Catalogue',            icon: '🗂', ownerOnly: false },
-  { href: '/portal/suppliers',   label: 'Suppliers',                    icon: '🤝', ownerOnly: false },
+  { href: '/portal/suppliers',   label: 'Suppliers & Procurement',      icon: '🤝', ownerOnly: false },
   { href: '/portal/expenses',    label: 'Expenses',                     icon: '💸', ownerOnly: false },
   { href: '/portal/reports',     label: 'Reports',                      icon: '📊', ownerOnly: false },
   { href: '/portal/sales',       label: 'Sales Tracker',                icon: '🧮', ownerOnly: false },
   { href: '/portal/staff',       label: 'Staff Manager',                icon: '👥', ownerOnly: true  },
   { href: '/portal/settings',    label: 'Settings',                     icon: '⚙️', ownerOnly: true  },
+];
+
+const SUPPLIER_NAV_ITEMS = [
+  { href: '/portal/supplier/dashboard', label: 'Supplier Hub', icon: '🏭', ownerOnly: false },
+  { href: '/portal/suppliers', label: 'Wholesale Directory', icon: '🤝', ownerOnly: false },
+  { href: '/portal/settings', label: 'Account Settings', icon: '⚙️', ownerOnly: false },
 ];
 
 function LiveClock() {
@@ -72,58 +78,68 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
     router.refresh();
   };
 
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-[var(--color-line-lt)] flex items-center justify-start gap-3">
-        <SFSLogo size={42} href="/portal/dashboard" />
-        <div className="flex flex-col">
-          <span className="font-serif text-[14px] font-bold text-[var(--color-ink)] leading-tight">
-            {scale === 'single' ? storeName : (branchProfiles?.[branchName || 'Main Branch'] || (branchName === 'Main Branch' ? storeName : branchName) || 'Sales From Scratch')}
-          </span>
-          {role === 'employee' && (
-            <span className="text-[10px] font-bold text-[var(--color-slate)] uppercase tracking-wider mt-0.5">Staff Account</span>
-          )}
+  const SidebarContent = () => {
+    const activeNavList = role === 'supplier' ? SUPPLIER_NAV_ITEMS : NAV_ITEMS;
+
+    return (
+      <div className="flex flex-col h-full">
+        <div className="p-4 border-b border-[var(--color-line-lt)] flex items-center justify-start gap-3">
+          <SFSLogo size={42} href={role === 'supplier' ? '/portal/supplier/dashboard' : '/portal/dashboard'} />
+          <div className="flex flex-col">
+            <span className="font-serif text-[14px] font-bold text-[var(--color-ink)] leading-tight">
+              {role === 'supplier'
+                ? (storeName || 'Wholesale Supplier')
+                : (scale === 'single' ? storeName : (branchProfiles?.[branchName || 'Main Branch'] || (branchName === 'Main Branch' ? storeName : branchName) || 'Sales From Scratch'))}
+            </span>
+            {role === 'supplier' && (
+              <span className="text-[10px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-1.5 py-0.2 rounded-full uppercase tracking-wider mt-0.5 inline-block w-fit">
+                ✓ Verified Supplier
+              </span>
+            )}
+            {role === 'employee' && (
+              <span className="text-[10px] font-bold text-[var(--color-slate)] uppercase tracking-wider mt-0.5">Staff Account</span>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Nav */}
-      <nav className="flex-1 p-3 flex flex-col gap-1 overflow-y-auto">
-        {NAV_ITEMS.map(item => {
-          // Hide ownerOnly routes from staff
-          if (role === 'employee' && item.ownerOnly) return null;
+        {/* Nav */}
+        <nav className="flex-1 p-3 flex flex-col gap-1 overflow-y-auto">
+          {activeNavList.map(item => {
+            // Hide ownerOnly routes from staff
+            if (role === 'employee' && item.ownerOnly) return null;
 
-          let displayLabel = item.label;
-          if (item.href === '/portal/staff' && scale === 'multi') displayLabel = 'Staff & Branches';
+            let displayLabel = item.label;
+            if (item.href === '/portal/staff' && scale === 'multi') displayLabel = 'Staff & Branches';
 
-          const isActiveNav = pathname === item.href;
-          return (
+            const isActiveNav = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-[10px] text-[12px] font-semibold transition-all ${
+                  isActiveNav
+                    ? 'bg-[var(--color-teal)] text-white shadow-[0_4px_12px_rgba(10,92,107,0.25)]'
+                    : 'text-[var(--color-slate)] hover:bg-[var(--color-teal-bg)] hover:text-[var(--color-teal)]'
+                }`}
+              >
+                <span className="text-[14px] w-5 text-center shrink-0">{item.icon}</span>
+                <span className="truncate">{displayLabel}</span>
+              </Link>
+            );
+          })}
+
+          {role === 'admin' && (
             <Link
-              key={item.href}
-              href={item.href}
+              href="/admin/users"
               onClick={() => setMobileOpen(false)}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-[10px] text-[12px] font-semibold transition-all ${
-                isActiveNav
-                  ? 'bg-[var(--color-teal)] text-white shadow-[0_4px_12px_rgba(10,92,107,0.25)]'
-                  : 'text-[var(--color-slate)] hover:bg-[var(--color-teal-bg)] hover:text-[var(--color-teal)]'
-              }`}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-[10px] text-[12px] font-bold bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100 transition-all mt-2 shadow-sm"
             >
-              <span className="text-[14px] w-5 text-center shrink-0">{item.icon}</span>
-              <span className="truncate">{displayLabel}</span>
+              <span className="text-[14px] w-5 text-center shrink-0">👑</span>
+              <span className="truncate">Admin Console</span>
             </Link>
-          );
-        })}
-
-        {role === 'admin' && (
-          <Link
-            href="/admin/users"
-            onClick={() => setMobileOpen(false)}
-            className="flex items-center gap-2.5 px-3 py-2 rounded-[10px] text-[12px] font-bold bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100 transition-all mt-2 shadow-sm"
-          >
-            <span className="text-[14px] w-5 text-center shrink-0">👑</span>
-            <span className="truncate">Admin Console</span>
-          </Link>
-        )}
-      </nav>
+          )}
+        </nav>
 
       {/* Bottom: Sign Out */}
       <div className="p-3 border-t border-[var(--color-line-lt)]">
@@ -135,7 +151,8 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
         </button>
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <div className="flex min-h-dvh bg-[var(--color-canvas)]">
