@@ -59,6 +59,30 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
     }
   }, [isActive, pathname, router]);
 
+  // Redirect new suppliers to onboarding wizard if they haven't completed it yet
+  useEffect(() => {
+    if (role !== 'supplier') return;
+    if (pathname.includes('/supplier/onboarding')) return;
+
+    const checkOnboarding = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('users')
+        .select('onboarding_complete, supplier_profile')
+        .eq('id', user.id)
+        .single();
+      // If onboarding_complete is false/null and no supplier_profile in localStorage, redirect
+      const lsKey = `sfs_sup_onboarding_${user.id}`;
+      const hasLocal = !!localStorage.getItem(lsKey);
+      if (!data?.onboarding_complete && !hasLocal) {
+        router.push('/portal/supplier/onboarding');
+      }
+    };
+    checkOnboarding();
+  }, [role, pathname, router]);
+
   useEffect(() => {
     const fetchUser = async () => {
       const supabase = createClient();
@@ -156,10 +180,12 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-dvh bg-[var(--color-canvas)]">
-      {/* Desktop Sidebar */}
-      <aside className="w-[230px] shrink-0 bg-white border-r border-[var(--color-line)] hidden md:block fixed top-0 left-0 h-full z-30">
-        <SidebarContent />
-      </aside>
+      {/* Desktop Sidebar — hidden during supplier onboarding (full-screen wizard) */}
+      {!pathname.includes('/supplier/onboarding') && (
+        <aside className="w-[230px] shrink-0 bg-white border-r border-[var(--color-line)] hidden md:block fixed top-0 left-0 h-full z-30">
+          <SidebarContent />
+        </aside>
+      )}
 
       {/* Mobile Overlay Drawer */}
       {mobileOpen && (
@@ -171,34 +197,35 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* Mobile Top Bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 bg-[var(--color-cream)] border-b border-[var(--color-cream-dk)] flex items-center px-3 h-14 z-30 gap-2">
-        <button
-          onClick={() => setMobileOpen(true)}
-          className="flex flex-col gap-[5px] p-1 shrink-0"
-          aria-label="Open menu"
-        >
-          {[0,1,2].map(i => (
-            <span key={i} className="block w-5 h-0.5 bg-[var(--color-teal)] rounded" />
-          ))}
-        </button>
-        <SFSLogo size={32} href="/portal/dashboard" />
-        <span className="font-serif text-[14px] font-bold text-[var(--color-ink)] truncate flex-1">
-          {scale === 'single' ? storeName : (branchProfiles?.[branchName || 'Main Branch'] || (branchName === 'Main Branch' ? storeName : branchName) || 'Sales From Scratch')}
-        </span>
-        {/* Live clock on right - visible on all screens */}
-        <div className="flex flex-col items-end shrink-0">
-          <LiveClock />
+      {/* Mobile Top Bar — hidden during supplier onboarding (full-screen wizard) */}
+      {!pathname.includes('/supplier/onboarding') && (
+        <div className="md:hidden fixed top-0 left-0 right-0 bg-[var(--color-cream)] border-b border-[var(--color-cream-dk)] flex items-center px-3 h-14 z-30 gap-2">
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="flex flex-col gap-[5px] p-1 shrink-0"
+            aria-label="Open menu"
+          >
+            {[0,1,2].map(i => (
+              <span key={i} className="block w-5 h-0.5 bg-[var(--color-teal)] rounded" />
+            ))}
+          </button>
+          <SFSLogo size={32} href="/portal/dashboard" />
+          <span className="font-serif text-[14px] font-bold text-[var(--color-ink)] truncate flex-1">
+            {scale === 'single' ? storeName : (branchProfiles?.[branchName || 'Main Branch'] || (branchName === 'Main Branch' ? storeName : branchName) || 'Sales From Scratch')}
+          </span>
+          <div className="flex flex-col items-end shrink-0">
+            <LiveClock />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Content */}
-      <main className="flex-1 md:ml-[230px] flex flex-col min-h-dvh pt-14 md:pt-0">
+      <main className={`flex-1 flex flex-col min-h-dvh ${pathname.includes('/supplier/onboarding') ? '' : 'md:ml-[230px] pt-14 md:pt-0'}`}>
         {loading ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-[var(--color-muted)] text-[14px] overflow-auto">
             Loading...
           </div>
-        ) : !storeId ? (
+        ) : !storeId && role !== 'supplier' ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-4 overflow-auto">
             <div className="text-[48px]">⚠️</div>
             <h2 className="font-serif text-[24px] font-bold text-[var(--color-ink)]">Account Setup Incomplete</h2>

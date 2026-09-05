@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Topbar } from '@/components/Topbar';
 import { useStore } from '@/context/StoreContext';
 import Link from 'next/link';
@@ -8,6 +9,16 @@ import Link from 'next/link';
 export default function SupplierDashboardPage() {
   const { storeName } = useStore();
   const [toast, setToast] = useState('');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (searchParams.get('onboarded') === '1') {
+      setToast('🎉 Application submitted! Our team will review your profile within 1–3 business days.');
+      setTimeout(() => setToast(''), 7000);
+      router.replace('/portal/supplier/dashboard');
+    }
+  }, [searchParams, router]);
 
   const fire = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
