@@ -85,6 +85,24 @@ function PortalLayoutInner({ children }: { children: React.ReactNode }) {
     checkOnboarding();
   }, [role, pathname, router]);
 
+  // RBAC Guard: Redirect suppliers hitting retailer dashboard or POS routes to the Supplier Hub
+  useEffect(() => {
+    if (role === 'supplier') {
+      if (pathname === '/portal/dashboard') {
+        router.push('/portal/supplier/dashboard');
+      } else if (['/portal/sales', '/portal/situation', '/portal/expenses', '/portal/staff'].includes(pathname)) {
+        router.push('/portal/supplier/dashboard');
+      }
+    }
+  }, [role, pathname, router]);
+
+  // RBAC Guard: Prevent retailers from accessing supplier dispatch and catalogue consoles
+  useEffect(() => {
+    if (role && role !== 'supplier' && role !== 'admin' && pathname.startsWith('/portal/supplier/')) {
+      router.push('/portal/suppliers');
+    }
+  }, [role, pathname, router]);
+
   useEffect(() => {
     const fetchUser = async () => {
       const supabase = createClient();

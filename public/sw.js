@@ -40,6 +40,9 @@ self.addEventListener('fetch', (event) => {
   // Ignore chrome-extension and non-GET requests
   if (request.method !== 'GET' || !request.url.startsWith('http')) return;
 
+  // Security: Never cache API endpoints, webhooks, or external Supabase auth calls
+  if (url.pathname.startsWith('/api/') || url.hostname.includes('supabase.co')) return;
+
   // Static images, fonts, and scripts: Cache-first
   if (
     request.destination === 'image' ||
